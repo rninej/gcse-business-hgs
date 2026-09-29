@@ -20,10 +20,14 @@ export async function GET() {
   // finalize timed attempts whose clock ran out while the student was away,
   // so expired quizzes don't sit "in progress" forever
   attempts = await finalizeExpired(attempts);
-  const byAssignment = new Map(attempts.map((a) => [a.assignmentId, a]));
 
   const rows = assignments.map((a) => {
-    const at = byAssignment.get(a.id);
+    // a student may redo an assignment — every go is a separate attempt;
+    // the latest one decides the status shown
+    const mine = attempts
+      .filter((x) => x.assignmentId === a.id)
+      .sort((x, y) => x.startedAt - y.startedAt);
+    const at = mine.length ? mine[mine.length - 1] : undefined;
     const status: 'not-started' | 'in-progress' | 'submitted' =
       at?.status === 'submitted' ? 'submitted' : at ? 'in-progress' : 'not-started';
     return {
@@ -36,6 +40,10 @@ export async function GET() {
       totalMarks: a.questions.reduce((x, q) => x + q.marks, 0),
       status,
       attemptId: at?.id ?? null,
+      attemptCount: mine.length,
+      bestPct: mine.length
+        ? Math.max(...mine.map((m) => m.result?.pct ?? 0))
+        : null,
       result: at?.status === 'submitted' ? at.result : null,
       daysLeft: a.dueAt ? Math.ceil((a.dueAt - Date.now()) / 86400000) : null,
     };

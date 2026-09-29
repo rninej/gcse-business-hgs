@@ -1,5 +1,5 @@
-// HGSBusiness question bank — External Influences (Topic 1.5)
-// Author: HGS Business content team. All real-world figures are verifiable.
+// Learn Business question bank — External Influences (Topic 1.5)
+// Author: Learn Business content team. All real-world figures are verifiable.
 
 import type { QuizDef } from '@/lib/bank';
 

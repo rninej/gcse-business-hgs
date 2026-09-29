@@ -1,5 +1,5 @@
-// HGSBusiness question bank — Making Marketing Decisions (Topic 2.2)
-// Author: HGS Business content team. All real-world examples are verifiable.
+// Learn Business question bank — Making Marketing Decisions (Topic 2.2)
+// Author: Learn Business content team. All real-world examples are verifiable.
 
 import type { QuizDef } from '@/lib/bank';
 

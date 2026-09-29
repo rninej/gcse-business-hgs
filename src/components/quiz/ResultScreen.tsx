@@ -23,6 +23,7 @@ import { api } from '@/lib/api';
 import { topicTitle } from '@/lib/topics';
 import { ScoreRing, BarList, Diagram } from '@/components/charts';
 import { ErrorNote, PctChip } from '@/components/shared';
+import { useToast } from '@/hooks/use-toast';
 import type { AttemptResult, QReview, TopicStat } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +31,8 @@ interface ResultData {
   status: 'submitted';
   mode: 'assignment' | 'practice';
   title: string;
+  assignmentId: string | null;
+  quizId: string | null;
   result: AttemptResult;
   reviews: QReview[];
   topicStats: TopicStat[];
@@ -38,8 +41,10 @@ interface ResultData {
 
 export function ResultScreen({ attemptId }: { attemptId: string }) {
   const go = useApp((s) => s.go);
+  const { toast } = useToast();
   const [data, setData] = useState<ResultData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [redoing, setRedoing] = useState(false);
 
   useEffect(() => {
     api
@@ -54,6 +59,26 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
       .catch((e) => setError((e as Error).message));
      
   }, [attemptId]);
+
+  // start the same quiz again — a brand-new attempt with a fresh shuffle
+  async function redo() {
+    if (!data) return;
+    setRedoing(true);
+    try {
+      if (data.mode === 'assignment' && data.assignmentId) {
+        const res = await api.post<{ attemptId: string }>(`/api/student/assignments/${data.assignmentId}/start`);
+        go({ name: 'quiz', attemptId: res.attemptId });
+      } else if (data.quizId) {
+        const res = await api.post<{ attemptId: string }>('/api/student/practice', { quizId: data.quizId });
+        go({ name: 'quiz', attemptId: res.attemptId });
+      } else {
+        go({ name: 's-practice' });
+      }
+    } catch (e) {
+      setRedoing(false);
+      toast({ title: 'Could not start again', description: (e as Error).message, variant: 'destructive' });
+    }
+  }
 
   if (error)
     return (
@@ -87,15 +112,14 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-5 gap-2">
         <Button variant="ghost" onClick={() => go({ name: 's-home' })}>
           <ArrowLeft className="h-4 w-4" /> Home
         </Button>
-        {data.mode === 'practice' ? (
-          <Button variant="outline" onClick={() => go({ name: 's-practice' })}>
-            <RotateCw className="h-4 w-4" /> Another quiz
-          </Button>
-        ) : null}
+        <Button variant="outline" onClick={() => void redo()} disabled={redoing}>
+          <RotateCw className={cn('h-4 w-4', redoing && 'animate-spin')} />
+          {redoing ? 'Starting…' : 'Redo this quiz'}
+        </Button>
       </div>
 
       {/* headline */}
@@ -254,11 +278,17 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
         <Button onClick={() => go({ name: 's-home' })}>
           <ArrowLeft className="h-4 w-4" /> Back to home
         </Button>
+        <Button variant="outline" onClick={() => void redo()} disabled={redoing}>
+          <RotateCw className={cn('h-4 w-4', redoing && 'animate-spin')} />
+          {redoing ? 'Starting…' : data.mode === 'practice' ? 'Try this quiz again' : 'Redo this quiz'}
+        </Button>
         {data.mode === 'practice' ? (
-          <Button variant="outline" onClick={() => go({ name: 's-practice' })}>
-            <RotateCw className="h-4 w-4" /> Try another quiz
+          <Button variant="ghost" onClick={() => go({ name: 's-practice' })}>
+            Choose a different quiz
           </Button>
-        ) : null}
+        ) : (
+          <p className="text-xs text-muted-foreground self-center">Every attempt is saved — your teacher can see all of them.</p>
+        )}
       </div>
     </div>
   );

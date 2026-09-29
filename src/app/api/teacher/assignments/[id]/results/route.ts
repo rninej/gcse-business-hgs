@@ -29,17 +29,45 @@ export async function GET(_req: Request, ctx: Ctx) {
   const allAttempts = await finalizeExpired(
     values(await colCached<Attempt>('attempts')).filter((x) => x.assignmentId === id)
   );
-  const byStudent = new Map(allAttempts.map((x) => [x.studentId, x]));
+  // students may redo the assignment — group every attempt per student,
+  // oldest first; the latest go is the headline row, the rest stay in history
+  const byStudent = new Map<string, Attempt[]>();
+  for (const x of allAttempts) {
+    const list = byStudent.get(x.studentId) ?? [];
+    list.push(x);
+    byStudent.set(x.studentId, list);
+  }
+  for (const list of byStudent.values()) list.sort((x, y) => x.startedAt - y.startedAt);
 
   const rows: TeacherStudentResult[] = allStudents
     .sort((s1, s2) => s1.displayName.localeCompare(s2.displayName))
     .map((s) => {
-      const attempt = byStudent.get(s.id);
-      if (!attempt) {
+      const mine = byStudent.get(s.id) ?? [];
+      if (mine.length === 0) {
         return { studentId: s.id, displayName: s.displayName, username: s.username, status: 'not-started' as const };
       }
+      const history = mine
+        .filter((x) => x.status === 'submitted' && x.result)
+        .map((x) => ({
+          id: x.id,
+          score: x.result!.score,
+          total: x.result!.total,
+          pct: x.result!.pct,
+          submittedAt: x.result!.submittedAt,
+          timeTakenSec: x.result!.timeTakenSec,
+          riskScore: x.result!.riskScore,
+          riskBand: x.result!.riskBand,
+        }));
+      const attempt = mine[mine.length - 1];
       if (attempt.status !== 'submitted') {
-        return { studentId: s.id, displayName: s.displayName, username: s.username, status: 'in-progress' as const };
+        return {
+          studentId: s.id,
+          displayName: s.displayName,
+          username: s.username,
+          status: 'in-progress' as const,
+          attemptCount: mine.length,
+          history,
+        };
       }
       const r = attempt.result;
       const late = a.dueAt ? attempt.result!.submittedAt > a.dueAt + 3_600_000 : false;
@@ -56,13 +84,15 @@ export async function GET(_req: Request, ctx: Ctx) {
         riskScore: r?.riskScore,
         riskBand: r?.riskBand,
         riskSignals: r?.riskSignals,
+        attemptCount: mine.length,
+        history,
       };
     });
 
   // fill avgMsPerQ from attempts (not stored on result) — compute where available
   for (const row of rows) {
+    const at = (byStudent.get(row.studentId) ?? []).filter((x) => x.status === 'submitted').pop();
     if (row.status === 'submitted' || row.status === 'late') {
-      const at = byStudent.get(row.studentId);
       if (at && at.result) {
         const times = Object.values(at.perQ ?? {}).map((p) => p.ms).filter((m) => m > 0);
         row.avgMsPerQ = times.length ? Math.round(times.reduce((x, y) => x + y, 0) / times.length) : undefined;
@@ -81,10 +111,10 @@ export async function GET(_req: Request, ctx: Ctx) {
     if (r.riskBand) riskDistribution[r.riskBand] += 1;
   }
 
-  // aggregate topic stats across submitted attempts
+  // aggregate topic stats across submitted attempts (latest go per student)
   const topicAgg = new Map<string, { c: number; t: number }>();
   for (const s of submitted) {
-    const at = byStudent.get(s.studentId);
+    const at = (byStudent.get(s.studentId) ?? []).filter((x) => x.status === 'submitted').pop();
     for (const v of at?.result?.topicStats ?? []) {
       const agg = topicAgg.get(v.topic) ?? { c: 0, t: 0 };
       agg.c += v.c;
@@ -93,12 +123,12 @@ export async function GET(_req: Request, ctx: Ctx) {
     }
   }
 
-  // question-level analysis
+  // question-level analysis (latest go per student)
   const qAnalysis = a.questions.map((q, qi) => {
     let correct = 0;
     let answered = 0;
     for (const s of submitted) {
-      const at = byStudent.get(s.studentId);
+      const at = (byStudent.get(s.studentId) ?? []).filter((x) => x.status === 'submitted').pop();
       const rec = at?.result?.perQ?.[q.id];
       if (!rec) continue;
       answered += 1;

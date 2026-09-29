@@ -1,5 +1,5 @@
-// HGSBusiness question bank — Enterprise & Entrepreneurship (Topic 1.1)
-// Author: HGS Business content team. All real-world figures are verifiable.
+// Learn Business question bank — Enterprise & Entrepreneurship (Topic 1.1)
+// Author: Learn Business content team. All real-world figures are verifiable.
 
 import type { QuizDef } from '@/lib/bank';
 

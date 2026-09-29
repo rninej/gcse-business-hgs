@@ -336,7 +336,7 @@ function ClassDetail({ classId }: { classId: string }) {
                   <DialogTitle>Add student accounts</DialogTitle>
                   <DialogDescription>
                     One student per line. Usernames come from names (e.g. amelia.watson) and each
-                    student gets a memorable password like <span className="font-mono">brave-otter-23</span>.
+                    student gets a memorable password like <span className="font-mono">braveotter23</span>.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -567,7 +567,7 @@ function ClassDetail({ classId }: { classId: string }) {
                   value={editPw}
                   onChange={(e) => setEditPw(e.target.value)}
                   className="font-mono"
-                  placeholder="e.g. brave-otter-23"
+                  placeholder="e.g. braveotter23"
                 />
                 <Button variant="outline" className="shrink-0" onClick={() => void regeneratePw()} disabled={editSaving}>
                   <RefreshCw className="h-4 w-4" />

@@ -1,5 +1,5 @@
-// HGSBusiness question bank — Growth Case Studies (Topic 2.1)
-// Author: HGS Business content team. Real cases: Purplebricks/Strike,
+// Learn Business question bank — Growth Case Studies (Topic 2.1)
+// Author: Learn Business content team. Real cases: Purplebricks/Strike,
 // Biscuiteers, Primark & ABF — all figures verifiable. The Old Mill Bakery
 // is fictional with clean, internally consistent numbers.
 
@@ -22,9 +22,9 @@ const casesgrowth: QuizDef = {
       stem: 'Purplebricks was once a well-known brand worth hundreds of millions of pounds on the stock market. Which statement best explains why it sold for just £1?',
       extract: {
         title: 'Purplebricks sold for £1',
-        image: '/cases/estate.jpg',
         text: 'In May 2023 the online estate agent Purplebricks was sold to its rival Strike for just £1. Only a year earlier, in May 2022, its share price had peaked at £1.89. The business had been losing money, and years of falling sales had destroyed most of its value.',
       },
+      diagram: 'shareprice',
       options: [
         'Shares in a PLC can never be sold for more than £1 each',
         'It was losing money and its value had collapsed — the buyer also inherits its problems and costs',
@@ -76,9 +76,9 @@ const casesgrowth: QuizDef = {
       stem: 'Which benefit is Biscuiteers most likely to gain from co-branding with a famous name like Dior?',
       extract: {
         title: 'Biscuiteers',
-        image: '/cases/biscuits.jpg',
         text: 'Biscuiteers Baking Company Ltd was founded in 2007 and sells luxury hand-iced biscuits as gifts. It has grown by around 400% per annum, with projected revenue of £11m for 2023/24. As well as selling through its own website, it has created co-branded ranges with Dior, Harrods, Great Ormond Street Hospital and Emma Bridgewater.',
       },
+      diagram: 'luxgrowth',
       options: [
         'It can close its own website and stop selling directly to customers',
         'Dior will pay all of Biscuiteers’ running costs forever',
@@ -134,9 +134,9 @@ const casesgrowth: QuizDef = {
       stem: 'Which statement gives the most likely reason why Primark sells almost entirely through its shops?',
       extract: {
         title: 'Primark — no online store',
-        image: '/cases/highstreet.jpg',
         text: 'Primark is owned by Associated British Foods (ABF), which also owns food brands such as Ryvita, Patak’s and Kingsmill. In 2022 Primark had 408 stores worldwide, including 197 in the UK. Unlike most fashion rivals, Primark has no online store — almost all sales happen in its shops, where prices are famously low.',
       },
+      diagram: 'primarkstores',
       options: [
         'Selling online would force Primark to close all 408 of its shops first',
         'Picking, packing and posting individual online orders would add costs that its very low prices would struggle to cover',
@@ -192,9 +192,9 @@ const casesgrowth: QuizDef = {
       stem: 'Which advantage of buying The Bread Basket would appeal most to the Old Mill Bakery?',
       extract: {
         title: 'The Old Mill Bakery — two ways to grow',
-        image: '/cases/bakery.jpg',
         text: 'The Old Mill Bakery is a craft bakery with one busy shop in Ludlow. Its owners want to expand into Shrewsbury. They are weighing up two options: open a new shop of their own, or buy The Bread Basket, a two-shop bakery in Shrewsbury whose owners are retiring.',
       },
+      diagram: 'growpaths',
       options: [
         'Buying a rival is always cheaper than opening a new shop',
         'Speed — the shops, trained staff and existing customers come on day one',

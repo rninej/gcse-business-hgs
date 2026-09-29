@@ -59,6 +59,7 @@ export async function POST(req: Request) {
     classId: me.classId,
     assignmentId: null,
     assignmentTitle: practiceTitle,
+    quizId: quiz.id,
     startedAt: Date.now(),
     dueAt: null,
     timeLimitMin: null,

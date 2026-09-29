@@ -1,5 +1,5 @@
-// HGSBusiness question bank — Globalisation, Ethics & the Environment (Topic 2.1)
-// Author: HGS Business content team. All real-world claims are verifiable.
+// Learn Business question bank — Globalisation, Ethics & the Environment (Topic 2.1)
+// Author: Learn Business content team. All real-world claims are verifiable.
 
 import type { QuizDef } from '@/lib/bank';
 

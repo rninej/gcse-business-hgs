@@ -1,5 +1,5 @@
-// HGSBusiness question bank — Ownership, Location & the Mix (Topic 1.4)
-// Author: HGS Business content team. All real-world figures are verifiable.
+// Learn Business question bank — Ownership, Location & the Mix (Topic 1.4)
+// Author: Learn Business content team. All real-world figures are verifiable.
 
 import type { QuizDef } from '@/lib/bank';
 

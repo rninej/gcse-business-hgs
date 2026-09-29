@@ -88,9 +88,12 @@
   --sidebar-accent-foreground: oklch(0.3 0.03 163);
   --sidebar-border: oklch(0.9 0.01 106);
   --sidebar-ring: oklch(0.51 0.11 163);
+  /* brand wordmark red — matches the Learn Business logo artwork */
+  --brand-red: oklch(0.55 0.21 25);
+  --brand-navy: oklch(0.25 0.07 265);
 }
 
-/* HGSBusiness is a light-mode-only product — the .dark block is kept for
+/* Learn Business is a light-mode-only product — the .dark block is kept for
    completeness but the class is never applied (see layout.tsx). */
 .dark {
   --background: oklch(0.17 0.015 250);

@@ -1,5 +1,5 @@
-// HGSBusiness question bank — Making Human Resource Decisions (Topic 2.5)
-// Author: HGS Business content team. Diagram questions reference the Fernfield Foods org chart.
+// Learn Business question bank — Making Human Resource Decisions (Topic 2.5)
+// Author: Learn Business content team. Diagram questions reference the Fernfield Foods org chart.
 
 import type { QuizDef } from '@/lib/bank';
 

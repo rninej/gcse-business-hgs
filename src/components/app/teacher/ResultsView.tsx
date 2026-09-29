@@ -12,17 +12,20 @@ import {
   BookOpenCheck,
   AlertTriangle,
   Info,
+  History,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Fragment } from 'react';
 import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
 import { topicTitle } from '@/lib/topics';
 import { ScoreRing, RiskMeter, BarList } from '@/components/charts';
 import { PageHeader, ThemedSkeleton, ErrorNote, StatusPill, PctChip, EmptyState, TypeBadge } from '@/components/shared';
-import type { RiskBand, RiskSignal, TeacherStudentResult } from '@/lib/types';
+import type { AttemptSummary, RiskBand, RiskSignal, TeacherStudentResult } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface ResultsData {
@@ -38,7 +41,7 @@ interface ResultsData {
     questionCount: number;
     totalMarks: number;
   };
-  rows: TeacherStudentResult[];
+  rows: (TeacherStudentResult & { attemptCount?: number; history?: AttemptSummary[] })[];
   stats: {
     totalStudents: number;
     submitted: number;
@@ -68,7 +71,16 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
   const [data, setData] = useState<ResultsData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const [open, setOpen] = useState<Set<string>>(new Set());
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const toggle = (id: string) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const load = useCallback(() => {
     api
@@ -125,12 +137,13 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
   }));
 
   function csv() {
-    const head = 'Student,Username,Status,Score,Total,%,Time (min),Risk %,Risk band,Pastes,Tab switches';
+    const head = 'Student,Username,Status,Tries,Score,Total,%,Time (min),Risk %,Risk band,Pastes,Tab switches';
     const lines = data!.rows.map((r) =>
       [
         r.displayName,
         r.username,
         r.status,
+        r.attemptCount ?? 1,
         r.score ?? '',
         r.total ?? '',
         r.pct ?? '',
@@ -240,19 +253,21 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
           ) : (
             <div className="rounded-xl border bg-card overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[760px]">
+                <table className="w-full text-sm min-w-[820px]">
                   <thead>
                     <tr className="border-b bg-secondary/50 text-left text-xs text-muted-foreground">
                       <th className="px-4 py-3 font-medium">Student</th>
                       <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium w-[26%]">Score</th>
+                      <th className="px-4 py-3 font-medium w-[24%]">Score</th>
                       <th className="px-4 py-3 font-medium">Time</th>
-                      <th className="px-4 py-3 font-medium w-[24%]">Integrity</th>
+                      <th className="px-4 py-3 font-medium">Tries</th>
+                      <th className="px-4 py-3 font-medium w-[20%]">Integrity</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.rows.map((r) => (
-                      <tr key={r.studentId} className="border-b last:border-0 hover:bg-secondary/30 transition-colors">
+                      <Fragment key={r.studentId}>
+                      <tr className={cn('border-b last:border-0 hover:bg-secondary/30 transition-colors', open.has(r.studentId) && 'bg-secondary/30')}>
                         <td className="px-4 py-3">
                           <div className="font-medium">{r.displayName}</div>
                           <div className="text-xs text-muted-foreground font-mono">{r.username}</div>
@@ -280,6 +295,21 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
                           {r.timeTakenSec === undefined ? '—' : `${Math.floor(r.timeTakenSec / 60)}m ${r.timeTakenSec % 60}s`}
                         </td>
                         <td className="px-4 py-3">
+                          {(r.attemptCount ?? 0) > 1 ? (
+                            <button
+                              onClick={() => toggle(r.studentId)}
+                              className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-semibold hover:bg-secondary/70 transition-colors"
+                              aria-expanded={open.has(r.studentId)}
+                            >
+                              <History className="h-3.5 w-3.5 text-primary" aria-hidden />
+                              ×{r.attemptCount}
+                              <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', open.has(r.studentId) && 'rotate-90')} aria-hidden />
+                            </button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">1</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
                           {r.riskScore === undefined ? (
                             <span className="text-muted-foreground text-xs">—</span>
                           ) : (
@@ -287,6 +317,37 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
                           )}
                         </td>
                       </tr>
+                      {open.has(r.studentId) && (r.history ?? []).length > 0 ? (
+                        <tr className="border-b last:border-0 bg-[var(--sidebar)]/60">
+                          <td colSpan={6} className="px-4 py-3">
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-2">
+                              <History className="h-3.5 w-3.5" aria-hidden /> Every attempt — the top row is the latest
+                            </div>
+                            <ol className="space-y-1.5">
+                              {(r.history ?? []).map((h, i) => {
+                                const latest = i === (r.history ?? []).length - 1;
+                                return (
+                                  <li key={h.id} className={cn('flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-3 py-2 text-xs', latest && 'border-primary/40')}>
+                                    <span className="font-semibold w-16 shrink-0">Go {i + 1}{latest ? ' · latest' : ''}</span>
+                                    <span className="text-muted-foreground tabular-nums">
+                                      {new Date(h.submittedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                    <span className="tabular-nums font-semibold">
+                                      {h.score}/{h.total} marks
+                                    </span>
+                                    <PctChip pct={h.pct} />
+                                    <span className="text-muted-foreground tabular-nums">{Math.floor(h.timeTakenSec / 60)}m {h.timeTakenSec % 60}s</span>
+                                    <span className="ml-auto text-muted-foreground">
+                                      Integrity: <span className={cn('font-medium', h.riskBand === 'low' ? 'text-[var(--success)]' : h.riskBand === 'moderate' ? 'text-[var(--warn)]' : 'text-[var(--danger)]')}>{h.riskBand}</span> ({h.riskScore}%)
+                                    </span>
+                                  </li>
+                                );
+                              })}
+                            </ol>
+                          </td>
+                        </tr>
+                      ) : null}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

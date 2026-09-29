@@ -1,5 +1,5 @@
-// HGSBusiness question bank — Theme 1 Exam Practice (Topics 1.1–1.5)
-// Author: HGS Business content team. Fictional start-ups (Crumb & Craft,
+// Learn Business question bank — Theme 1 Exam Practice (Topics 1.1–1.5)
+// Author: Learn Business content team. Fictional start-ups (Crumb & Craft,
 // Style on Wheels, Rise & Shine) have clean, internally consistent figures.
 
 import type { QuizDef } from '@/lib/bank';

@@ -1,5 +1,5 @@
-// HGSBusiness question bank — Business Growth (Topic 2.1)
-// Author: HGS Business content team. All real-world figures are verifiable.
+// Learn Business question bank — Business Growth (Topic 2.1)
+// Author: Learn Business content team. All real-world figures are verifiable.
 
 import type { QuizDef } from '@/lib/bank';
 
@@ -36,9 +36,9 @@ const growth: QuizDef = {
       stem: 'Which of the following is a problem most likely to be linked with such a fast rate of growth?',
       extract: {
         title: 'Biscuiteers',
-        image: '/cases/biscuits.jpg',
         text: 'Biscuiteers Baking Company Ltd is a high-end luxury biscuit company selling hand-iced biscuits and kits to decorate your own biscuits, which are given as gifts. The company started in the UK in 2007. Projected revenue for 2023/24 is £11m, with a growth rate of 400% per annum. It has partnered with Dior, Great Ormond Street Hospital, Harrods and Emma Bridgewater to co-brand ranges as the start of a move into the wholesale biscuit market and then overseas.',
       },
+      diagram: 'luxgrowth',
       options: [
         'Cash flow comes under pressure because the business must pay for stock and staff long before customers pay',
         'The business becomes too well known, which puts customers off',
@@ -113,9 +113,9 @@ const growth: QuizDef = {
       stem: 'Purplebricks was sold to Strike for just £1. What type of growth strategy does this represent for Strike?',
       extract: {
         title: 'Strike buys Purplebricks',
-        image: '/cases/estate.jpg',
         text: 'In May 2023 Purplebricks was sold to Strike for £1. The deal handed Strike Purplebricks’ brand and operations, removing a competitor from the market.',
       },
+      diagram: 'shareprice',
       options: [
         'Organic (internal) growth',
         'External (inorganic) growth through takeover',
@@ -135,9 +135,9 @@ const growth: QuizDef = {
       stem: 'If the bank says no, what internal source of finance could The Dough House use to fund its planned expansion?',
       extract: {
         title: 'The Dough House',
-        image: '/cases/bakery.jpg',
         text: 'The Dough House is a craft bakery in Southampton. It has a loyal customer base and often sells out on Saturdays. The owners are thinking of expanding to nearby Portsmouth and have approached the bank to borrow the £175,000 they will need to buy premises. The business has been trading profitably for years.',
       },
+      diagram: 'financesources',
       accept: ['retained profit', 'retained profits', 'owners savings', 'owner savings', 'personal savings', 'savings'],
       explain:
         'Retained profit — profit kept in the business over the years rather than taken out — is the main internal source. (For a small owner-managed firm, the owners’ own savings/personal capital is also an internal source.)',

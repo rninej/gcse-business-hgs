@@ -1,4 +1,4 @@
-// HGSBusiness — shared domain types
+// Learn Business — shared domain types
 // Single source of truth used by the question bank, API routes and UI.
 
 export type Role = 'teacher' | 'student';
@@ -12,7 +12,14 @@ export type DiagramKey =
   | 'orgchart'
   | 'marketshare'
   | 'growthchart'
-  | 'economies';
+  | 'economies'
+  | 'shareprice'
+  | 'luxgrowth'
+  | 'primarkstores'
+  | 'qcflow'
+  | 'financesources'
+  | 'automation'
+  | 'growpaths';
 
 export interface QExtract {
   title: string;
@@ -211,6 +218,7 @@ export interface Attempt {
   classId: string | null;
   assignmentId: string | null;
   assignmentTitle: string;
+  quizId?: string; // library quiz id — set for practice attempts so they can be redone
   startedAt: number;
   dueAt: number | null;
   timeLimitMin: number | null;
@@ -263,6 +271,19 @@ export interface AssignmentRow {
   totalStudents: number;
 }
 
+/** One submitted attempt of an assignment — a student may redo the work,
+ *  and the teacher sees every go. */
+export interface AttemptSummary {
+  id: string;
+  score: number;
+  total: number;
+  pct: number;
+  submittedAt: number;
+  timeTakenSec: number;
+  riskScore: number;
+  riskBand: RiskBand;
+}
+
 export interface TeacherStudentResult {
   studentId: string;
   displayName: string;
@@ -279,4 +300,6 @@ export interface TeacherStudentResult {
   avgMsPerQ?: number;
   pasteCount?: number;
   tabSwitches?: number;
+  attemptCount?: number; // total attempts (redos included)
+  history?: AttemptSummary[]; // every submitted attempt, oldest first
 }

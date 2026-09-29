@@ -1,5 +1,5 @@
-// HGSBusiness question bank — Theme 2 Exam Practice (Topics 2.1–2.5)
-// Author: HGS Business content team. Real takeover facts are verifiable;
+// Learn Business question bank — Theme 2 Exam Practice (Topics 2.1–2.5)
+// Author: Learn Business content team. Real takeover facts are verifiable;
 // Dough House figures match the project parameter sheet (price £2.50,
 // variable cost £1.00, fixed costs £4,500/month, output 4,200 loaves).
 
@@ -79,7 +79,6 @@ const examt2: QuizDef = {
       stem: 'Which type of economy of scale is Rise & Shine benefiting from when it buys beans in bulk?',
       extract: {
         title: 'Rise & Shine — bulk buying',
-        image: '/cases/coffee.jpg',
         text: 'Rise & Shine Ltd has grown from one market stall into six cafés and a small roastery. The buying manager now orders coffee beans for all six cafés in a single bulk order and pays less per kilogram than when the company ran a single stall.',
       },
       diagram: 'economies',
@@ -189,9 +188,9 @@ const examt2: QuizDef = {
       stem: 'Which approach to managing quality is this?',
       extract: {
         title: 'The Dough House — checking the loaves',
-        image: '/cases/bakery.jpg',
         text: 'At The Dough House, the head baker inspects every finished loaf just before it goes on sale. Loaves that fail the check are sold at a discount at the end of the day.',
       },
+      diagram: 'qcflow',
       options: [
         'Quality assurance — checking quality at every stage of production',
         'Total Quality Management — making every employee responsible for quality',

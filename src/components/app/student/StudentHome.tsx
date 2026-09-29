@@ -30,6 +30,8 @@ interface AssignmentRow {
   totalMarks: number;
   status: 'not-started' | 'in-progress' | 'submitted';
   attemptId: string | null;
+  attemptCount: number;
+  bestPct: number | null;
   daysLeft: number | null;
   result: { pct: number; score: number; total: number } | null;
 }
@@ -99,6 +101,16 @@ export function StudentHome() {
         go({ name: 'quiz', attemptId: a.attemptId });
         return;
       }
+      const res = await api.post<{ attemptId: string }>(`/api/student/assignments/${a.id}/start`);
+      go({ name: 'quiz', attemptId: res.attemptId });
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  // start the assignment again from scratch — a fresh attempt, teacher sees every go
+  async function redo(a: AssignmentRow) {
+    try {
       const res = await api.post<{ attemptId: string }>(`/api/student/assignments/${a.id}/start`);
       go({ name: 'quiz', attemptId: res.attemptId });
     } catch (e) {
@@ -330,6 +342,11 @@ export function StudentHome() {
                     ) : null}
                     {!submitted ? <DueChip dueAt={a.dueAt} /> : null}
                     {submitted && a.result ? <PctChip pct={a.result.pct} /> : null}
+                    {a.attemptCount > 1 ? (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {a.attemptCount} goes{a.bestPct !== null ? ` · best ${a.bestPct}%` : ''}
+                      </Badge>
+                    ) : null}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     {a.questionCount} questions · {a.totalMarks} marks
@@ -343,6 +360,9 @@ export function StudentHome() {
                     </span>
                     <Button size="sm" variant="outline" onClick={() => start(a)}>
                       <Eye className="h-3.5 w-3.5" /> Review
+                    </Button>
+                    <Button size="sm" variant="outline" className="border-primary/40 text-primary hover:bg-primary/5" onClick={() => redo(a)}>
+                      <RotateCw className="h-3.5 w-3.5" /> Redo
                     </Button>
                   </div>
                 ) : (

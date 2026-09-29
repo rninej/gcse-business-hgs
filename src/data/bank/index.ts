@@ -1,4 +1,4 @@
-// HGSBusiness — pre-made quiz library.
+// Learn Business — pre-made quiz library.
 // New bank files register here.
 
 import { compileQuiz } from '@/lib/bank';

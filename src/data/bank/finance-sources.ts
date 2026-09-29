@@ -1,5 +1,5 @@
-// HGSBusiness question bank — Cash Flow & Sources of Finance (Topic 1.3)
-// Author: HGS Business content team. Rise & Shine figures match the cashflow diagram exactly.
+// Learn Business question bank — Cash Flow & Sources of Finance (Topic 1.3)
+// Author: Learn Business content team. Rise & Shine figures match the cashflow diagram exactly.
 
 import type { QuizDef } from '@/lib/bank';
 

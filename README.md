@@ -1,4 +1,4 @@
-# HGSBusiness
+# Learn Business
 
 **GCSE Business, made simple** — an [Educake](https://www.educake.co.uk)-style homework and quiz platform built for **Edexcel GCSE (9–1) Business (spec 1BS0)**.
 

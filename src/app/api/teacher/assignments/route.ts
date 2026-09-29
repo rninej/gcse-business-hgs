@@ -75,9 +75,12 @@ export async function GET() {
     .sort((a, b) => b.createdAt - a.createdAt)
     .map((a) => {
       const classStudents = students.filter((s) => s.classId === a.classId);
-      const submitted = attempts.filter(
-        (x) => x.assignmentId === a.id && x.status === 'submitted'
-      ).length;
+      // count unique students who have handed in — a redo must not inflate this
+      const submitted = new Set(
+        attempts
+          .filter((x) => x.assignmentId === a.id && x.status === 'submitted')
+          .map((x) => x.studentId)
+      ).size;
       return {
         id: a.id,
         title: a.title,
@@ -139,7 +142,7 @@ export async function POST(req: Request) {
     const quiz = body.quizId ? QUIZ_MAP[body.quizId] : undefined;
     if (!quiz) return NextResponse.json({ error: 'Choose a quiz from the library.' }, { status: 400 });
     questions = quiz.questions.map((q) => ({ ...q }));
-    generatedBy = `HGS Business bank · ${quiz.title}`;
+    generatedBy = `Learn Business bank · ${quiz.title}`;
   } else if (mode === 'ai') {
     const p = body.aiParams;
     if (!p || !Array.isArray(p.topics) || p.topics.length === 0) {
@@ -153,7 +156,7 @@ export async function POST(req: Request) {
       caseStudies: Boolean(p.caseStudies),
     });
     questions = gen.questions;
-    generatedBy = gen.provider === 'bank' ? 'HGS Business bank (AI unavailable)' : `AI · ${gen.provider}`;
+    generatedBy = gen.provider === 'bank' ? 'Learn Business bank (AI unavailable)' : `AI · ${gen.provider}`;
     if (gen.provider === 'bank') source = 'library';
   } else {
     const custom = Array.isArray(body.customQuestions) ? body.customQuestions : [];

@@ -1,6 +1,6 @@
 // Password helpers: scrypt hashing for verification, AES-GCM reversible storage
 // (so teachers can always see/reset student logins), and memorable password
-// generation in the form word-word-number, e.g. "brave-otter-23".
+// generation in the form wordwordnumber, e.g. "braveotter23".
 import { createCipheriv, createDecipheriv, randomInt, randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 
 export function hashPassword(password: string): string {
@@ -74,9 +74,9 @@ function pick<T>(arr: T[]): T {
   return arr[randomInt(arr.length)];
 }
 
-/** Memorable password like "brave-otter-23" — easy to hand out and type. */
+/** Memorable password like "braveotter23" — easy to hand out and type, no symbols. */
 export function memorablePassword(): string {
-  return `${pick(ADJECTIVES)}-${pick(NOUNS)}-${String(randomInt(10, 99))}`;
+  return `${pick(ADJECTIVES)}${pick(NOUNS)}${String(randomInt(10, 99))}`;
 }
 
 export function randomPassword(_len = 7): string {

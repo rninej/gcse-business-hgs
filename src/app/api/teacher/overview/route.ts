@@ -22,7 +22,16 @@ export async function GET() {
     .sort((a, b) => b.createdAt - a.createdAt);
   const myAttempts = values(attempts).filter((a) => a.teacherId === session.uid);
 
-  const submitted = myAttempts.filter((a) => a.status === 'submitted' && a.result);
+  // students may redo assignments — use each student's LATEST submitted go per
+  // assignment for dashboard stats, so redos don't inflate counts or averages
+  const latestByKey = new Map<string, Attempt>();
+  for (const at of myAttempts) {
+    if (at.status !== 'submitted' || !at.result || !at.assignmentId) continue;
+    const key = `${at.studentId}:${at.assignmentId}`;
+    const prev = latestByKey.get(key);
+    if (!prev || at.result.submittedAt > prev.result!.submittedAt) latestByKey.set(key, at);
+  }
+  const submitted = [...latestByKey.values()];
   const pcts = submitted.map((a) => a.result!.pct);
   const avgPct = pcts.length ? Math.round((pcts.reduce((x, y) => x + y, 0) / pcts.length) * 10) / 10 : null;
 
@@ -56,9 +65,11 @@ export async function GET() {
       flaggedCount: flagged.length,
     },
     recentAssignments: myAssignments.slice(0, 6).map((a) => {
-      const subs = myAttempts.filter(
-        (x) => x.assignmentId === a.id && x.status === 'submitted'
-      ).length;
+      const subs = new Set(
+        myAttempts
+          .filter((x) => x.assignmentId === a.id && x.status === 'submitted')
+          .map((x) => x.studentId)
+      ).size;
       const total = myStudents.filter((s) => s.classId === a.classId).length;
       return {
         id: a.id,

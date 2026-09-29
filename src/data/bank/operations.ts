@@ -1,5 +1,5 @@
-// HGSBusiness question bank — Making Operational Decisions (Topic 2.3)
-// Author: HGS Business content team. Fictional firm figures are internally consistent.
+// Learn Business question bank — Making Operational Decisions (Topic 2.3)
+// Author: Learn Business content team. Fictional firm figures are internally consistent.
 
 import type { QuizDef } from '@/lib/bank';
 
@@ -79,9 +79,9 @@ const operations: QuizDef = {
       stem: 'Which of the following is the most likely reason Amazon uses robots in its warehouses?',
       extract: {
         title: 'Amazon warehouses',
-        image: '/cases/warehouse.jpg',
         text: 'Amazon’s fulfilment centres use robots that carry shelves of products across the warehouse floor to human workers, who pick the items for each customer order. The robots work alongside thousands of employees.',
       },
+      diagram: 'automation',
       options: [
         'It means Amazon no longer needs any employees in its warehouses',
         'Robots raise productivity and reliability, which cuts the cost of processing each order',

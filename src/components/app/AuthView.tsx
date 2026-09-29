@@ -18,16 +18,24 @@ export function AuthView() {
   return (
     <div className="min-h-screen flex flex-col bg-[var(--sidebar)]">
       <header className="border-b bg-background">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 min-h-16 py-2.5 flex items-center justify-between gap-3">
           <BrandLockup />
           <span className="text-xs text-muted-foreground hidden sm:block">Edexcel GCSE (9–1) Business · spec 1BS0</span>
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-10 lg:py-16 grid lg:grid-cols-[1.1fr_1fr] gap-12 items-center">
+      {/* mobile: sign in first — no scrolling needed; desktop: pitch left, card right */}
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-8 lg:py-16 grid lg:grid-cols-[1.1fr_1fr] gap-8 lg:gap-12 lg:items-center">
         {/* What it looks like in the classroom */}
-        <section>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
+        <section className="order-2 lg:order-1">
+          <img
+            src="/logo.png"
+            alt="Learn Business"
+            className="hidden lg:block h-24 w-auto mb-6"
+            width={312}
+            height={248}
+          />
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight leading-tight">
             GCSE Business homework that marks itself.
           </h1>
           <p className="mt-3 text-muted-foreground text-lg max-w-lg">
@@ -89,15 +97,15 @@ export function AuthView() {
           </ul>
         </section>
 
-        {/* Auth card */}
-        <section className="w-full max-w-md mx-auto">
+        {/* Auth card — first thing you see on a phone */}
+        <section className="order-1 lg:order-2 w-full max-w-md mx-auto">
           <AuthCard />
         </section>
       </main>
 
       <footer className="mt-auto border-t bg-background">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 text-xs text-muted-foreground flex flex-wrap justify-between gap-2">
-          <span>© {new Date().getFullYear()} HGSBusiness</span>
+          <span>© {new Date().getFullYear()} Learn Business</span>
           <span>Students: your teacher creates your account and hands out your login.</span>
         </div>
       </footer>
@@ -192,7 +200,7 @@ function AuthCard() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="s-pw">Password</Label>
-              <Input id="s-pw" type="password" value={sPw} onChange={(e) => setSPw(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit('student')} placeholder="e.g. brave-otter-23" />
+              <Input id="s-pw" type="password" value={sPw} onChange={(e) => setSPw(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit('student')} placeholder="e.g. braveotter23" />
             </div>
             <Button className="w-full" disabled={busy || !sId || !sPw} onClick={() => submit('student')}>
               {busy ? 'Signing in…' : 'Sign in as student'}

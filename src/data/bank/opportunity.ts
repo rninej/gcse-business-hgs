@@ -1,5 +1,5 @@
-// HGSBusiness question bank — Market Research & Customers (Topic 1.2)
-// Author: HGS Business content team. All real-world figures are verifiable.
+// Learn Business question bank — Market Research & Customers (Topic 1.2)
+// Author: Learn Business content team. All real-world figures are verifiable.
 
 import type { QuizDef } from '@/lib/bank';
 

@@ -6,6 +6,11 @@ import type { Attempt, Assignment, Student } from '@/lib/types';
 
 type Ctx = { params: Promise<{ id: string }> };
 
+/**
+ * Start (or resume) an assignment attempt. Students may redo the whole
+ * assignment once they have submitted — every go is a separate attempt and
+ * the teacher sees all of them.
+ */
 export async function POST(_req: Request, ctx: Ctx) {
   const session = await requireRole('student');
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -22,15 +27,12 @@ export async function POST(_req: Request, ctx: Ctx) {
   }
 
   const attempts = values(await col<Attempt>('attempts')).filter((x) => x.assignmentId === id);
-  const existing = attempts.find((x) => x.studentId === session.uid);
-  if (existing?.status === 'submitted') {
-    return NextResponse.json(
-      { error: 'You have already submitted this assignment.', alreadySubmitted: true, attemptId: existing.id },
-      { status: 409 }
-    );
-  }
-  if (existing) {
-    return NextResponse.json({ ok: true, attemptId: existing.id, resumed: true });
+  const mine = attempts
+    .filter((x) => x.studentId === session.uid)
+    .sort((x, y) => x.startedAt - y.startedAt);
+  const inProgress = mine.find((x) => x.status !== 'submitted');
+  if (inProgress) {
+    return NextResponse.json({ ok: true, attemptId: inProgress.id, resumed: true });
   }
 
   const attemptId = `at_${randomUUID().replace(/-/g, '').slice(0, 10)}`;
@@ -57,5 +59,6 @@ export async function POST(_req: Request, ctx: Ctx) {
     result: null,
   };
   await put('attempts', attemptId, attempt);
-  return NextResponse.json({ ok: true, attemptId, resumed: false });
+  // attemptN tells the client which go this is (1st, 2nd, …) for the header
+  return NextResponse.json({ ok: true, attemptId, resumed: false, attemptN: mine.length + 1 });
 }

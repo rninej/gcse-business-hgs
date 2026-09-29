@@ -1,5 +1,5 @@
-// HGSBusiness question bank — Finance Case Studies (Topic 2.4)
-// Author: HGS Business content team. Dough House figures match the project
+// Learn Business question bank — Finance Case Studies (Topic 2.4)
+// Author: Learn Business content team. Dough House figures match the project
 // parameter sheet; Brookfield Bikes, Glow Candles and Vale Drinks have
 // clean, internally consistent numbers.
 
