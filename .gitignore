@@ -56,3 +56,4 @@ server.log
 /upload/
 # local runtime db (unused — app runs on Firebase)
 /db/*.db
+tool-results/
