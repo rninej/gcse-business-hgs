@@ -28,13 +28,6 @@ export function AuthView() {
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-8 lg:py-16 grid lg:grid-cols-[1.1fr_1fr] gap-8 lg:gap-12 lg:items-center">
         {/* What it looks like in the classroom */}
         <section className="order-2 lg:order-1">
-          <img
-            src="/logo.png"
-            alt="Learn Business"
-            className="hidden lg:block h-24 w-auto mb-6"
-            width={312}
-            height={248}
-          />
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight leading-tight">
             GCSE Business homework that marks itself.
           </h1>
