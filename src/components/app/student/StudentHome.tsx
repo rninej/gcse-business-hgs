@@ -1,0 +1,225 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ClipboardList,
+  PlayCircle,
+  RotateCw,
+  Eye,
+  Star,
+  TrendingUp,
+  Award,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useApp } from '@/lib/store';
+import { api } from '@/lib/api';
+import { PageHeader, ThemedSkeleton, ErrorNote, EmptyState, DueChip, PctChip } from '@/components/shared';
+import { BarList, ScoreRing } from '@/components/charts';
+import { cn } from '@/lib/utils';
+
+interface AssignmentRow {
+  id: string;
+  title: string;
+  description: string;
+  dueAt: number | null;
+  timeLimitMin: number | null;
+  questionCount: number;
+  totalMarks: number;
+  status: 'not-started' | 'in-progress' | 'submitted';
+  attemptId: string | null;
+  daysLeft: number | null;
+  result: { pct: number; score: number; total: number } | null;
+}
+
+interface Overview {
+  stats: { quizzesDone: number; avgPct: number | null; points: number; bestPct: number | null };
+  recent: { id: string; title: string; mode: string; pct: number; score: number; total: number; submittedAt: number }[];
+  mastery: { topic: string; title: string; pct: number; attempts: number }[];
+}
+
+export function StudentHome() {
+  const go = useApp((s) => s.go);
+  const session = useApp((s) => s.session);
+  const [assignments, setAssignments] = useState<AssignmentRow[] | null>(null);
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    api
+      .get<{ assignments: AssignmentRow[] }>('/api/student/assignments')
+      .then((d) => setAssignments(d.assignments))
+      .catch((e) => setError((e as Error).message));
+    api
+      .get<Overview>('/api/student/overview')
+      .then(setOverview)
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(load, [load]);
+
+  async function start(a: AssignmentRow) {
+    if (a.status === 'submitted' && a.attemptId) {
+      go({ name: 'result', attemptId: a.attemptId });
+      return;
+    }
+    try {
+      if (a.status === 'in-progress' && a.attemptId) {
+        go({ name: 'quiz', attemptId: a.attemptId });
+        return;
+      }
+      const res = await api.post<{ attemptId: string }>(`/api/student/assignments/${a.id}/start`);
+      go({ name: 'quiz', attemptId: res.attemptId });
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  if (error)
+    return (
+      <>
+        <PageHeader title={`Hi ${session?.name ?? ''}`} />
+        <ErrorNote message={error} />
+      </>
+    );
+  if (!assignments || !overview)
+    return (
+      <>
+        <PageHeader title={`Hi ${session?.name ?? ''}`} sub="Your work at a glance." />
+        <ThemedSkeleton rows={4} />
+      </>
+    );
+
+  const pending = assignments.filter((a) => a.status !== 'submitted');
+  const done = assignments.filter((a) => a.status === 'submitted');
+  const firstName = (session?.name ?? 'there').split(' ')[0];
+
+  return (
+    <>
+      <PageHeader
+        title={`Hi ${firstName}`}
+        sub={`${session?.className ?? 'Your class'} · Edexcel GCSE (9–1) Business`}
+        actions={
+          overview.stats.points > 0 ? (
+            <Badge className="bg-[var(--accent)] text-[var(--accent-foreground)] gap-1.5 text-sm px-3 py-1.5">
+              <Star className="h-4 w-4" /> {overview.stats.points.toLocaleString()} points
+            </Badge>
+          ) : undefined
+        }
+      />
+
+      <div className="grid gap-3 mb-6 sm:grid-cols-3">
+        <div className="rounded-xl border bg-card p-5 flex items-center gap-4">
+          <ScoreRing pct={overview.stats.avgPct ?? 0} label="average" size={96} />
+          <div className="text-sm">
+            <div className="font-semibold">{overview.stats.quizzesDone} completed</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {overview.stats.bestPct !== null ? `Best: ${overview.stats.bestPct}%` : 'Take your first quiz'}
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center gap-2 text-sm font-semibold mb-3">
+            <ClipboardList className="h-4 w-4 text-primary" /> To do
+          </div>
+          <p className="text-3xl font-bold tabular-nums">{pending.length}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {done.length} submitted · {assignments.length} total
+          </p>
+        </div>
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center gap-2 text-sm font-semibold mb-3">
+            <TrendingUp className="h-4 w-4 text-primary" /> Strongest areas
+          </div>
+          {overview.mastery.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Complete quizzes to unlock your progress map.</p>
+          ) : (
+            <BarList
+              items={[...overview.mastery].sort((a, b) => b.pct - a.pct).slice(0, 3).map((m) => ({ label: m.title, pct: m.pct }))}
+            />
+          )}
+        </div>
+      </div>
+
+      <h2 className="font-semibold mb-3">Your assignments</h2>
+      {assignments.length === 0 ? (
+        <EmptyState
+          icon={ClipboardList}
+          title="Nothing set yet"
+          body="When your teacher sets work it will appear here. Meanwhile, try a practice quiz!"
+          action={<Button size="sm" variant="outline" onClick={() => go({ name: 's-practice' })}>Practice quizzes</Button>}
+        />
+      ) : (
+        <div className="space-y-3">
+          {assignments.map((a) => {
+            const submitted = a.status === 'submitted';
+            return (
+              <div
+                key={a.id}
+                className={cn(
+                  'rounded-xl border bg-card p-4 sm:p-5 flex flex-wrap items-center gap-3',
+                  submitted ? 'opacity-90' : a.status === 'in-progress' ? 'border-primary/50' : undefined
+                )}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold">{a.title}</span>
+                    {a.timeLimitMin ? (
+                      <Badge variant="outline" className="text-[10px] gap-1">
+                        <RotateCw className="h-3 w-3" /> {a.timeLimitMin} min
+                      </Badge>
+                    ) : null}
+                    {!submitted ? <DueChip dueAt={a.dueAt} /> : null}
+                    {submitted && a.result ? <PctChip pct={a.result.pct} /> : null}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {a.questionCount} questions · {a.totalMarks} marks
+                    {a.description ? ` · ${a.description}` : ''}
+                  </p>
+                </div>
+                {submitted ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm tabular-nums font-semibold">
+                      {a.result?.score}/{a.result?.total}
+                    </span>
+                    <Button size="sm" variant="outline" onClick={() => start(a)}>
+                      <Eye className="h-3.5 w-3.5" /> Review
+                    </Button>
+                  </div>
+                ) : (
+                  <Button size="sm" onClick={() => start(a)}>
+                    <PlayCircle className="h-4 w-4" />
+                    {a.status === 'in-progress' ? 'Continue' : 'Start'}
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {overview.recent.length > 0 ? (
+        <>
+          <h2 className="font-semibold mb-3 mt-8">Recent results</h2>
+          <ul className="rounded-xl border bg-card divide-y">
+            {overview.recent.slice(0, 5).map((r) => (
+              <li key={r.id}>
+                <button
+                  className="w-full text-left px-5 py-3.5 hover:bg-secondary/50 transition-colors flex items-center gap-3"
+                  onClick={() => go({ name: 'result', attemptId: r.id })}
+                >
+                  <Award className={cn('h-4 w-4', r.pct >= 80 ? 'text-[var(--success)]' : 'text-primary')} />
+                  <span className="flex-1 truncate text-sm font-medium">{r.title}</span>
+                  <span className="text-xs text-muted-foreground hidden sm:block">
+                    {new Date(r.submittedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                  </span>
+                  <PctChip pct={r.pct} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </>
+  );
+}

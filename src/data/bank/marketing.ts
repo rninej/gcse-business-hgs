@@ -1,0 +1,281 @@
+// HGSBusiness question bank — Making Marketing Decisions (Topic 2.2)
+// Author: HGS Business content team. All real-world examples are verifiable.
+
+import type { QuizDef } from '@/lib/bank';
+
+const marketing: QuizDef = {
+  id: 'marketing',
+  title: 'Marketing: Product, Price, Promotion & Place',
+  blurb: 'The 4Ps in action: USPs and branding, the product life cycle, pricing strategies, promotion and distribution — with Apple, Innocent, Uber and Ryanair.',
+  theme: 2,
+  topics: ['2.2'],
+  questions: [
+    {
+      id: 'mk1',
+      type: 'mcq',
+      topic: '2.2',
+      difficulty: 1,
+      marks: 1,
+      stem: 'What is meant by a business’s USP (unique selling point)?',
+      extract: {
+        title: 'Innocent Drinks',
+        text: 'Innocent was started in 1999 by three friends who tested their smoothies on customers at a music festival. Innocent is known for smoothies made from natural ingredients, with nothing artificial added — one reason customers choose Innocent over cheaper own-brand smoothies.',
+      },
+      options: [
+        'The lowest price charged by any business in the market',
+        'A feature of the product that makes it stand out from those of competitors',
+        'A short-term special offer designed to boost sales',
+        'The stage of the product life cycle immediately after launch',
+      ],
+      correct: 1,
+      explain:
+        'A USP is the feature that makes a product different from rivals — for Innocent, smoothies made from natural ingredients with nothing artificial. It gives customers a reason to choose the product even when competitors are cheaper.',
+    },
+    {
+      id: 'mk2',
+      type: 'mcq',
+      topic: '2.2',
+      difficulty: 1,
+      marks: 1,
+      stem: 'Apple’s iPhone is one of the most recognised brands in the world. Which statement best explains how this helps Apple charge higher prices than many of its rivals?',
+      options: [
+        'Customers trust and value the brand, so many are willing to pay more than for similar phones',
+        'A strong brand lowers the cost of making each phone',
+        'A strong brand forces rival phone makers to raise their own prices',
+        'Branding only affects advertising and never affects pricing',
+      ],
+      correct: 0,
+      explain:
+        'Strong branding builds recognition, trust and loyalty, so many customers will pay a premium price rather than switch — Apple competes on the product, not just on price. Branding does not cut production costs, and rivals set their own prices.',
+    },
+    {
+      id: 'mk3',
+      type: 'mcq',
+      topic: '2.2',
+      difficulty: 1,
+      marks: 1,
+      stem: 'The diagram shows the product life cycle. In which stage are sales rising fast and profit improving?',
+      diagram: 'plc',
+      options: ['Introduction', 'Growth', 'Maturity', 'Decline'],
+      correct: 1,
+      explain:
+        'In the growth stage the product becomes widely known, so sales climb steeply and revenue grows faster than costs. On the diagram this section is labelled "sales rising fast, profit improving" — after it comes maturity, where sales peak and competition is strong.',
+    },
+    {
+      id: 'mk4',
+      type: 'truefalse',
+      topic: '2.2',
+      difficulty: 2,
+      marks: 1,
+      stem: 'The dotted line on the diagram shows an extension strategy. The best time to introduce an extension strategy is during the decline stage, once sales have already fallen sharply.',
+      diagram: 'plc',
+      answer: false,
+      explain:
+        'False — extension strategies (updating the product, new packaging, finding new markets) work best when introduced at maturity, while sales are still near their peak, so that decline is delayed for as long as possible. Starting after sales have collapsed leaves little demand left to rescue.',
+    },
+    {
+      id: 'mk5',
+      type: 'mcq',
+      topic: '2.2',
+      difficulty: 2,
+      marks: 1,
+      stem: 'In the Boston Matrix, which type of product has a HIGH market share in a LOW-growth market and generates more cash than it needs?',
+      options: ['Star', 'Question mark (problem child)', 'Cash cow', 'Dog'],
+      correct: 2,
+      explain:
+        'A cash cow has high market share in a mature, slow-growing market, so it needs little investment and produces surplus cash. That cash can fund question marks — products that could become stars if their market share grows.',
+    },
+    {
+      id: 'mk6',
+      type: 'term',
+      topic: '2.2',
+      difficulty: 2,
+      marks: 1,
+      stem: 'In the Boston Matrix, what name is given to a product with a HIGH market share in a HIGH-growth market?',
+      accept: ['star', 'stars'],
+      explain:
+        'A star sells strongly in a fast-growing market. It absorbs plenty of cash to keep growing, but if it holds its share as the market matures it becomes a cash cow.',
+    },
+    {
+      id: 'mk7',
+      type: 'term',
+      topic: '2.2',
+      difficulty: 2,
+      marks: 1,
+      stem: 'What is the name of the pricing strategy shown in the case study: setting a high launch price and reducing it over time?',
+      extract: {
+        title: 'Apple iPhone',
+        text: 'Apple usually launches each new iPhone at a high price, and some customers queue to buy it on launch day. As the months pass and newer models arrive, the price of the older model falls.',
+      },
+      accept: ['price skimming', 'skimming', 'skimming pricing', 'market skimming'],
+      explain:
+        'Price skimming "skims" the highest price from customers who want the product first, then cuts the price later to win more price-sensitive buyers. It suits new technology like the iPhone — and it is the opposite of penetration pricing, which starts low.',
+    },
+    {
+      id: 'mk8',
+      type: 'fib',
+      topic: '2.2',
+      difficulty: 1,
+      marks: 1,
+      stem: '__________ pricing means setting a LOW launch price to win customers from rivals quickly, then raising the price once the product is established. What one word completes the sentence?',
+      accept: ['penetration', 'penetration pricing'],
+      explain:
+        'Penetration pricing starts with a low price to attract customers quickly and build market share, then raises it once the product is established. It is the opposite of price skimming, which starts high.',
+    },
+    {
+      id: 'mk9',
+      type: 'term',
+      topic: '2.2',
+      difficulty: 1,
+      marks: 1,
+      stem: 'A pair of headphones is priced at £79.99 rather than £80.00. What is this pricing technique called?',
+      accept: ['psychological pricing', 'psychological', 'charm pricing'],
+      explain:
+        'Psychological (or charm) pricing uses a price such as £79.99 that feels meaningfully cheaper than £80, because customers notice the first digit first. Retailers use it at every price point.',
+    },
+    {
+      id: 'mk10',
+      type: 'truefalse',
+      topic: '2.2',
+      difficulty: 1,
+      marks: 1,
+      stem: 'A loss leader is a product sold below cost to attract customers into a shop, in the hope that they buy other items at a profit.',
+      answer: true,
+      explain:
+        'True — supermarkets often use familiar products such as bread or milk as loss leaders. The loss on that one item is outweighed by the profit on the rest of the shopping basket.',
+    },
+    {
+      id: 'mk11',
+      type: 'fib',
+      topic: '2.2',
+      difficulty: 1,
+      marks: 1,
+      stem: 'A jeweller works out that a ring costs £120 to make and adds an £80 mark-up, giving a price of £200. Setting a price by adding a mark-up to the unit cost is called cost-________ pricing. What one word completes the term?',
+      accept: ['plus', 'cost plus', 'cost plus pricing'],
+      explain:
+        'Cost-plus pricing adds a mark-up to the cost of making each unit: £120 + £80 = £200. It is simple and makes sure costs are covered, but it ignores what customers are willing to pay and what rivals are charging.',
+    },
+    {
+      id: 'mk12',
+      type: 'mcq',
+      topic: '2.2',
+      difficulty: 2,
+      marks: 1,
+      stem: 'What is the general name for the pricing method in the case study, in which prices change automatically as demand changes?',
+      extract: {
+        title: 'Uber',
+        text: 'Uber’s app matches passengers with drivers. When far more people than usual want a ride — on New Year’s Eve, for example — the app automatically raises fares until enough extra drivers log on. Uber calls this surge pricing.',
+      },
+      options: [
+        'Cost-plus pricing',
+        'Penetration pricing',
+        'Dynamic pricing',
+        'Psychological pricing',
+      ],
+      correct: 2,
+      explain:
+        'Dynamic pricing means prices move up or down with demand: Uber raises fares at busy times, and airlines raise fares as a plane fills up. Cost-plus is based on costs, penetration on a low launch price, and psychological on prices such as £9.99.',
+    },
+    {
+      id: 'mk13',
+      type: 'mcq',
+      topic: '2.2',
+      difficulty: 2,
+      marks: 1,
+      stem: 'A wedding photographer wants her advert to appear when people search for "wedding photographer Leeds" on Google. How does Google Ads decide which adverts appear?',
+      options: [
+        'Google displays the adverts in alphabetical order of business name',
+        'Google picks advertisers at random and charges them all the same flat fee',
+        'The photographer must buy the keyword outright and keep it for a year',
+        'Advertisers bid against each other for the keyword, and the top bidders’ adverts are shown',
+      ],
+      correct: 3,
+      explain:
+        'With Google Ads, businesses bid on keywords in an auction; the highest bidders (with relevant adverts) appear above or beside the search results, usually paying when someone clicks. Even a one-person business can reach customers at the moment they search.',
+    },
+    {
+      id: 'mk14',
+      type: 'mcq',
+      topic: '2.2',
+      difficulty: 3,
+      marks: 1,
+      stem: 'Which of the following is an example of public relations (PR)?',
+      options: [
+        'A firm pays a TV channel to screen its advert during a popular show',
+        'A firm pays a well-known influencer to feature its trainers on Instagram',
+        'A firm pays for its logo to appear on a rugby club’s shirts',
+        'A newspaper runs a free story about a firm’s charity fundraiser',
+      ],
+      correct: 3,
+      explain:
+        'Public relations (PR) means earning favourable coverage — such as news stories — without paying for the space. The other three are all paid-for promotion: TV advertising, influencer marketing and sponsorship.',
+    },
+    {
+      id: 'mk15',
+      type: 'mcq',
+      topic: '2.2',
+      difficulty: 2,
+      marks: 1,
+      stem: 'Which combination of methods most explains how the airline in the case study keeps its fares so low?',
+      extract: {
+        title: 'Ryanair',
+        text: 'Ryanair is one of Europe’s largest airlines and is known for its low fares. It offers a no-frills service, gets each aircraft back in the air quickly with very fast turnarounds, flies to secondary airports with lower charges, and charges extra for add-ons such as checked bags and priority boarding.',
+      },
+      options: [
+        'Free meals, seat selection and extra legroom on every flight',
+        'No-frills flying, very fast aircraft turnarounds and secondary airports with lower charges',
+        'Flying only to the biggest hub airports, with long waits between flights',
+        'Charging the highest fares in Europe so that each passenger pays more',
+      ],
+      correct: 1,
+      explain:
+        'Ryanair strips out frills, gets planes back in the air quickly (so each aircraft earns more flights a day) and uses cheaper secondary airports. Cutting unit costs this way lets it set competitive low prices that rivals struggle to match.',
+    },
+    {
+      id: 'mk16',
+      type: 'term',
+      topic: '2.2',
+      difficulty: 1,
+      marks: 1,
+      stem: 'The case study describes how ASOS sells to its customers. Which element of the marketing mix does this decision belong to?',
+      extract: {
+        title: 'ASOS',
+        text: 'ASOS is an online fashion retailer. It sells its own label and hundreds of other brands entirely through its website and app — ASOS has no physical stores at all.',
+      },
+      accept: ['place', 'placement', 'distribution'],
+      explain:
+        'Place is the element of the marketing mix that covers where and how customers can buy — the distribution channel. ASOS sells direct to customers online; avoiding a chain of shops saves rent and staffing costs and helps keep prices competitive.',
+    },
+    {
+      id: 'mk17',
+      type: 'fib',
+      topic: '2.2',
+      difficulty: 1,
+      marks: 1,
+      stem: 'Many high-street chains let customers order online and collect the goods from their local shop the same day. This service is called click and __________. What one word completes the term?',
+      accept: ['collect', 'collection', 'click and collect'],
+      explain:
+        'Click and collect combines ordering online with picking the goods up in store — no delivery charge and no waiting in for a parcel. It also pulls customers into shops, where they often buy extra items.',
+    },
+    {
+      id: 'mk18',
+      type: 'numeric',
+      topic: '2.2',
+      difficulty: 2,
+      marks: 2,
+      stem: 'Using the figures in the case study, calculate the percentage increase in the price of Bramble & Bean’s 250g bag of coffee. Give your answer to the nearest whole number.',
+      extract: {
+        title: 'Bramble & Bean',
+        text: 'Bramble & Bean is a small coffee roastery in Bristol. The price of the green beans it buys has risen sharply, so the roastery is raising the price of its 250g bags of roasted coffee from £4.00 to £4.60. The owners want to know how large the increase will look to customers.',
+      },
+      value: 15,
+      tol: 0.5,
+      unit: '%',
+      dp: 0,
+      explain:
+        'Percentage change = (new − original) ÷ original × 100 = (£4.60 − £4.00) ÷ £4.00 × 100 = £0.60 ÷ £4.00 × 100 = +15%.',
+    },
+  ],
+};
+
+export default marketing;
