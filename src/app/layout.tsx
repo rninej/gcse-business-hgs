@@ -23,10 +23,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f8f6" },
-    { media: "(prefers-color-scheme: dark)", color: "#131613" },
-  ],
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({
@@ -35,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en-GB" suppressHydrationWarning>
+    <html lang="en-GB" className="light" style={{ colorScheme: "light" }} suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >

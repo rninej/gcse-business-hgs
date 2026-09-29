@@ -18,10 +18,13 @@ export async function POST(req: Request) {
   const quiz = body.quizId ? QUIZ_MAP[body.quizId] : undefined;
   if (!quiz) return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
 
+  // NB: Firebase RTDB drops null values, so assignmentId reads back as
+  // undefined for practice attempts — treat both as "no assignment".
   const attempts = values(await col<Attempt>('attempts'))
-    .filter((x) => x.studentId === session.uid && x.assignmentId === null);
+    .filter((x) => x.studentId === session.uid && !x.assignmentId);
+  const practiceTitle = `${quiz.title} · practice`;
   const existing = attempts.find(
-    (x) => x.assignmentTitle === quiz.title && x.status === 'in-progress'
+    (x) => x.assignmentTitle === practiceTitle && x.status === 'in-progress'
   );
   if (existing) {
     return NextResponse.json({ ok: true, attemptId: existing.id, resumed: true });
@@ -55,12 +58,13 @@ export async function POST(req: Request) {
     teacherId: me.teacherId,
     classId: me.classId,
     assignmentId: null,
-    assignmentTitle: `${quiz.title} · practice`,
+    assignmentTitle: practiceTitle,
     startedAt: Date.now(),
     dueAt: null,
     timeLimitMin: null,
     questions: shuffled,
     answers: {},
+    checked: {},
     perQ: {},
     events: [],
     wallMs: 0,

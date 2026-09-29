@@ -50,7 +50,7 @@
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.5rem;
   --background: oklch(0.99 0.005 106);
   --foreground: oklch(0.22 0.02 250);
   --card: oklch(1 0 0);
@@ -90,6 +90,8 @@
   --sidebar-ring: oklch(0.51 0.11 163);
 }
 
+/* HGSBusiness is a light-mode-only product — the .dark block is kept for
+   completeness but the class is never applied (see layout.tsx). */
 .dark {
   --background: oklch(0.17 0.015 250);
   --foreground: oklch(0.96 0.005 106);

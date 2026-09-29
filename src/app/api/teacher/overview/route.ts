@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { col, values } from '@/lib/firebase';
+import { colCached, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { topicTitle } from '@/lib/topics';
 import type { Attempt, Assignment, Student, StudentClass } from '@/lib/types';
@@ -9,10 +9,10 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const [classes, students, assignments, attempts] = await Promise.all([
-    col<StudentClass>('classes'),
-    col<Student>('students'),
-    col<Assignment>('assignments'),
-    col<Attempt>('attempts'),
+    colCached<StudentClass>('classes'),
+    colCached<Student>('students'),
+    colCached<Assignment>('assignments'),
+    colCached<Attempt>('attempts'),
   ]);
 
   const myClasses = values(classes).filter((c) => c.teacherId === session.uid);

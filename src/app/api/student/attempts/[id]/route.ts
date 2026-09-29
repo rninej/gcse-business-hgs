@@ -45,5 +45,8 @@ export async function GET(_req: Request, ctx: Ctx) {
     remainingMs,
     serverNow: now,
     questions: toClientQuestions(attempt.questions),
+    // outcomes for questions already confirmed — safe to reveal, and it lets
+    // the runner resume exactly where the student left off, on any device
+    checked: attempt.checked ?? {},
   });
 }

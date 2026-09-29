@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { col, put, values } from '@/lib/firebase';
+import { colCached, put, values } from '@/lib/firebase';
 import { hashPassword } from '@/lib/passwords';
 import { setSessionCookie } from '@/lib/session';
-import type { Teacher } from '@/lib/types';
+import type { SessionInfo, Teacher } from '@/lib/types';
 
 export async function POST(req: Request) {
   try {
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Password must be at least 6 characters.' }, { status: 400 });
     }
 
-    const teachers = await col<Teacher>('teachers');
+    const teachers = await colCached<Teacher>('teachers');
     const clash = values(teachers).some((t) => t.email === email);
     if (clash) {
       return NextResponse.json({ error: 'An account with this email already exists. Try logging in.' }, { status: 409 });
@@ -37,8 +37,9 @@ export async function POST(req: Request) {
       createdAt: Date.now(),
     };
     await put('teachers', id, teacher);
-    await setSessionCookie({ uid: id, role: 'teacher', name, sub: email });
-    return NextResponse.json({ ok: true, teacher: { id, name, email } });
+    const session: SessionInfo = { uid: id, role: 'teacher', name, sub: email };
+    await setSessionCookie(session);
+    return NextResponse.json({ ok: true, session });
   } catch {
     return NextResponse.json({ error: 'Could not create account. Please try again.' }, { status: 500 });
   }

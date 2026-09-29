@@ -213,7 +213,7 @@ ${SCHEMA_HINT}`;
   valid = await verifyNumeric(valid);
   valid = valid.slice(0, count);
 
-  if (valid.length < Math.max(4, Math.floor(count * 0.5)) as number) {
+  if (valid.length < Math.max(4, Math.floor(count * 0.5))) {
     return {
       questions: bankFallback({ ...params, count }),
       provider: 'bank',

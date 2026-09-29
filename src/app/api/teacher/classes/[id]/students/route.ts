@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { col, put, values } from '@/lib/firebase';
-import { hashPassword, randomPassword, slugifyName } from '@/lib/passwords';
+import { col, colCached, put, values } from '@/lib/firebase';
+import { encryptPassword, hashPassword, memorablePassword, slugifyName } from '@/lib/passwords';
 import { requireRole } from '@/lib/session';
 import type { Student, StudentClass } from '@/lib/types';
 
@@ -41,7 +41,7 @@ export async function POST(req: Request, ctx: Ctx) {
     return NextResponse.json({ error: 'Shared password must be at least 6 characters.' }, { status: 400 });
   }
 
-  const students = await col<Student>('students');
+  const students = await colCached<Student>('students');
   const taken = new Set(Object.values(students).map((s) => s.username));
   const created: CreatedRow[] = [];
 
@@ -59,7 +59,7 @@ export async function POST(req: Request, ctx: Ctx) {
       }
     }
     taken.add(username);
-    const password = manual ? manualPassword : randomPassword(7);
+    const password = manual ? manualPassword : memorablePassword();
     const sid = `s_${randomUUID().replace(/-/g, '').slice(0, 10)}`;
     const student: Student = {
       id: sid,
@@ -68,6 +68,7 @@ export async function POST(req: Request, ctx: Ctx) {
       username,
       displayName,
       pw: hashPassword(password),
+      pwEnc: encryptPassword(password),
       createdAt: Date.now(),
     };
     await put('students', sid, student);

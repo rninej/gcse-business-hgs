@@ -49,6 +49,7 @@ export async function POST(_req: Request, ctx: Ctx) {
     timeLimitMin: a.timeLimitMin,
     questions: a.questions.map((q) => ({ ...q })),
     answers: {},
+    checked: {},
     perQ: {},
     events: [],
     wallMs: 0,

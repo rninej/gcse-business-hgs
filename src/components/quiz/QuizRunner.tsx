@@ -1,14 +1,17 @@
 'use client';
 
-// Quiz player with silent integrity telemetry.
-// Records per-question timing, keystrokes, paste/copy events (with pasted text),
-// tab switches and hidden time. Nothing is shown to the student; everything is
-// scored server-side and surfaced only to teachers.
+// Quiz player with per-question confirmation.
+// The student answers, presses "Check answer", and gets right/wrong plus the
+// correct answer and explanation straight away — exactly like a teacher going
+// through a quiz in class. Confirmed answers are saved to the server as they
+// happen, so closing the browser mid-quiz (or switching device) resumes where
+// the student left off. Timers keep running server-side.
 //
-// All mutable bookkeeping lives in a module-scope store class; the component
-// body only calls methods, which keeps the render path immutable.
+// Silent integrity telemetry still records per-question timing, keystrokes,
+// paste/copy events, tab switches and hidden time — scored server-side and
+// shown only to teachers.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ChevronLeft,
@@ -18,6 +21,8 @@ import {
   AlertTriangle,
   BookOpenText,
   LogOut,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,8 +46,16 @@ import { Diagram } from '@/components/charts';
 import type { ClientQuestion, PerQTelemetry, TelemetryEvent } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
+interface CheckedInfo {
+  a: string;
+  correct: boolean;
+  expected: string;
+  explain: string;
+  at: number;
+}
+
 interface RunData {
-  status: 'in-progress';
+  status: 'in-progress' | 'submitted';
   mode: 'assignment' | 'practice';
   title: string;
   dueAt: number | null;
@@ -51,6 +64,7 @@ interface RunData {
   remainingMs: number | null;
   serverNow: number;
   questions: ClientQuestion[];
+  checked: Record<string, CheckedInfo>;
 }
 
 interface Snapshot {
@@ -149,22 +163,24 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [submittedView, setSubmittedView] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [checked, setChecked] = useState<Record<string, CheckedInfo>>({});
+  const [checking, setChecking] = useState(false);
   const [idx, setIdx] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [submitting, setSubmitting] = useState(false);
   const [submitFailed, setSubmitFailed] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+  const outcomeRef = useRef<HTMLDivElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
 
   const lsKey = `hgs_run_${attemptId}`;
 
   const questions = data?.questions ?? [];
   const total = questions.length;
   const q: ClientQuestion | undefined = questions[idx];
-  const answeredCount = useMemo(
-    () => questions.filter((x) => (answers[x.id] ?? '') !== '').length,
-    [questions, answers]
-  );
+  const qChecked = q ? checked[q.id] : undefined;
+  const checkedCount = useMemo(() => Object.keys(checked).length, [checked]);
   const deadline = useMemo(
     () => (data?.remainingMs != null ? Date.now() + data.remainingMs : null),
     [data]
@@ -196,15 +212,46 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
       store.leaveText(q.id, answers[q.id] ?? '');
     }
     setIdx(Math.max(0, Math.min(newIdx, total - 1)));
+    if (cardRef.current) cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function pickOption(qid: string, value: string) {
+    if (checked[qid]) return; // confirmed answers are locked
     setAnswers((prev) => ({ ...prev, [qid]: value }));
   }
 
   function typeAnswer(qid: string, value: string) {
+    if (checked[qid]) return;
     store.key(qid, answers[qid] ?? '');
     setAnswers((prev) => ({ ...prev, [qid]: value }));
+  }
+
+  async function checkAnswer() {
+    if (!q || qChecked || checking) return;
+    const answer = (answers[q.id] ?? '').toString();
+    if (!answer.trim()) return;
+    store.flushQ(q.id);
+    if (q.type === 'term' || q.type === 'fib' || q.type === 'numeric') {
+      store.leaveText(q.id, answer);
+    }
+    setChecking(true);
+    try {
+      const res = await api.post<{ correct: boolean; expected: string; explain: string; marks: number }>(
+        `/api/student/attempts/${attemptId}/check`,
+        { qid: q.id, answer }
+      );
+      setChecked((prev) => ({
+        ...prev,
+        [q.id]: { a: answer, correct: res.correct, expected: res.expected, explain: res.explain, at: Date.now() },
+      }));
+      setTimeout(() => {
+        outcomeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 60);
+    } catch (e) {
+      toast({ title: 'Could not check that answer', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setChecking(false);
+    }
   }
 
   async function doSubmit(auto = false) {
@@ -247,7 +294,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
 
   /* ----- effects (after all declarations) ----- */
 
-  // load attempt / restore saved progress
+  // load attempt / resume saved progress
   useEffect(() => {
     let alive = true;
     api
@@ -259,6 +306,8 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
           return;
         }
         setData(d);
+
+        // local snapshot for unchecked answers + telemetry (same device)
         let snap: Partial<Snapshot> | null = null;
         try {
           const raw = localStorage.getItem(lsKey);
@@ -266,11 +315,29 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
         } catch {
           snap = null;
         }
-        if (snap) {
-          setAnswers(snap.answers ?? {});
-          setIdx(Math.min(snap.idx ?? 0, Math.max(0, d.questions.length - 1)));
-          store.restore(snap);
+
+        // confirmed answers come from the server — they are locked and true
+        const serverChecked = d.checked ?? {};
+        setChecked(serverChecked);
+        const merged: Record<string, string> = {};
+        for (const [qid, info] of Object.entries(serverChecked)) merged[qid] = info.a;
+        if (snap?.answers) {
+          for (const [qid, val] of Object.entries(snap.answers)) {
+            if (!serverChecked[qid]) merged[qid] = val;
+          }
         }
+        setAnswers(merged);
+
+        // resume on the first question that hasn't been confirmed yet
+        const snapIdx = Math.min(snap?.idx ?? 0, Math.max(0, d.questions.length - 1));
+        const firstUnchecked = d.questions.findIndex((x) => !serverChecked[x.id]);
+        const resumeIdx = snap
+          ? snapIdx
+          : firstUnchecked >= 0
+            ? firstUnchecked
+            : d.questions.length - 1;
+        setIdx(Math.max(0, Math.min(resumeIdx, d.questions.length - 1)));
+        if (snap) store.restore(snap);
       })
       .catch((e) => {
         if (alive) setError((e as Error).message);
@@ -384,8 +451,8 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
   if (!data || !q) {
     return (
       <div className="max-w-3xl mx-auto space-y-4" aria-busy>
-        <div className="h-8 w-2/3 rounded-lg bg-secondary animate-pulse" />
-        <div className="h-40 rounded-xl bg-secondary animate-pulse" />
+        <div className="h-8 w-2/3 rounded-md bg-secondary" />
+        <div className="h-40 rounded-lg bg-secondary" />
       </div>
     );
   }
@@ -396,14 +463,16 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
     remaining !== null
       ? `${Math.floor(remaining / 60000)}:${String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0')}`
       : null;
-  const progress = total ? (answeredCount / total) * 100 : 0;
-  const unanswered = total - answeredCount;
+  const progress = total ? (checkedCount / total) * 100 : 0;
+  const unanswered = total - checkedCount;
+  const givenDisplay = (s: string) =>
+    q.type === 'mcq' && q.options ? q.options[Number(s)] ?? s : q.type === 'truefalse' ? (s === 'true' ? 'True' : 'False') : s;
 
   return (
     <div className="max-w-4xl mx-auto" data-attempt={attemptId}>
       {/* header */}
-      <div className="sticky top-14 md:top-0 z-30 -mx-4 sm:mx-0 px-4 sm:px-0 mb-5">
-        <div className="rounded-xl border bg-card/95 backdrop-blur px-4 py-3 shadow-sm">
+      <div className="sticky top-14 md:top-0 z-30 -mx-4 sm:mx-0 px-4 sm:px-0 mb-4 md:mb-5">
+        <div className="rounded-lg border bg-card/95 backdrop-blur px-4 py-3 shadow-sm">
           <div className="flex items-center gap-3 flex-wrap">
             <Badge variant={data.mode === 'practice' ? 'secondary' : 'default'} className="shrink-0">
               {data.mode === 'practice' ? 'Practice' : 'Assignment'}
@@ -412,7 +481,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
             {timeStr !== null ? (
               <span
                 className={cn(
-                  'font-mono text-sm font-bold tabular-nums px-2.5 py-1 rounded-lg',
+                  'font-mono text-sm font-bold tabular-nums px-2.5 py-1 rounded-md',
                   timerCritical ? 'bg-[var(--danger)]/10 text-[var(--danger)] animate-pulse' : 'bg-secondary'
                 )}
                 role="timer"
@@ -433,8 +502,8 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                   <AlertDialogTitle>Leave this quiz?</AlertDialogTitle>
                   <AlertDialogDescription>
                     {data.timeLimitMin
-                      ? 'Your answers are saved, but the timer keeps running and will submit whatever you have written when it hits zero.'
-                      : 'Your answers are saved on this device — you can continue later.'}
+                      ? 'Every answer you have checked is saved. The timer keeps running and will submit whatever you have done when it hits zero.'
+                      : 'Every answer you have checked is saved — come back any time and carry on where you left off.'}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -444,9 +513,9 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
               </AlertDialogContent>
             </AlertDialog>
           </div>
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-2.5 flex items-center gap-3">
             <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-              {answeredCount}/{total} answered
+              {checkedCount}/{total} answered
             </span>
             <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
               <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progress}%` }} />
@@ -458,64 +527,93 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
         </div>
       </div>
 
-      <div className={cn('grid gap-5', q.extract ? 'lg:grid-cols-[1fr_1.25fr]' : '')}>
-        {/* extract panel */}
+      {/* extract first on mobile (read the case, then answer); left on desktop */}
+      <div className={cn('grid gap-4 md:gap-5', q.extract ? 'lg:grid-cols-[1fr_1.2fr]' : '')}>
         {q.extract ? (
-          <aside className="lg:sticky lg:top-32 self-start rounded-xl border bg-[var(--accent)]/20 p-5 order-2 lg:order-1">
+          <aside className="lg:sticky lg:top-24 self-start min-w-0 rounded-lg border bg-[var(--accent)]/20 p-4 sm:p-5">
             <div className="flex items-center gap-2 text-xs font-semibold text-[var(--accent-foreground)] uppercase tracking-wide mb-2">
-              <BookOpenText className="h-4 w-4" aria-hidden /> Case study · {q.extract.title}
+              <BookOpenText className="h-4 w-4 shrink-0" aria-hidden /> Case study · {q.extract.title}
             </div>
             {q.extract.image ? (
-              <img src={q.extract.image} alt={`Case study illustration for ${q.extract.title}`} className="rounded-lg border mb-3 w-full" />
+              <img
+                src={q.extract.image}
+                alt={`Case study illustration for ${q.extract.title}`}
+                className="rounded-md border mb-3 w-full max-h-44 sm:max-h-56 object-cover"
+                loading="lazy"
+              />
             ) : null}
-            <p className="text-[15px] leading-relaxed whitespace-pre-line">{q.extract.text}</p>
+            <p className="text-sm sm:text-[15px] leading-relaxed whitespace-pre-line">{q.extract.text}</p>
           </aside>
         ) : null}
 
         {/* question card */}
-        <section className={cn('order-1 lg:order-2', !q.extract && 'mx-auto w-full max-w-2xl')}>
-          <div className="rounded-xl border bg-card p-5 sm:p-7">
-            <div className="flex items-center gap-2 flex-wrap mb-4">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm tabular-nums" aria-hidden>
+        <section className={cn('min-w-0', !q.extract && 'mx-auto w-full max-w-2xl')}>
+          <div ref={cardRef} className="rounded-lg border bg-card p-4 sm:p-6 md:p-7 scroll-mt-32 md:scroll-mt-24">
+            <div className="flex items-center gap-2 flex-wrap mb-3 md:mb-4">
+              <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold text-sm tabular-nums" aria-hidden>
                 {idx + 1}
               </span>
               <TypeBadge type={q.type} />
               <MarksChip marks={q.marks} />
-              <span className="text-[11px] text-muted-foreground ml-auto">GCSE Business · {q.topic}</span>
+              <span className="text-[11px] text-muted-foreground ml-auto hidden sm:inline">GCSE Business · {q.topic}</span>
             </div>
 
-            <h2 className="text-lg sm:text-xl leading-relaxed font-medium">{q.stem}</h2>
+            <h2 className="text-[17px] sm:text-lg md:text-xl leading-relaxed font-medium">{q.stem}</h2>
 
             {q.diagram ? <Diagram k={q.diagram} /> : null}
-            {q.image ? <img src={q.image} alt="Question illustration" className="rounded-lg border my-4 w-full" /> : null}
+            {q.image ? (
+              <img src={q.image} alt="Question illustration" className="rounded-md border my-4 w-full max-h-64 sm:max-h-80 object-cover" loading="lazy" />
+            ) : null}
 
             {/* answer controls */}
-            <div className="mt-6">
+            <div className="mt-5 sm:mt-6">
               {q.type === 'mcq' ? (
-                <div className="grid gap-2.5" role="radiogroup" aria-label="Options">
+                <div className="grid gap-2 sm:gap-2.5" role="radiogroup" aria-label="Options">
                   {q.options?.map((opt, i) => {
                     const sel = answers[q.id] === String(i);
+                    // after confirming: the correct option is always highlighted green,
+                    // a wrongly chosen option is highlighted red
+                    const showGreen = Boolean(qChecked && (qChecked.correct ? sel : opt === qChecked.expected));
+                    const showRed = Boolean(qChecked && !qChecked.correct && sel);
                     return (
                       <button
                         key={i}
                         role="radio"
                         aria-checked={sel}
+                        aria-disabled={Boolean(qChecked)}
+                        disabled={Boolean(qChecked)}
                         onClick={() => pickOption(q.id, String(i))}
                         className={cn(
-                          'flex items-center gap-3 rounded-xl border p-3.5 text-left transition-all',
-                          sel ? 'border-primary bg-primary/10 shadow-sm' : 'hover:bg-secondary/70'
+                          'flex items-start sm:items-center gap-3 rounded-lg border p-3 sm:p-3.5 text-left min-h-12 transition-colors',
+                          showGreen
+                            ? 'border-[var(--success)] bg-[var(--success)]/10'
+                            : showRed
+                              ? 'border-[var(--danger)] bg-[var(--danger)]/10'
+                              : sel
+                                ? 'border-primary bg-primary/10'
+                                : qChecked
+                                  ? 'opacity-60'
+                                  : 'hover:bg-secondary/70 active:bg-secondary'
                         )}
                       >
                         <span
                           className={cn(
-                            'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold',
-                            sel ? 'bg-primary text-primary-foreground' : 'bg-secondary'
+                            'flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-md text-xs font-bold mt-0.5 sm:mt-0',
+                            showGreen
+                              ? 'bg-[var(--success)] text-white'
+                              : showRed
+                                ? 'bg-[var(--danger)] text-white'
+                                : sel
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-secondary'
                           )}
                           aria-hidden
                         >
                           {String.fromCharCode(65 + i)}
                         </span>
-                        <span className="text-[15px]">{opt}</span>
+                        <span className="text-[15px] leading-snug">{opt}</span>
+                        {showGreen ? <CheckCircle2 className="h-5 w-5 text-[var(--success)] ml-auto shrink-0" aria-hidden /> : null}
+                        {showRed ? <XCircle className="h-5 w-5 text-[var(--danger)] ml-auto shrink-0" aria-hidden /> : null}
                       </button>
                     );
                   })}
@@ -529,15 +627,26 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                     ['false', 'False'],
                   ].map(([v, label]) => {
                     const sel = answers[q.id] === v;
+                    const showGreen = Boolean(qChecked && qChecked.correct && sel);
+                    const showRed = Boolean(qChecked && !qChecked.correct && sel);
                     return (
                       <button
                         key={v}
                         role="radio"
                         aria-checked={sel}
+                        disabled={Boolean(qChecked)}
                         onClick={() => pickOption(q.id, v)}
                         className={cn(
-                          'rounded-xl border py-4 text-lg font-semibold transition-all',
-                          sel ? 'border-primary bg-primary/10' : 'hover:bg-secondary/70'
+                          'rounded-lg border py-3.5 sm:py-4 text-base sm:text-lg font-semibold min-h-12 transition-colors',
+                          showGreen
+                            ? 'border-[var(--success)] bg-[var(--success)]/10 text-[var(--success)]'
+                            : showRed
+                              ? 'border-[var(--danger)] bg-[var(--danger)]/10 text-[var(--danger)]'
+                              : sel
+                                ? 'border-primary bg-primary/10'
+                                : qChecked
+                                  ? 'opacity-60'
+                                  : 'hover:bg-secondary/70 active:bg-secondary'
                         )}
                       >
                         {label}
@@ -547,71 +656,142 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                 </div>
               ) : null}
 
-              {q.type === 'term' || q.type === 'fib' ? (
+              {q.type === 'term' || q.type === 'fib' || q.type === 'numeric' ? (
                 <div>
-                  <Input
-                    value={answers[q.id] ?? ''}
-                    onChange={(e) => typeAnswer(q.id, e.target.value)}
-                    placeholder={q.type === 'term' ? 'Type the term…' : 'One word…'}
-                    className="text-lg h-14"
-                    autoFocus
-                    enterKeyHint="done"
-                    aria-label="Your answer"
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Capitals and extra spaces don’t matter. Spelling does.
-                  </p>
-                </div>
-              ) : null}
-
-              {q.type === 'numeric' ? (
-                <div>
-                  <div className="relative">
+                  {q.type === 'numeric' ? (
+                    <div className="relative">
+                      <Input
+                        value={answers[q.id] ?? ''}
+                        onChange={(e) => typeAnswer(q.id, e.target.value)}
+                        disabled={Boolean(qChecked)}
+                        placeholder="e.g. 59.8"
+                        className="text-base sm:text-lg h-12 sm:h-14 font-mono pr-16"
+                        inputMode="decimal"
+                        enterKeyHint="done"
+                        aria-label="Your answer"
+                      />
+                      {q.unit ? (
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-semibold pointer-events-none">
+                          {q.unit}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : (
                     <Input
                       value={answers[q.id] ?? ''}
                       onChange={(e) => typeAnswer(q.id, e.target.value)}
-                      placeholder="e.g. 59.8"
-                      className="text-lg h-14 font-mono pr-16"
-                      inputMode="decimal"
-                      autoFocus
+                      disabled={Boolean(qChecked)}
+                      placeholder={q.type === 'term' ? 'Type the term…' : 'One word…'}
+                      className="text-base sm:text-lg h-12 sm:h-14"
                       enterKeyHint="done"
                       aria-label="Your answer"
                     />
-                    {q.unit ? (
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-semibold">
-                        {q.unit}
-                      </span>
-                    ) : null}
-                  </div>
+                  )}
                   <p className="text-xs text-muted-foreground mt-2">
-                    £, % and commas are fine — the marker reads the number.
-                    {q.dp ? ` Answer to ${q.dp} decimal place${q.dp === 1 ? '' : 's'}.` : ''}
+                    {q.type === 'numeric'
+                      ? `£, % and commas are fine — the marker reads the number.${q.dp ? ` Answer to ${q.dp} decimal place${q.dp === 1 ? '' : 's'}.` : ''}`
+                      : 'Capitals and extra spaces don’t matter. Spelling does.'}
                   </p>
                 </div>
               ) : null}
             </div>
+
+            {/* check button */}
+            {!qChecked ? (
+              <Button
+                className="w-full mt-5 h-12 text-base"
+                disabled={checking || !(answers[q.id] ?? '').toString().trim()}
+                onClick={() => void checkAnswer()}
+              >
+                {checking ? 'Checking…' : 'Check answer'}
+              </Button>
+            ) : null}
+
+            {/* outcome */}
+            {qChecked ? (
+              <div
+                ref={outcomeRef}
+                className={cn(
+                  'mt-5 rounded-lg border p-4',
+                  qChecked.correct
+                    ? 'border-[var(--success)]/40 bg-[var(--success)]/10'
+                    : 'border-[var(--danger)]/40 bg-[var(--danger)]/5'
+                )}
+                role="status"
+              >
+                <div className="flex items-start gap-3">
+                  {qChecked.correct ? (
+                    <CheckCircle2 className="h-6 w-6 text-[var(--success)] shrink-0" aria-hidden />
+                  ) : (
+                    <XCircle className="h-6 w-6 text-[var(--danger)] shrink-0" aria-hidden />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className={cn('font-bold text-base', qChecked.correct ? 'text-[var(--success)]' : 'text-[var(--danger)]')}>
+                      {qChecked.correct ? 'Correct' : 'Not quite'}
+                    </p>
+                    {!qChecked.correct ? (
+                      <p className="text-sm mt-1">
+                        You answered <span className="font-semibold">{givenDisplay(qChecked.a)}</span>
+                        {qChecked.expected ? (
+                          <>
+                            {' '}· the correct answer is{' '}
+                            <span className="font-semibold text-[var(--success)]">{qChecked.expected}</span>
+                          </>
+                        ) : null}
+                      </p>
+                    ) : (
+                      <p className="text-sm mt-1 text-muted-foreground">
+                        {qChecked.expected ? `Answer: ${qChecked.expected}` : null}
+                      </p>
+                    )}
+                    {qChecked.explain ? (
+                      <p className="text-sm text-muted-foreground leading-relaxed mt-2">{qChecked.explain}</p>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                  {idx < total - 1 ? (
+                    <Button className="h-11 flex-1" onClick={() => goto(idx + 1)}>
+                      Next question <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button className="h-11 flex-1" onClick={() => void doSubmit()} disabled={submitting}>
+                      <SendHorizonal className="h-4 w-4" />
+                      {submitting ? 'Finishing…' : 'Finish & see results'}
+                    </Button>
+                  )}
+                  <Button variant="ghost" className="h-11" onClick={() => goto(idx - 1)} disabled={idx === 0}>
+                    <ChevronLeft className="h-4 w-4" /> Review
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {/* nav */}
           <div className="mt-4 flex items-center gap-2">
-            <Button variant="outline" onClick={() => goto(idx - 1)} disabled={idx === 0}>
-              <ChevronLeft className="h-4 w-4" /> Prev
+            <Button variant="outline" onClick={() => goto(idx - 1)} disabled={idx === 0} aria-label="Previous question" className="px-3">
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Prev</span>
             </Button>
-            <div className="flex-1 flex gap-1.5 justify-center overflow-x-auto scroll-slim py-1" aria-label="Question palette">
+            <div className="flex-1 min-w-0 flex gap-1.5 justify-center overflow-x-auto scroll-slim py-1" aria-label="Question palette">
               {questions.map((x, i) => {
-                const done = (answers[x.id] ?? '') !== '';
+                const st = checked[x.id];
                 return (
                   <button
                     key={x.id}
                     onClick={() => goto(i)}
-                    aria-label={`Go to question ${i + 1}`}
+                    aria-label={`Go to question ${i + 1}${st ? (st.correct ? ' — correct' : ' — incorrect') : ''}`}
                     aria-current={i === idx ? 'true' : undefined}
                     className={cn(
-                      'h-8 w-8 shrink-0 rounded-lg text-xs font-semibold tabular-nums transition-colors',
+                      'h-8 w-8 shrink-0 rounded-md text-xs font-semibold tabular-nums transition-colors',
                       i === idx
-                        ? 'bg-primary text-primary-foreground'
-                        : done
-                          ? 'bg-primary/15 text-primary hover:bg-primary/25'
+                        ? 'bg-primary text-primary-foreground ring-2 ring-primary/30'
+                        : st
+                          ? st.correct
+                            ? 'bg-[var(--success)]/15 text-[var(--success)] hover:bg-[var(--success)]/25'
+                            : 'bg-[var(--danger)]/15 text-[var(--danger)] hover:bg-[var(--danger)]/25'
                           : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
                     )}
                   >
@@ -621,19 +801,21 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
               })}
             </div>
             {idx < total - 1 ? (
-              <Button variant="outline" onClick={() => goto(idx + 1)}>
-                Next <ChevronRight className="h-4 w-4" />
+              <Button variant="outline" onClick={() => goto(idx + 1)} aria-label="Next question" className="px-3">
+                <span className="hidden sm:inline">Next</span>
+                <ChevronRight className="h-4 w-4" />
               </Button>
             ) : (
               <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
                 <AlertDialogTrigger asChild>
-                  <Button className={cn(unanswered > 0 && 'bg-[var(--warn)] hover:bg-[var(--warn)]/90 text-white')}>
-                    <SendHorizonal className="h-4 w-4" /> Submit
+                  <Button variant={unanswered > 0 ? 'outline' : 'default'} className={cn(unanswered > 0 && 'text-[var(--warn)] border-[var(--warn)]/50')}>
+                    <SendHorizonal className="h-4 w-4" />
+                    <span className="hidden sm:inline">Submit</span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Submit for marking?</AlertDialogTitle>
+                    <AlertDialogTitle>Finish and submit?</AlertDialogTitle>
                     <AlertDialogDescription asChild>
                       <div>
                         {unanswered > 0 ? (
@@ -641,9 +823,9 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                             <AlertTriangle className="h-4 w-4" aria-hidden /> {unanswered} question{unanswered === 1 ? '' : 's'} still unanswered — these score zero.
                           </p>
                         ) : (
-                          <p className="mb-2">Every question is answered.</p>
+                          <p className="mb-2">Every question has been answered.</p>
                         )}
-                        <p>You’ll see your score, explanations and feedback straight away.</p>
+                        <p>You’ll see your score, feedback and a full review straight away.</p>
                       </div>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
@@ -657,19 +839,11 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
               </AlertDialog>
             )}
           </div>
-
-          {idx === total - 1 ? (
-            <div className="mt-3 text-center">
-              <Button variant="link" size="sm" onClick={() => setConfirmOpen(true)} className="text-muted-foreground">
-                Jump to submit
-              </Button>
-            </div>
-          ) : null}
         </section>
       </div>
 
       <p className="sr-only" aria-live="polite">
-        Question {idx + 1} of {total}. {answeredCount} answered.
+        Question {idx + 1} of {total}. {checkedCount} answered.
       </p>
     </div>
   );

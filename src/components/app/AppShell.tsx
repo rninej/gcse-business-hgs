@@ -1,11 +1,14 @@
 'use client';
 
 // Application shell: desktop sidebar + mobile bottom nav + sticky footer.
-import { Moon, Sun, LogOut } from 'lucide-react';
-import { useTheme } from 'next-themes';
+// Light-mode only. Warms the API cache on mount so clicking around the app
+// is instant.
+import { useEffect } from 'react';
+import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BrandLockup } from './Brand';
 import { useApp } from '@/lib/store';
+import { api } from '@/lib/api';
 import type { View } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
@@ -13,13 +16,25 @@ interface NavItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   view: View;
-  mobile?: boolean;
 }
 
 export function AppShell({ children, active }: { children: React.ReactNode; active: View['name'] }) {
-  const { session, logout, go } = useApp();
-  const { theme, setTheme } = useTheme();
+  const session = useApp((s) => s.session);
+  const logout = useApp((s) => s.logout);
   const isTeacher = session?.role === 'teacher';
+
+  // prefetch the views the user is most likely to open next (results are
+  // per-assignment and only fetched on demand)
+  useEffect(() => {
+    if (!session) return;
+    const paths = isTeacher
+      ? ['/api/teacher/overview', '/api/teacher/classes', '/api/teacher/assignments', '/api/quizzes']
+      : ['/api/student/assignments', '/api/student/overview'];
+    for (const p of paths) {
+      api.get(p).catch(() => undefined);
+    }
+     
+  }, [session?.uid]);
 
   const nav: NavItem[] = isTeacher
     ? [
@@ -46,34 +61,34 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col border-r bg-[var(--sidebar)] z-40">
-        <div className="p-5 pb-4">
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col border-r bg-[var(--sidebar)] z-40">
+        <div className="px-5 pt-5 pb-4 border-b border-[var(--sidebar-border)]">
           <BrandLockup />
         </div>
-        <nav className="flex-1 px-3 space-y-1" aria-label="Main">
+        <nav className="flex-1 px-3 py-3 space-y-0.5" aria-label="Main">
           {nav.map((item) => {
             const on = isActive(item.view);
             return (
               <button
                 key={item.label}
-                onClick={() => go(item.view)}
+                onClick={() => useApp.getState().go(item.view)}
                 aria-current={on ? 'page' : undefined}
                 className={cn(
-                  'w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors text-left',
+                  'w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-left',
                   on
-                    ? 'bg-[var(--sidebar-accent)] text-[var(--sidebar-accent-foreground)]'
-                    : 'text-muted-foreground hover:bg-[var(--sidebar-accent)]/60 hover:text-foreground'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:bg-[var(--sidebar-accent)] hover:text-foreground'
                 )}
               >
-                <item.icon className={cn('h-[18px] w-[18px]', on && 'text-primary')} />
+                <item.icon className={cn('h-[17px] w-[17px]')} />
                 {item.label}
               </button>
             );
           })}
         </nav>
-        <div className="p-4 border-t space-y-3">
+        <div className="p-4 border-t border-[var(--sidebar-border)] space-y-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary text-sm font-bold shrink-0" aria-hidden>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-bold shrink-0" aria-hidden>
               {(session?.name ?? '?').slice(0, 1).toUpperCase()}
             </div>
             <div className="min-w-0">
@@ -83,22 +98,9 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex-1"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              aria-label="Toggle dark mode"
-            >
-              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-0" />
-              {theme === 'dark' ? 'Dark' : 'Light'}
-            </Button>
-            <Button variant="ghost" size="sm" className="flex-1 text-[var(--danger)]" onClick={() => logout()}>
-              <LogOut className="h-4 w-4" /> Log out
-            </Button>
-          </div>
+          <Button variant="outline" size="sm" className="w-full" onClick={() => logout()}>
+            <LogOut className="h-4 w-4" /> Log out
+          </Button>
         </div>
       </aside>
 
@@ -106,22 +108,16 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
       <header className="md:hidden sticky top-0 z-40 bg-background/95 backdrop-blur border-b">
         <div className="flex items-center justify-between px-4 h-14">
           <BrandLockup compact />
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle dark mode">
-              <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-0" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => logout()} aria-label="Log out">
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </div>
+          <Button variant="ghost" size="icon" onClick={() => logout()} aria-label="Log out">
+            <LogOut className="h-5 w-5" />
+          </Button>
         </div>
       </header>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col md:pl-64">
+      <div className="flex-1 flex flex-col md:pl-60">
         <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-28 md:pb-10">{children}</main>
-        <footer className="mt-auto border-t bg-[var(--sidebar)]/60">
+        <footer className="mt-auto border-t bg-[var(--sidebar)]">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>© {new Date().getFullYear()} HGSBusiness — for Edexcel GCSE (9–1) Business</span>
             <span className="flex items-center gap-1.5">
@@ -143,7 +139,7 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
             return (
               <button
                 key={item.label}
-                onClick={() => go(item.view)}
+                onClick={() => useApp.getState().go(item.view)}
                 className={cn(
                   'flex-1 flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium min-h-[44px]',
                   on ? 'text-primary' : 'text-muted-foreground'

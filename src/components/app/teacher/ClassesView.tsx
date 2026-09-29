@@ -10,7 +10,8 @@ import {
   Copy,
   Trash2,
   KeyRound,
-  ClipboardCopy,
+  Pencil,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,7 +52,7 @@ import { useApp } from '@/lib/store';
 import { PageHeader, ThemedSkeleton, ErrorNote, EmptyState } from '@/components/shared';
 
 interface ClassRow { id: string; name: string; createdAt: number; studentCount: number }
-interface StudentRow { id: string; username: string; displayName: string; createdAt: number }
+interface StudentRow { id: string; username: string; displayName: string; password: string | null; createdAt: number }
 interface CreatedCred { displayName: string; username: string; password: string }
 
 export function ClassesView({ initialClassId }: { initialClassId?: string }) {
@@ -154,10 +155,10 @@ function ClassList() {
             <button
               key={c.id}
               onClick={() => go({ name: 't-class', classId: c.id })}
-              className="rounded-xl border bg-card p-5 text-left hover:border-primary/60 hover:shadow-md transition-all group"
+              className="rounded-lg border bg-card p-5 text-left hover:border-primary/60 hover:shadow-md transition-all group"
             >
               <div className="flex items-start justify-between">
-                <div className="rounded-xl bg-primary/10 p-2.5 group-hover:bg-primary/15 transition-colors">
+                <div className="rounded-lg bg-primary/10 p-2.5 group-hover:bg-primary/15 transition-colors">
                   <Users className="h-5 w-5 text-primary" />
                 </div>
                 <span className="text-2xl font-bold tabular-nums">{c.studentCount}</span>
@@ -188,6 +189,14 @@ function ClassDetail({ classId }: { classId: string }) {
   const [adding, setAdding] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
 
+  // edit dialog state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editing, setEditing] = useState<StudentRow | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editUser, setEditUser] = useState('');
+  const [editPw, setEditPw] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
   const load = useCallback(() => {
     api
       .get<{ class: { id: string; name: string }; students: StudentRow[] }>(`/api/teacher/classes/${classId}`)
@@ -216,6 +225,58 @@ function ClassDetail({ classId }: { classId: string }) {
       toast({ title: 'Could not add students', description: (e as Error).message, variant: 'destructive' });
     } finally {
       setAdding(false);
+    }
+  }
+
+  function openEdit(s: StudentRow) {
+    setEditing(s);
+    setEditName(s.displayName);
+    setEditUser(s.username);
+    setEditPw(s.password ?? '');
+    setEditOpen(true);
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    setEditSaving(true);
+    try {
+      const res = await api.patch<{ ok: true; username: string; password: string | null }>(
+        `/api/teacher/classes/${classId}/students/${editing.id}`,
+        {
+          displayName: editName,
+          username: editUser,
+          password: editPw.length > 0 ? editPw : undefined,
+        }
+      );
+      toast({
+        title: 'Login updated',
+        description: res.password
+          ? `New password: ${res.password}`
+          : `${editing.displayName} now signs in as ${res.username}.`,
+      });
+      setEditOpen(false);
+      load();
+    } catch (e) {
+      toast({ title: 'Could not update', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function regeneratePw() {
+    if (!editing) return;
+    setEditSaving(true);
+    try {
+      const res = await api.patch<{ ok: true; password: string }>(
+        `/api/teacher/classes/${classId}/students/${editing.id}`,
+        { regenerate: true }
+      );
+      setEditPw(res.password);
+      toast({ title: 'New memorable password', description: res.password });
+    } catch (e) {
+      toast({ title: 'Could not reset password', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setEditSaving(false);
     }
   }
 
@@ -260,7 +321,7 @@ function ClassDetail({ classId }: { classId: string }) {
     <>
       <PageHeader
         title={cls.name}
-        sub={`${students.length} ${students.length === 1 ? 'student' : 'students'} · accounts you create work immediately`}
+        sub={`${students.length} ${students.length === 1 ? 'student' : 'students'} · usernames and passwords are always visible below`}
         actions={
           <>
             <Button variant="ghost" onClick={() => go({ name: 't-classes' })}>
@@ -274,7 +335,8 @@ function ClassDetail({ classId }: { classId: string }) {
                 <DialogHeader>
                   <DialogTitle>Add student accounts</DialogTitle>
                   <DialogDescription>
-                    One student per line. We generate usernames from names (e.g. amelia.watson) and passwords you can hand out.
+                    One student per line. Usernames come from names (e.g. amelia.watson) and each
+                    student gets a memorable password like <span className="font-mono">brave-otter-23</span>.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -298,15 +360,15 @@ function ClassDetail({ classId }: { classId: string }) {
                       <div className="flex items-start gap-3 rounded-lg border p-3">
                         <RadioGroupItem value="auto" id="pw-auto" />
                         <label htmlFor="pw-auto" className="text-sm">
-                          <span className="font-medium">Generate a random password for each student</span>
-                          <span className="block text-xs text-muted-foreground">Safest — shown to you once, then never again.</span>
+                          <span className="font-medium">A memorable password for each student</span>
+                          <span className="block text-xs text-muted-foreground">Two friendly words and a number — easy to hand out, and you can always see and change it later.</span>
                         </label>
                       </div>
                       <div className="flex items-start gap-3 rounded-lg border p-3">
                         <RadioGroupItem value="manual" id="pw-manual" />
                         <label htmlFor="pw-manual" className="text-sm w-full">
                           <span className="font-medium">One shared password for the class</span>
-                          <span className="block text-xs text-muted-foreground mb-2">Handy for young classes — change it later by re-issuing.</span>
+                          <span className="block text-xs text-muted-foreground mb-2">Handy for young classes — change it any time from the list below.</span>
                           <Input
                             value={sharedPw}
                             onChange={(e) => setSharedPw(e.target.value)}
@@ -332,7 +394,7 @@ function ClassDetail({ classId }: { classId: string }) {
 
       {/* credentials sheet */}
       {creds ? (
-        <div className="mb-5 rounded-xl border bg-[var(--accent)]/30 p-4 no-print">
+        <div className="mb-5 rounded-lg border bg-[var(--accent)]/30 p-4 no-print">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-2 font-semibold text-sm">
               <KeyRound className="h-4 w-4 text-primary" /> New logins — copy or print now
@@ -355,7 +417,7 @@ function ClassDetail({ classId }: { classId: string }) {
               </Button>
             </div>
           </div>
-          <div className="max-h-56 overflow-y-auto scroll-slim rounded-lg bg-card border">
+          <div className="max-h-56 overflow-y-auto scroll-slim rounded-md bg-card border">
             <Table>
               <TableHeader className="sticky top-0 bg-card">
                 <TableRow>
@@ -376,12 +438,12 @@ function ClassDetail({ classId }: { classId: string }) {
             </Table>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Passwords are stored encrypted — this is the only time the plain text is shown.
+            These logins are saved — you can always view or change them in the class list.
           </p>
         </div>
       ) : null}
 
-      <div className="rounded-xl border bg-card">
+      <div className="rounded-lg border bg-card">
         {students.length === 0 ? (
           <div className="p-6">
             <EmptyState
@@ -391,13 +453,14 @@ function ClassDetail({ classId }: { classId: string }) {
             />
           </div>
         ) : (
-          <div className="max-h-[420px] overflow-y-auto scroll-slim">
-            <Table>
-              <TableHeader className="sticky top-0 bg-card z-10">
+          <div className="overflow-x-auto scroll-slim">
+            <Table className="min-w-[560px]">
+              <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[45%]">Student</TableHead>
+                  <TableHead>Student</TableHead>
                   <TableHead>Username</TableHead>
-                  <TableHead className="w-16 text-right">Remove</TableHead>
+                  <TableHead>Password</TableHead>
+                  <TableHead className="w-24 text-right">Edit</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -411,35 +474,57 @@ function ClassDetail({ classId }: { classId: string }) {
                           navigator.clipboard.writeText(s.username);
                           toast({ title: 'Username copied' });
                         }}
+                        title="Copy username"
                       >
-                        <ClipboardCopy className="h-3.5 w-3.5" /> {s.username}
+                        {s.username}
                       </button>
                     </TableCell>
+                    <TableCell>
+                      {s.password ? (
+                        <button
+                          className="inline-flex items-center gap-1.5 font-mono text-sm text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            navigator.clipboard.writeText(s.password ?? '');
+                            toast({ title: 'Password copied' });
+                          }}
+                          title="Copy password"
+                        >
+                          {s.password}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">— set in “Edit” —</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-[var(--danger)]" aria-label={`Remove ${s.displayName}`}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Remove {s.displayName}?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Their account and all their results are deleted. This cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Keep student</AlertDialogCancel>
-                            <AlertDialogAction
-                              className="bg-[var(--danger)] text-white hover:bg-[var(--danger)]/90"
-                              onClick={() => removeStudent(s.id, s.displayName)}
-                            >
-                              Remove
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" aria-label={`Edit ${s.displayName} login`} onClick={() => openEdit(s)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-[var(--danger)]" aria-label={`Remove ${s.displayName}`}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove {s.displayName}?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Their account and all their results are deleted. This cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Keep student</AlertDialogCancel>
+                              <AlertDialogAction
+                                className="bg-[var(--danger)] text-white hover:bg-[var(--danger)]/90"
+                                onClick={() => removeStudent(s.id, s.displayName)}
+                              >
+                                Remove
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -449,7 +534,61 @@ function ClassDetail({ classId }: { classId: string }) {
         )}
       </div>
 
-      <div className="mt-6 flex items-center justify-between gap-3 rounded-xl border p-4 no-print">
+      {/* edit login dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit {editing?.displayName}&rsquo;s login</DialogTitle>
+            <DialogDescription>
+              Change their name, username or password. They use the new details next time they sign in.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="e-name">Name</Label>
+              <Input id="e-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="e-user">Username</Label>
+              <Input
+                id="e-user"
+                value={editUser}
+                onChange={(e) => setEditUser(e.target.value.toLowerCase())}
+                autoCapitalize="none"
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground">Lowercase letters and dots, e.g. amelia.watson</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="e-pw">Password</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="e-pw"
+                  value={editPw}
+                  onChange={(e) => setEditPw(e.target.value)}
+                  className="font-mono"
+                  placeholder="e.g. brave-otter-23"
+                />
+                <Button variant="outline" className="shrink-0" onClick={() => void regeneratePw()} disabled={editSaving}>
+                  <RefreshCw className="h-4 w-4" />
+                  <span className="hidden sm:inline">New</span>
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Type your own, or press “New” for a fresh memorable password.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={() => void saveEdit()} disabled={editSaving || editUser.trim().length < 3 || editName.trim().length < 2}>
+              {editSaving ? 'Saving…' : 'Save changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <div className="mt-6 flex items-center justify-between gap-3 rounded-lg border p-4 no-print">
         <div className="text-sm">
           <div className="font-medium">Delete this class</div>
           <div className="text-xs text-muted-foreground">Removes the class, its students, their results and its assignments.</div>

@@ -19,7 +19,6 @@ export type View =
   | { name: 'result'; attemptId: string };
 
 interface AppState {
-  booting: boolean;
   session: SessionInfo | null;
   view: View;
   start: (session: SessionInfo) => void;
@@ -29,7 +28,6 @@ interface AppState {
 }
 
 export const useApp = create<AppState>((set) => ({
-  booting: true,
   session: null,
   view: { name: 'auth' },
   start: (session) =>

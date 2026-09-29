@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { col, put } from '@/lib/firebase';
+import { col, colCached, put } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import type { Student, StudentClass } from '@/lib/types';
 
@@ -8,8 +8,8 @@ export async function GET() {
   const session = await requireRole('teacher');
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const classes = await col<StudentClass>('classes');
-  const students = await col<Student>('students');
+  const classes = await colCached<StudentClass>('classes');
+  const students = await colCached<Student>('students');
   const mine = Object.values(classes).filter((c) => c.teacherId === session.uid);
   return NextResponse.json({
     classes: mine

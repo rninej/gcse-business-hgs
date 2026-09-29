@@ -99,6 +99,7 @@ export interface Student {
   username: string; // lowercase, globally unique
   displayName: string;
   pw: string;
+  pwEnc?: string; // AES-GCM copy so the teacher can always view the login
   createdAt: number;
 }
 
@@ -132,6 +133,15 @@ export interface Assignment {
 // ---------- Attempts ----------
 export type AttemptMode = 'assignment' | 'practice';
 export type AttemptStatus = 'in-progress' | 'submitted';
+
+/** Per-question outcome, stored the moment a student confirms an answer */
+export interface CheckedState {
+  a: string; // the confirmed answer
+  correct: boolean;
+  expected: string;
+  explain: string;
+  at: number;
+}
 
 export interface TelemetryEvent {
   e: 'paste' | 'copy' | 'cut' | 'blur' | 'focus' | 'hide' | 'show';
@@ -205,7 +215,8 @@ export interface Attempt {
   dueAt: number | null;
   timeLimitMin: number | null;
   questions: Question[]; // full snapshot — SERVER ONLY, never sent to client pre-submission
-  answers: Record<string, string>;
+  answers: Record<string, string>; // confirmed (checked) answers are persisted here
+  checked: Record<string, CheckedState>; // qid -> outcome, filled as the student confirms
   perQ: Record<string, PerQTelemetry>;
   events: TelemetryEvent[];
   wallMs: number;
@@ -234,6 +245,7 @@ export interface StudentRow {
   id: string;
   username: string;
   displayName: string;
+  password: string | null; // memorable password, visible to the teacher
   createdAt: number;
 }
 

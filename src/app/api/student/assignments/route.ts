@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { col, values } from '@/lib/firebase';
+import { colCached, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import type { Attempt, Assignment, Student } from '@/lib/types';
 
@@ -7,14 +7,14 @@ export async function GET() {
   const session = await requireRole('student');
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const students = await col<Student>('students');
+  const students = await colCached<Student>('students');
   const me = students[session.uid];
   if (!me) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
 
-  const assignments = values(await col<Assignment>('assignments'))
+  const assignments = values(await colCached<Assignment>('assignments'))
     .filter((a) => a.classId === me.classId)
     .sort((a, b) => (a.dueAt ?? Infinity) - (b.dueAt ?? Infinity));
-  const attempts = values(await col<Attempt>('attempts')).filter((a) => a.studentId === session.uid);
+  const attempts = values(await colCached<Attempt>('attempts')).filter((a) => a.studentId === session.uid);
   const byAssignment = new Map(attempts.map((a) => [a.assignmentId, a]));
 
   const rows = assignments.map((a) => {

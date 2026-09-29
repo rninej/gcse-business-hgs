@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { col, values } from '@/lib/firebase';
+import { col, colCached, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { topicTitle } from '@/lib/topics';
 import type {
@@ -23,8 +23,8 @@ export async function GET(_req: Request, ctx: Ctx) {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
 
-  const allStudents = values(await col<Student>('students')).filter((s) => s.classId === a.classId);
-  const allAttempts = values(await col<Attempt>('attempts')).filter((x) => x.assignmentId === id);
+  const allStudents = values(await colCached<Student>('students')).filter((s) => s.classId === a.classId);
+  const allAttempts = values(await colCached<Attempt>('attempts')).filter((x) => x.assignmentId === id);
   const byStudent = new Map(allAttempts.map((x) => [x.studentId, x]));
 
   const rows: TeacherStudentResult[] = allStudents

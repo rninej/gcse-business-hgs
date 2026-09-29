@@ -1,0 +1,785 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useMemo, useState } from 'react';
+     4→import {
+     5→  ArrowLeft,
+     6→  ArrowRight,
+     7→  Sparkles,
+     8→  BookOpen,
+     9→  PenLine,
+    10→  Timer,
+    11→  Trash2,
+    12→  PlusCircle,
+    13→  Wand2,
+    14→  CheckCircle2,
+    15→  AlertTriangle,
+    16→  ChevronDown,
+    17→  RotateCw,
+    18→} from 'lucide-react';
+    19→import { Button } from '@/components/ui/button';
+    20→import { Input } from '@/components/ui/input';
+    21→import { Label } from '@/components/ui/label';
+    22→import { Textarea } from '@/components/ui/textarea';
+    23→import { Switch } from '@/components/ui/switch';
+    24→import { Badge } from '@/components/ui/badge';
+    25→import { Slider } from '@/components/ui/slider';
+    26→import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+    27→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    28→import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+    29→import { useToast } from '@/hooks/use-toast';
+    30→import { api } from '@/lib/api';
+    31→import { useApp } from '@/lib/store';
+    32→import { PageHeader, MarksChip, TypeBadge, ErrorNote } from '@/components/shared';
+    33→import { topicTitle, TOPICS } from '@/lib/topics';
+    34→import type { Question, QuestionType } from '@/lib/types';
+    35→import { cn } from '@/lib/utils';
+    36→
+    37→interface ClassRow { id: string; name: string; studentCount: number }
+    38→interface QuizRow { id: string; title: string; blurb: string; theme: 1 | 2; topics: string[]; questionCount: number; types: QuestionType[] }
+    39→
+    40→type Mode = 'library' | 'ai' | 'custom';
+    41→
+    42→export function NewAssignment({ presetQuizId }: { presetQuizId?: string }) {
+    43→  const go = useApp((s) => s.go);
+    44→  const { toast } = useToast();
+    45→
+    46→  const [step, setStep] = useState(1);
+    47→  // step 1
+    48→  const [classes, setClasses] = useState<ClassRow[]>([]);
+    49→  const [classId, setClassId] = useState('');
+    50→  const [title, setTitle] = useState('');
+    51→  const [description, setDescription] = useState('');
+    52→  const [dueLocal, setDueLocal] = useState('');
+    53→  const [timed, setTimed] = useState(false);
+    54→  const [timeLimit, setTimeLimit] = useState(20);
+    55→  // step 2
+    56→  const [mode, setMode] = useState<Mode>(presetQuizId ? 'library' : 'library');
+    57→  const [quizzes, setQuizzes] = useState<QuizRow[]>([]);
+    58→  const [quizId, setQuizId] = useState(presetQuizId ?? '');
+    59→  // ai
+    60→  const [aiTopics, setAiTopics] = useState<string[]>(['2.1']);
+    61→  const [aiCount, setAiCount] = useState(12);
+    62→  const [aiTypes, setAiTypes] = useState<QuestionType[]>([]);
+    63→  const [aiDifficulty, setAiDifficulty] = useState<'1' | '2' | '3' | 'mixed'>('mixed');
+    64→  const [aiCases, setAiCases] = useState(true);
+    65→  const [aiBusy, setAiBusy] = useState(false);
+    66→  const [aiQuestions, setAiQuestions] = useState<Question[] | null>(null);
+    67→  const [aiProvider, setAiProvider] = useState<string | null>(null);
+    68→  // custom
+    69→  const [custom, setCustom] = useState<Question[]>([]);
+    70→  // step 3
+    71→  const [creating, setCreating] = useState(false);
+    72→  const [error, setError] = useState<string | null>(null);
+    73→
+    74→  useEffect(() => {
+    75→    api.get<{ classes: ClassRow[] }>('/api/teacher/classes').then((d) => {
+    76→      setClasses(d.classes);
+    77→      if (d.classes.length > 0 && !presetQuizId) setClassId(d.classes[0].id);
+    78→    }).catch((e) => setError((e as Error).message));
+    79→    api.get<{ quizzes: QuizRow[] }>('/api/quizzes').then((d) => setQuizzes(d.quizzes)).catch(() => undefined);
+    80→     
+    81→  }, []);
+    82→
+    83→  const dueAt = useMemo(() => {
+    84→    if (!dueLocal) return null;
+    85→    const t = new Date(dueLocal).getTime();
+    86→    return Number.isFinite(t) ? t : null;
+    87→  }, [dueLocal]);
+    88→
+    89→  const questions: Question[] | null =
+    90→    mode === 'library'
+    91→      ? quizzes.find((q) => q.id === quizId)
+    92→        ? (null as unknown as Question[]) // replaced below via preview fetch
+    93→        : null
+    94→      : mode === 'ai'
+    95→        ? aiQuestions
+    96→        : custom.length
+    97→          ? custom
+    98→          : null;
+    99→
+   100→  const [libraryQuestions, setLibraryQuestions] = useState<Question[] | null>(null);
+   101→  useEffect(() => {
+   102→    if (mode === 'library' && quizId) {
+   103→      setLibraryQuestions(null);
+   104→      api
+   105→        .get<{ questions: Question[] }>(`/api/teacher/assignments/preview/${quizId}`)
+   106→        .then((d) => setLibraryQuestions(d.questions))
+   107→        .catch(() => setLibraryQuestions(null));
+   108→    }
+   109→  }, [mode, quizId]);
+   110→
+   111→  const finalQuestions =
+   112→    mode === 'library' ? libraryQuestions : mode === 'ai' ? aiQuestions : custom;
+   113→  const totalMarks = finalQuestions?.reduce((s, q) => s + q.marks, 0) ?? 0;
+   114→
+   115→  const canStep2 =
+   116→    title.trim().length >= 3 && classId !== '' && (!timed || (timeLimit >= 3 && timeLimit <= 180));
+   117→  const canStep3 =
+   118→    mode === 'library'
+   119→      ? Boolean(quizId)
+   120→      : mode === 'ai'
+   121→        ? (aiQuestions?.length ?? 0) >= 4
+   122→        : custom.length >= 1;
+   123→
+   124→  async function generate() {
+   125→    setAiBusy(true);
+   126→    setError(null);
+   127→    setAiQuestions(null);
+   128→    try {
+   129→      const res = await api.post<{
+   130→        provider: string;
+   131→        note: string;
+   132→        questions: Question[];
+   133→      }>('/api/teacher/generate', {
+   134→        topics: aiTopics,
+   135→        count: aiCount,
+   136→        types: aiTypes,
+   137→        difficulty: aiDifficulty === 'mixed' ? 'mixed' : Number(aiDifficulty),
+   138→        caseStudies: aiCases,
+   139→      });
+   140→      setAiQuestions(res.questions);
+   141→      setAiProvider(res.provider);
+   142→      toast({
+   143→        title: res.provider === 'bank' ? 'Using the human-written bank' : 'Questions generated',
+   144→        description: res.note,
+   145→      });
+   146→    } catch (e) {
+   147→      setError((e as Error).message);
+   148→    } finally {
+   149→      setAiBusy(false);
+   150→    }
+   151→  }
+   152→
+   153→  async function assign() {
+   154→    setCreating(true);
+   155→    setError(null);
+   156→    try {
+   157→      const body = {
+   158→        classId,
+   159→        title: title.trim(),
+   160→        description: description.trim(),
+   161→        dueAt,
+   162→        timeLimitMin: timed ? timeLimit : null,
+   163→        mode,
+   164→        quizId: mode === 'library' ? quizId : undefined,
+   165→        aiParams:
+   166→          mode === 'ai'
+   167→            ? { topics: aiTopics, count: aiQuestions?.length ?? aiCount, types: aiTypes, difficulty: aiDifficulty === 'mixed' ? 'mixed' : Number(aiDifficulty), caseStudies: aiCases }
+   168→            : undefined,
+   169→        customQuestions: mode === 'custom' ? custom : undefined,
+   170→      };
+   171→      const res = await api.post<{ assignmentId: string; questionCount: number; generatedBy: string }>(
+   172→        '/api/teacher/assignments',
+   173→        body
+   174→      );
+   175→      toast({ title: 'Assignment set', description: `${res.questionCount} questions · ${res.generatedBy}` });
+   176→      go({ name: 't-results', assignmentId: res.assignmentId });
+   177→    } catch (e) {
+   178→      setError((e as Error).message);
+   179→      window.scrollTo({ top: 0 });
+   180→    } finally {
+   181→      setCreating(false);
+   182→    }
+   183→  }
+   184→
+   185→  const selClass = classes.find((c) => c.id === classId);
+   186→
+   187→  return (
+   188→    <>
+   189→      <PageHeader
+   190→        title="New assignment"
+   191→        sub={step === 1 ? 'The basics — who, when and how long.' : step === 2 ? 'Where do the questions come from?' : 'Last check before it goes live.'}
+   192→        actions={
+   193→          step > 1 ? (
+   194→            <Button variant="ghost" onClick={() => setStep(step - 1)}>
+   195→              <ArrowLeft className="h-4 w-4" /> Back
+   196→            </Button>
+   197→          ) : (
+   198→            <Button variant="ghost" onClick={() => go({ name: 't-assignments' })}>
+   199→              <ArrowLeft className="h-4 w-4" /> Assignments
+   200→            </Button>
+   201→          )
+   202→        }
+   203→      />
+   204→
+   205→      <ol className="flex items-center gap-2 mb-6 text-sm">
+   206→        {['Details', 'Questions', 'Review'].map((s, i) => {
+   207→          const n = i + 1;
+   208→          return (
+   209→            <li key={s} className="flex items-center gap-2">
+   210→              <span
+   211→                className={cn(
+   212→                  'flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold',
+   213→                  step === n ? 'bg-primary text-primary-foreground' : step > n ? 'bg-[var(--success)] text-white' : 'bg-secondary text-muted-foreground'
+   214→                )}
+   215→              >
+   216→                {step > n ? <CheckCircle2 className="h-4 w-4" /> : n}
+   217→              </span>
+   218→              <span className={step === n ? 'font-medium' : 'text-muted-foreground'}>{s}</span>
+   219→              {i < 2 ? <ChevronDown className="h-4 w-4 text-muted-foreground -rotate-90" /> : null}
+   220→            </li>
+   221→          );
+   222→        })}
+   223→      </ol>
+   224→
+   225→      {error ? <div className="mb-4"><ErrorNote message={error} /></div> : null}
+   226→
+   227→      {step === 1 ? (
+   228→        <div className="grid gap-5 lg:grid-cols-2">
+   229→          <div className="space-y-4 rounded-xl border bg-card p-5">
+   230→            <div className="space-y-2">
+   231→              <Label htmlFor="a-title">Title</Label>
+   232→              <Input id="a-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Growth & finance — half-term check" />
+   233→            </div>
+   234→            <div className="space-y-2">
+   235→              <Label>Class</Label>
+   236→              {classes.length === 0 ? (
+   237→                <p className="text-sm text-[var(--warn)]">You need a class first — add one under “Classes”.</p>
+   238→              ) : (
+   239→                <Select value={classId} onValueChange={setClassId}>
+   240→                  <SelectTrigger><SelectValue placeholder="Choose class" /></SelectTrigger>
+   241→                  <SelectContent>
+   242→                    {classes.map((c) => (
+   243→                      <SelectItem key={c.id} value={c.id}>
+   244→                        {c.name} · {c.studentCount} students
+   245→                      </SelectItem>
+   246→                    ))}
+   247→                  </SelectContent>
+   248→                </Select>
+   249→              )}
+   250→            </div>
+   251→            <div className="space-y-2">
+   252→              <Label htmlFor="a-desc">Instructions for students (optional)</Label>
+   253→              <Textarea id="a-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Read each case study carefully." />
+   254→            </div>
+   255→          </div>
+   256→
+   257→          <div className="space-y-4 rounded-xl border bg-card p-5">
+   258→            <div className="space-y-2">
+   259→              <Label htmlFor="a-due">Due date &amp; time (optional)</Label>
+   260→              <Input id="a-due" type="datetime-local" value={dueLocal} onChange={(e) => setDueLocal(e.target.value)} />
+   261→              <p className="text-xs text-muted-foreground">Students can still submit after the deadline — it is tagged “late”.</p>
+   262→            </div>
+   263→            <div className="rounded-lg border p-4 space-y-3">
+   264→              <div className="flex items-center justify-between">
+   265→                <div>
+   266→                  <div className="text-sm font-medium flex items-center gap-2"><Timer className="h-4 w-4" /> Timed conditions</div>
+   267→                  <p className="text-xs text-muted-foreground">A countdown appears; it auto-submits at zero.</p>
+   268→                </div>
+   269→                <Switch checked={timed} onCheckedChange={setTimed} aria-label="Timed conditions" />
+   270→              </div>
+   271→              {timed ? (
+   272→                <div className="space-y-2 pt-3 border-t">
+   273→                  <div className="flex justify-between text-sm">
+   274→                    <span className="text-muted-foreground">Time limit</span>
+   275→                    <span className="font-semibold tabular-nums">{timeLimit} min</span>
+   276→                  </div>
+   277→                  <Slider value={[timeLimit]} min={3} max={90} step={1} onValueChange={(v) => setTimeLimit(v[0] ?? 20)} />
+   278→                  <p className="text-xs text-muted-foreground">3–90 minutes.</p>
+   279→                </div>
+   280→              ) : null}
+   281→            </div>
+   282→          </div>
+   283→
+   284→          <div className="lg:col-span-2 flex justify-end">
+   285→            <Button disabled={!canStep2} onClick={() => setStep(2)}>
+   286→              Choose questions <ArrowRight className="h-4 w-4" />
+   287→            </Button>
+   288→          </div>
+   289→        </div>
+   290→      ) : null}
+   291→
+   292→      {step === 2 ? (
+   293→        <div className="space-y-5">
+   294→          <RadioGroup value={mode} onValueChange={(v) => setMode(v as Mode)} className="grid gap-3 sm:grid-cols-3">
+   295→            {[
+   296→              { v: 'library' as Mode, icon: BookOpen, t: 'Quiz library', d: 'Hand-written banks, ready to go' },
+   297→              { v: 'ai' as Mode, icon: Sparkles, t: 'Generate', d: 'Fresh questions on your chosen topics' },
+   298→              { v: 'custom' as Mode, icon: PenLine, t: 'My questions', d: 'Type your own — any style' },
+   299→            ].map((o) => (
+   300→              <label key={o.v} className={cn('cursor-pointer rounded-xl border p-4 flex gap-3 items-start transition-colors', mode === o.v ? 'border-primary bg-primary/5' : 'hover:bg-secondary/50')}>
+   301→                <RadioGroupItem value={o.v} id={`mode-${o.v}`} className="mt-1" />
+   302→                <div>
+   303→                  <div className="text-sm font-semibold flex items-center gap-2"><o.icon className="h-4 w-4 text-primary" /> {o.t}</div>
+   304→                  <p className="text-xs text-muted-foreground mt-0.5">{o.d}</p>
+   305→                </div>
+   306→              </label>
+   307→            ))}
+   308→          </RadioGroup>
+   309→
+   310→          {mode === 'library' ? (
+   311→            <div>
+   312→              {quizzes.length === 0 ? (
+   313→                <p className="text-sm text-muted-foreground">Library is loading…</p>
+   314→              ) : (
+   315→                <div className="grid sm:grid-cols-2 gap-3">
+   316→                  {quizzes.map((q) => (
+   317→                    <button
+   318→                      key={q.id}
+   319→                      onClick={() => setQuizId(q.id)}
+   320→                      className={cn(
+   321→                        'rounded-xl border p-4 text-left transition-colors',
+   322→                        quizId === q.id ? 'border-primary bg-primary/5' : 'hover:bg-secondary/50'
+   323→                      )}
+   324→                    >
+   325→                      <div className="flex items-center justify-between gap-2">
+   326→                        <span className="font-semibold text-sm">{q.title}</span>
+   327→                        <Badge variant="secondary" className="tabular-nums shrink-0">Theme {q.theme}</Badge>
+   328→                      </div>
+   329→                      <p className="text-xs text-muted-foreground mt-1">{q.blurb}</p>
+   330→                      <p className="text-xs mt-2">
+   331→                        <span className="font-semibold tabular-nums">{q.questionCount}</span> questions
+   332→                        <span className="text-muted-foreground"> · {q.topics.map((t) => `${t} ${topicTitle(t).split(' ')[0]}`).join(', ')}</span>
+   333→                      </p>
+   334→                    </button>
+   335→                  ))}
+   336→                </div>
+   337→              )}
+   338→              {quizId && libraryQuestions ? (
+   339→                <p className="text-xs text-[var(--success)] mt-3 flex items-center gap-1.5">
+   340→                  <CheckCircle2 className="h-4 w-4" /> {libraryQuestions.length} questions ready · {totalMarks} marks total
+   341→                </p>
+   342→              ) : null}
+   343→            </div>
+   344→          ) : null}
+   345→
+   346→          {mode === 'ai' ? (
+   347→            <div className="rounded-xl border bg-card p-5 space-y-5">
+   348→              <div className="space-y-2">
+   349→                <Label>Topics</Label>
+   350→                <div className="flex flex-wrap gap-2">
+   351→                  {TOPICS.map((t) => {
+   352→                    const on = aiTopics.includes(t.id);
+   353→                    return (
+   354→                      <button
+   355→                        key={t.id}
+   356→                        onClick={() => setAiTopics(on ? aiTopics.filter((x) => x !== t.id) : [...aiTopics, t.id])}
+   357→                        className={cn(
+   358→                          'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+   359→                          on ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
+   360→                        )}
+   361→                        aria-pressed={on}
+   362→                      >
+   363→                        {t.id} {t.short}
+   364→                      </button>
+   365→                    );
+   366→                  })}
+   367→                </div>
+   368→                {aiTopics.length === 0 ? <p className="text-xs text-[var(--warn)]">Pick at least one topic.</p> : null}
+   369→              </div>
+   370→
+   371→              <div className="grid sm:grid-cols-2 gap-5">
+   372→                <div className="space-y-2">
+   373→                  <div className="flex justify-between text-sm">
+   374→                    <span className="text-muted-foreground">Questions</span>
+   375→                    <span className="font-semibold tabular-nums">{aiCount}</span>
+   376→                  </div>
+   377→                  <Slider value={[aiCount]} min={5} max={30} step={1} onValueChange={(v) => setAiCount(v[0] ?? 12)} />
+   378→                  <p className="text-xs text-muted-foreground">5–30 questions.</p>
+   379→                </div>
+   380→                <div className="space-y-2">
+   381→                  <Label>Difficulty</Label>
+   382→                  <Select value={aiDifficulty} onValueChange={(v) => setAiDifficulty(v as '1' | '2' | '3' | 'mixed')}>
+   383→                    <SelectTrigger><SelectValue /></SelectTrigger>
+   384→                    <SelectContent>
+   385→                      <SelectItem value="mixed">Mixed (recommended)</SelectItem>
+   386→                      <SelectItem value="1">Foundation</SelectItem>
+   387→                      <SelectItem value="2">Standard</SelectItem>
+   388→                      <SelectItem value="3">Challenge</SelectItem>
+   389→                    </SelectContent>
+   390→                  </Select>
+   391→                </div>
+   392→              </div>
+   393→
+   394→              <div className="space-y-2">
+   395→                <Label>Question styles</Label>
+   396→                <div className="flex flex-wrap gap-2">
+   397→                  {(
+   398→                    [
+   399→                      ['mcq', 'Multiple choice'],
+   400→                      ['term', 'Type the term'],
+   401→                      ['fib', 'Fill the blank'],
+   402→                      ['numeric', 'Calculations'],
+   403→                      ['truefalse', 'True / false'],
+   404→                    ] as [QuestionType, string][]
+   405→                  ).map(([t, label]) => {
+   406→                    const on = aiTypes.includes(t);
+   407→                    return (
+   408→                      <button
+   409→                        key={t}
+   410→                        onClick={() => setAiTypes(on ? aiTypes.filter((x) => x !== t) : [...aiTypes, t])}
+   411→                        className={cn('rounded-full border px-3 py-1.5 text-xs font-medium transition-colors', on ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary')}
+   412→                        aria-pressed={on}
+   413→                      >
+   414→                        {label}
+   415→                      </button>
+   416→                    );
+   417→                  })}
+   418→                </div>
+   419→                <p className="text-xs text-muted-foreground">Leave all off for a natural mix.</p>
+   420→              </div>
+   421→
+   422→              <div className="flex items-center justify-between rounded-lg border p-4">
+   423→                <div>
+   424→                  <div className="text-sm font-medium">Include case studies</div>
+   425→                  <p className="text-xs text-muted-foreground">Short business extracts above some questions.</p>
+   426→                </div>
+   427→                <Switch checked={aiCases} onCheckedChange={setAiCases} aria-label="Include case studies" />
+   428→              </div>
+   429→
+   430→              <div className="flex flex-wrap gap-3 items-center">
+   431→                <Button onClick={generate} disabled={aiBusy || aiTopics.length === 0}>
+   432→                  {aiBusy ? (
+   433→                    <>
+   434→                      <RotateCw className="h-4 w-4 animate-spin" /> Writing questions…
+   435→                    </>
+   436→                  ) : (
+   437→                    <>
+   438→                      <Wand2 className="h-4 w-4" /> {aiQuestions ? 'Generate again' : 'Generate questions'}
+   439→                    </>
+   440→                  )}
+   441→                </Button>
+   442→                {aiQuestions ? (
+   443→                  <span className="text-sm flex items-center gap-1.5 text-[var(--success)]">
+   444→                    <CheckCircle2 className="h-4 w-4" /> {aiQuestions.length} questions · {totalMarks} marks
+   445→                    {aiProvider && aiProvider !== 'bank' ? <Badge variant="outline" className="ml-1">{aiProvider}</Badge> : null}
+   446→                  </span>
+   447→                ) : null}
+   448→              </div>
+   449→
+   450→              {aiBusy ? (
+   451→                <div className="space-y-2" aria-live="polite">
+   452→                  <p className="text-sm text-muted-foreground">Writing questions, checking facts and arithmetic… this takes up to a minute.</p>
+   453→                  <div className="h-2 rounded-full bg-secondary overflow-hidden">
+   454→                    <div className="h-full w-1/3 bg-primary animate-pulse" />
+   455→                  </div>
+   456→                </div>
+   457→              ) : null}
+   458→
+   459→              {aiQuestions ? <QuestionPreviewList questions={aiQuestions} onRemove={(id) => setAiQuestions(aiQuestions.filter((q) => q.id !== id))} /> : null}
+   460→            </div>
+   461→          ) : null}
+   462→
+   463→          {mode === 'custom' ? (
+   464→            <CustomBuilder list={custom} setList={setCustom} />
+   465→          ) : null}
+   466→
+   467→          <div className="flex justify-between">
+   468→            <Button variant="outline" onClick={() => setStep(1)}><ArrowLeft className="h-4 w-4" /> Details</Button>
+   469→            <Button disabled={!canStep3} onClick={() => setStep(3)}>
+   470→              Review <ArrowRight className="h-4 w-4" />
+   471→            </Button>
+   472→          </div>
+   473→        </div>
+   474→      ) : null}
+   475→
+   476→      {step === 3 ? (
+   477→        <div className="space-y-5">
+   478→          <div className="rounded-xl border bg-card p-5 grid sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+   479→            {[
+   480→              ['Title', title],
+   481→              ['Class', selClass ? `${selClass.name} (${selClass.studentCount})` : '—'],
+   482→              ['Due', dueAt ? new Date(dueAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : 'No deadline'],
+   483→              ['Timed', timed ? `${timeLimit} minutes` : 'Untimed'],
+   484→              ['Questions', finalQuestions ? `${finalQuestions.length} · ${totalMarks} marks` : '—'],
+   485→              [
+   486→                'Source',
+   487→                mode === 'library' ? 'Quiz library' : mode === 'ai' ? (aiProvider === 'bank' ? 'Human-written bank (AI offline)' : 'AI generated') : 'Your questions',
+   488→              ],
+   489→            ].map(([k, v]) => (
+   490→              <div key={k as string} className="flex justify-between gap-3 border-b py-1.5 last:border-0">
+   491→                <span className="text-muted-foreground">{k}</span>
+   492→                <span className="font-medium text-right">{v}</span>
+   493→              </div>
+   494→            ))}
+   495→          </div>
+   496→
+   497→          {mode === 'ai' && aiProvider === 'bank' ? (
+   498→            <p className="text-xs text-[var(--warn)] flex items-center gap-2">
+   499→              <AlertTriangle className="h-4 w-4" /> AI providers were unreachable — questions were pulled from the human-written bank instead.
+   500→            </p>
+   501→          ) : null}
+   502→
+   503→          {finalQuestions ? <QuestionPreviewList questions={finalQuestions} readOnly /> : null}
+   504→
+   505→          <div className="flex justify-between">
+   506→            <Button variant="outline" onClick={() => setStep(2)}><ArrowLeft className="h-4 w-4" /> Questions</Button>
+   507→            <Button onClick={assign} disabled={creating}>
+   508→              {creating ? 'Setting…' : <>Set assignment <CheckCircle2 className="h-4 w-4" /></>}
+   509→            </Button>
+   510→          </div>
+   511→        </div>
+   512→      ) : null}
+   513→    </>
+   514→  );
+   515→}
+   516→
+   517→/* shared preview list */
+   518→function QuestionPreviewList({
+   519→  questions,
+   520→  onRemove,
+   521→  readOnly,
+   522→}: {
+   523→  questions: Question[];
+   524→  onRemove?: (id: string) => void;
+   525→  readOnly?: boolean;
+   526→}) {
+   527→  const [open, setOpen] = useState(false);
+   528→  return (
+   529→    <Collapsible open={open} onOpenChange={setOpen} className="rounded-xl border bg-card">
+   530→      <CollapsibleTrigger className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-medium">
+   531→        <span>Preview {questions.length} questions</span>
+   532→        <ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} />
+   533→      </CollapsibleTrigger>
+   534→      <CollapsibleContent>
+   535→        <ol className="px-5 pb-5 space-y-3 max-h-[480px] overflow-y-auto scroll-slim">
+   536→          {questions.map((q, i) => (
+   537→            <li key={q.id} className="rounded-lg border p-3 text-sm">
+   538→              <div className="flex items-center gap-2 mb-1 flex-wrap">
+   539→                <span className="text-xs font-bold text-primary tabular-nums">{i + 1}</span>
+   540→                <TypeBadge type={q.type} />
+   541→                <MarksChip marks={q.marks} />
+   542→                <span className="text-[10px] text-muted-foreground ml-auto">{q.topic} {topicTitle(q.topic).split(' ')[0]}</span>
+   543→                {!readOnly && onRemove ? (
+   544→                  <Button variant="ghost" size="icon" className="h-6 w-6 text-[var(--danger)]" aria-label="Remove question" onClick={() => onRemove(q.id)}>
+   545→                    <Trash2 className="h-3.5 w-3.5" />
+   546→                  </Button>
+   547→                ) : null}
+   548→              </div>
+   549→              {q.extract ? (
+   550→                <p className="text-xs italic text-muted-foreground border-l-2 pl-2 my-1.5">[{q.extract.title}] {q.extract.text.slice(0, 120)}…</p>
+   551→              ) : null}
+   552→              <p>{q.stem}</p>
+   553→              <p className="text-xs text-muted-foreground mt-1">
+   554→                {q.type === 'mcq'
+   555→                  ? `Correct: ${q.options[q.correct]}`
+   556→                  : q.type === 'numeric'
+   557→                    ? `Answer: ${q.value}${q.unit ?? ''} ± ${q.tol}`
+   558→                    : q.type === 'truefalse'
+   559→                      ? `Answer: ${q.answer ? 'True' : 'False'}`
+   560→                      : `Accept: ${q.accept.join(' / ')}`}
+   561→              </p>
+   562→            </li>
+   563→          ))}
+   564→        </ol>
+   565→      </CollapsibleContent>
+   566→    </Collapsible>
+   567→  );
+   568→}
+   569→
+   570→/* custom question builder */
+   571→function CustomBuilder({ list, setList }: { list: Question[]; setList: (q: Question[]) => void }) {
+   572→  const [type, setType] = useState<QuestionType>('mcq');
+   573→  const [topic, setTopic] = useState('2.1');
+   574→  const [stem, setStem] = useState('');
+   575→  const [marks, setMarks] = useState(1);
+   576→  const [explain, setExplain] = useState('');
+   577→  const [extractOn, setExtractOn] = useState(false);
+   578→  const [extractTitle, setExtractTitle] = useState('');
+   579→  const [extractText, setExtractText] = useState('');
+   580→  // mcq
+   581→  const [options, setOptions] = useState(['', '', '', '']);
+   582→  const [correct, setCorrect] = useState(0);
+   583→  // text
+   584→  const [accept, setAccept] = useState('');
+   585→  // numeric
+   586→  const [value, setValue] = useState('');
+   587→  const [tol, setTol] = useState('0.5');
+   588→  const [unit, setUnit] = useState('%');
+   589→  const [dp, setDp] = useState('1');
+   590→  // tf
+   591→  const [tf, setTf] = useState(true);
+   592→
+   593→  function add() {
+   594→    const extract =
+   595→      extractOn && extractTitle.trim() && extractText.trim().length >= 20
+   596→        ? { title: extractTitle.trim(), text: extractText.trim() }
+   597→        : undefined;
+   598→    const base = { id: `c${Date.now().toString(36)}`, topic, marks, stem: stem.trim(), explain: explain.trim(), extract };
+   599→    let q: Question | null = null;
+   600→    if (type === 'mcq') {
+   601→      if (options.some((o) => !o.trim())) q = null;
+   602→      else q = { ...base, type: 'mcq', difficulty: 2, options: options.map((o) => o.trim()), correct };
+   603→    } else if (type === 'term' || type === 'fib') {
+   604→      const acc = accept.split(',').map((a) => a.trim()).filter(Boolean);
+   605→      q = acc.length ? { ...base, type, difficulty: 2, accept: acc } : null;
+   606→    } else if (type === 'numeric') {
+   607→      const v = Number(value);
+   608→      const t = Number(tol);
+   609→      q = Number.isFinite(v) && value !== '' && Number.isFinite(t)
+   610→        ? { ...base, type: 'numeric', difficulty: 2, value: v, tol: t, unit: unit === 'none' ? undefined : unit, dp: Number(dp) || undefined }
+   611→        : null;
+   612→    } else {
+   613→      q = { ...base, type: 'truefalse', difficulty: 2, answer: tf };
+   614→    }
+   615→    if (!q || q.stem.length < 8 || q.explain.length < 5) {
+   616→      return; // the Add button is disabled until required fields are filled
+   617→    }
+   618→    setList([...list, q]);
+   619→    setStem('');
+   620→    setExplain('');
+   621→    setAccept('');
+   622→    setValue('');
+   623→    setOptions(['', '', '', '']);
+   624→    setExtractText('');
+   625→    setExtractTitle('');
+   626→    return undefined;
+   627→  }
+   628→
+   629→  const ready =
+   630→    stem.trim().length >= 8 &&
+   631→    explain.trim().length >= 5 &&
+   632→    (type === 'mcq'
+   633→      ? options.every((o) => o.trim())
+   634→      : type === 'term' || type === 'fib'
+   635→        ? accept.trim().length > 0
+   636→        : type === 'numeric'
+   637→          ? value !== '' && Number.isFinite(Number(value))
+   638→          : true);
+   639→
+   640→  return (
+   641→    <div className="space-y-4">
+   642→      <div className="rounded-xl border bg-card p-5 space-y-4">
+   643→        <div className="flex flex-wrap gap-3 items-end">
+   644→          <div className="space-y-1">
+   645→            <Label>Type</Label>
+   646→            <Select value={type} onValueChange={(v) => setType(v as QuestionType)}>
+   647→              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+   648→              <SelectContent>
+   649→                <SelectItem value="mcq">Multiple choice</SelectItem>
+   650→                <SelectItem value="term">Type the term</SelectItem>
+   651→                <SelectItem value="fib">Fill the blank</SelectItem>
+   652→                <SelectItem value="numeric">Calculation</SelectItem>
+   653→                <SelectItem value="truefalse">True / false</SelectItem>
+   654→              </SelectContent>
+   655→            </Select>
+   656→          </div>
+   657→          <div className="space-y-1">
+   658→            <Label>Topic</Label>
+   659→            <Select value={topic} onValueChange={setTopic}>
+   660→              <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+   661→              <SelectContent>
+   662→                {TOPICS.map((t) => (
+   663→                  <SelectItem key={t.id} value={t.id}>{t.id} · {t.title}</SelectItem>
+   664→                ))}
+   665→              </SelectContent>
+   666→            </Select>
+   667→          </div>
+   668→          <div className="space-y-1">
+   669→            <Label>Marks</Label>
+   670→            <Select value={String(marks)} onValueChange={(v) => setMarks(Number(v))}>
+   671→              <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+   672→              <SelectContent>
+   673→                <SelectItem value="1">1</SelectItem>
+   674→                <SelectItem value="2">2</SelectItem>
+   675→                <SelectItem value="3">3</SelectItem>
+   676→              </SelectContent>
+   677→            </Select>
+   678→          </div>
+   679→        </div>
+   680→
+   681→        <div className="space-y-1">
+   682→          <Label htmlFor="c-stem">Question</Label>
+   683→          <Textarea id="c-stem" value={stem} onChange={(e) => setStem(e.target.value)} rows={2} placeholder={type === 'fib' ? 'A ________ business operates in more than one country. What one word completes the sentence?' : 'What does PLC stand for?'} />
+   684→        </div>
+   685→
+   686→        {type === 'mcq' ? (
+   687→          <div className="grid sm:grid-cols-2 gap-3">
+   688→            {options.map((o, i) => (
+   689→              <div key={i} className="flex gap-2 items-center">
+   690→                <RadioGroup value={String(correct)} onValueChange={(v) => setCorrect(Number(v))} className="flex">
+   691→                  <RadioGroupItem value={String(i)} id={`opt-${i}`} aria-label={`Option ${i + 1} correct`} />
+   692→                </RadioGroup>
+   693→                <Input
+   694→                  value={o}
+   695→                  onChange={(e) => setOptions(options.map((x, j) => (j === i ? e.target.value : x)))}
+   696→                  placeholder={`Option ${String.fromCharCode(65 + i)}`}
+   697→                  className={correct === i ? 'border-[var(--success)]' : ''}
+   698→                />
+   699→              </div>
+   700→            ))}
+   701→            <p className="text-xs text-muted-foreground sm:col-span-2">Select the dot next to the correct option.</p>
+   702→          </div>
+   703→        ) : null}
+   704→
+   705→        {type === 'term' || type === 'fib' ? (
+   706→          <div className="space-y-1">
+   707→            <Label htmlFor="c-accept">Accepted answers (comma separated)</Label>
+   708→            <Input id="c-accept" value={accept} onChange={(e) => setAccept(e.target.value)} placeholder="public limited company, plc" />
+   709→            <p className="text-xs text-muted-foreground">Matching ignores capitals, punctuation and extra spaces.</p>
+   710→          </div>
+   711→        ) : null}
+   712→
+   713→        {type === 'numeric' ? (
+   714→          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   715→            <div className="space-y-1"><Label htmlFor="c-val">Answer</Label><Input id="c-val" value={value} onChange={(e) => setValue(e.target.value)} placeholder="59.8" inputMode="decimal" /></div>
+   716→            <div className="space-y-1"><Label htmlFor="c-tol">± tolerance</Label><Input id="c-tol" value={tol} onChange={(e) => setTol(e.target.value)} inputMode="decimal" /></div>
+   717→            <div className="space-y-1">
+   718→              <Label>Unit</Label>
+   719→              <Select value={unit} onValueChange={setUnit}>
+   720→                <SelectTrigger><SelectValue /></SelectTrigger>
+   721→                <SelectContent>
+   722→                  <SelectItem value="%">%</SelectItem>
+   723→                  <SelectItem value="£">£</SelectItem>
+   724→                  <SelectItem value="loaves">loaves</SelectItem>
+   725→                  <SelectItem value="units">units</SelectItem>
+   726→                  <SelectItem value="none">none</SelectItem>
+   727→                </SelectContent>
+   728→              </Select>
+   729→            </div>
+   730→            <div className="space-y-1">
+   731→              <Label>Decimal places</Label>
+   732→              <Select value={dp} onValueChange={setDp}>
+   733→                <SelectTrigger><SelectValue /></SelectTrigger>
+   734→                <SelectContent>
+   735→                  <SelectItem value="0">0 dp</SelectItem>
+   736→                  <SelectItem value="1">1 dp</SelectItem>
+   737→                  <SelectItem value="2">2 dp</SelectItem>
+   738→                </SelectContent>
+   739→              </Select>
+   740→            </div>
+   741→          </div>
+   742→        ) : null}
+   743→
+   744→        {type === 'truefalse' ? (
+   745→          <RadioGroup value={tf ? 't' : 'f'} onValueChange={(v) => setTf(v === 't')} className="flex gap-4">
+   746→            <div className="flex items-center gap-2"><RadioGroupItem value="t" id="tf-t" /><Label htmlFor="tf-t">True</Label></div>
+   747→            <div className="flex items-center gap-2"><RadioGroupItem value="f" id="tf-f" /><Label htmlFor="tf-f">False</Label></div>
+   748→          </RadioGroup>
+   749→        ) : null}
+   750→
+   751→        <div className="rounded-lg border p-3 space-y-3">
+   752→          <div className="flex items-center justify-between">
+   753→            <span className="text-sm font-medium">Case study extract (optional)</span>
+   754→            <Switch checked={extractOn} onCheckedChange={setExtractOn} aria-label="Add case study" />
+   755→          </div>
+   756→          {extractOn ? (
+   757→            <>
+   758→              <Input value={extractTitle} onChange={(e) => setExtractTitle(e.target.value)} placeholder="Case study title (e.g. The Dough House)" />
+   759→              <Textarea value={extractText} onChange={(e) => setExtractText(e.target.value)} rows={3} placeholder="2–4 sentences of business context…" />
+   760→            </>
+   761→          ) : null}
+   762→        </div>
+   763→
+   764→        <div className="space-y-1">
+   765→          <Label htmlFor="c-explain">Explanation (students see this after marking)</Label>
+   766→          <Textarea id="c-explain" value={explain} onChange={(e) => setExplain(e.target.value)} rows={2} placeholder="Break-even = fixed costs ÷ contribution per unit…" />
+   767→        </div>
+   768→
+   769→        <div className="flex items-center justify-between">
+   770→          <p className="text-xs text-muted-foreground">
+   771→            {list.length} question{list.length === 1 ? '' : 's'} in this assignment
+   772→          </p>
+   773→          <Button variant="outline" onClick={() => { if (ready) add(); }} disabled={!ready}>
+   774→            <PlusCircle className="h-4 w-4" /> Add question
+   775→          </Button>
+   776→        </div>
+   777→      </div>
+   778→
+   779→      {list.length > 0 ? (
+   780→        <QuestionPreviewList questions={list} onRemove={(id) => setList(list.filter((q) => q.id !== id))} />
+   781→      ) : null}
+   782→    </div>
+   783→  );
+   784→}
+   785→

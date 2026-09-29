@@ -228,8 +228,9 @@ export function NewAssignment({ presetQuizId }: { presetQuizId?: string }) {
         <div className="grid gap-5 lg:grid-cols-2">
           <div className="space-y-4 rounded-xl border bg-card p-5">
             <div className="space-y-2">
-              <Label htmlFor="a-title">Title</Label>
-              <Input id="a-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Growth & finance — half-term check" />
+              <Label htmlFor="a-title">Give your assignment a name</Label>
+              <Input id="a-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Half-term homework" />
+              <p className="text-xs text-muted-foreground">Students see this name on their homepage.</p>
             </div>
             <div className="space-y-2">
               <Label>Class</Label>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { col, del, values } from '@/lib/firebase';
+import { col, colCached, del, values } from '@/lib/firebase';
+import { decryptPassword } from '@/lib/passwords';
 import { requireRole } from '@/lib/session';
 import type { Attempt, Assignment, Student, StudentClass } from '@/lib/types';
 
@@ -15,10 +16,16 @@ export async function GET(_req: Request, ctx: Ctx) {
   if (!cls || cls.teacherId !== session.uid) {
     return NextResponse.json({ error: 'Class not found' }, { status: 404 });
   }
-  const students = values(await col<Student>('students'))
+  const students = values(await colCached<Student>('students'))
     .filter((s) => s.classId === id)
     .sort((a, b) => a.displayName.localeCompare(b.displayName))
-    .map((s) => ({ id: s.id, username: s.username, displayName: s.displayName, createdAt: s.createdAt }));
+    .map((s) => ({
+      id: s.id,
+      username: s.username,
+      displayName: s.displayName,
+      password: decryptPassword(s.pwEnc),
+      createdAt: s.createdAt,
+    }));
 
   return NextResponse.json({ class: cls, students });
 }

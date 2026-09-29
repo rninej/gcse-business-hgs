@@ -9,66 +9,93 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
+import { useApp } from '@/lib/store';
 import { BrandLockup } from './Brand';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Check } from 'lucide-react';
+import type { SessionInfo } from '@/lib/types';
 
 export function AuthView() {
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-[var(--secondary)] via-background to-background">
-      <header className="border-b bg-background/70 backdrop-blur">
+    <div className="min-h-screen flex flex-col bg-[var(--sidebar)]">
+      <header className="border-b bg-background">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <BrandLockup />
           <span className="text-xs text-muted-foreground hidden sm:block">Edexcel GCSE (9–1) Business · spec 1BS0</span>
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-10 grid lg:grid-cols-[1.05fr_1fr] gap-10 items-center">
-        {/* Hero */}
-        <section className="order-2 lg:order-1">
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-[1.08]">
-            GCSE Business,
-            <br />
-            <span className="text-primary">made simple.</span>
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-10 lg:py-16 grid lg:grid-cols-[1.1fr_1fr] gap-12 items-center">
+        {/* What it looks like in the classroom */}
+        <section>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
+            GCSE Business homework that marks itself.
           </h1>
-          <p className="mt-4 text-muted-foreground text-lg max-w-md">
-            Homework and quizzes with instant, accurate marking — case studies, diagrams and
-            calculations, all aligned to the Edexcel spec.
+          <p className="mt-3 text-muted-foreground text-lg max-w-lg">
+            Set a quiz in under a minute. Students get case studies, calculations and
+            instant marking — you get the marks.
           </p>
-          <ul className="mt-7 space-y-3 text-sm">
+
+          <div className="mt-8 max-w-lg rounded-lg border bg-card shadow-sm">
+            <div className="px-4 py-2.5 border-b bg-[var(--accent)]/30 rounded-t-lg">
+              <p className="text-xs font-semibold text-[var(--accent-foreground)] uppercase tracking-wide">
+                Case study · Biscuiteers
+              </p>
+              <p className="text-[13px] leading-relaxed mt-1 text-muted-foreground">
+                Biscuiteers was founded in 2007. It hand-ices premium biscuits and has grown its
+                revenue to around £11 million a year…
+              </p>
+            </div>
+            <div className="p-4">
+              <p className="text-sm font-medium leading-snug">
+                Which of the following is an example of organic growth for Biscuiteers?
+              </p>
+              <ul className="mt-3 space-y-2 text-sm">
+                {[
+                  ['Buying a smaller biscuit company', false],
+                  ['Opening more of its own shops', true],
+                  ['Merging with a rival bakery', false],
+                  ['Taking over a packaging firm', false],
+                ].map(([opt, right], i) => (
+                  <li
+                    key={i}
+                    className={
+                      right
+                        ? 'flex items-center gap-2.5 rounded-md border border-[var(--success)]/40 bg-[var(--success)]/10 px-3 py-2 text-[var(--success)] font-medium'
+                        : 'flex items-center gap-2.5 rounded-md border px-3 py-2 text-muted-foreground'
+                    }
+                  >
+                    <span className={'h-2 w-2 rounded-full ' + (right ? 'bg-[var(--success)]' : 'bg-muted-foreground/30')} aria-hidden />
+                    {opt as string}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Marked instantly — with the correct answer and a short explanation every time.
+              </p>
+            </div>
+          </div>
+
+          <ul className="mt-7 space-y-2.5 text-sm max-w-lg">
             {[
-              'Whole-class quiz setting in under a minute — timed or untimed',
-              'Objective marking that is always consistent: every question type marked deterministically',
-              'Smart class analytics: scores, topic gaps and question-level analysis',
-              'Practice quizzes for students, with auto feedback after every attempt',
+              'Timed or untimed quizzes on any Edexcel topic, 1.1 to 2.5',
+              'Deterministic marking — the same answer always gets the same result',
+              'Class analytics: scores, topic gaps and question-level breakdowns',
             ].map((f) => (
-              <li key={f} className="flex gap-3 items-start">
-                <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" aria-hidden />
+              <li key={f} className="flex gap-2.5 items-start">
+                <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" aria-hidden />
                 <span>{f}</span>
               </li>
             ))}
           </ul>
-          <dl className="mt-9 grid grid-cols-3 gap-4 max-w-md">
-            {[
-              ['10', 'spec topics covered'],
-              ['5', 'question styles'],
-              ['2', 'exam themes'],
-            ].map(([n, l]) => (
-              <div key={l} className="rounded-xl border bg-card p-4">
-                <dt className="sr-only">{l}</dt>
-                <dd className="text-2xl font-bold text-primary">{n}</dd>
-                <dd className="text-xs text-muted-foreground mt-1">{l}</dd>
-              </div>
-            ))}
-          </dl>
         </section>
 
         {/* Auth card */}
-        <section className="order-1 lg:order-2 w-full max-w-md mx-auto">
+        <section className="w-full max-w-md mx-auto">
           <AuthCard />
         </section>
       </main>
 
-      <footer className="mt-auto border-t bg-background/70">
+      <footer className="mt-auto border-t bg-background">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 text-xs text-muted-foreground flex flex-wrap justify-between gap-2">
           <span>© {new Date().getFullYear()} HGSBusiness</span>
           <span>Students: your teacher creates your account and hands out your login.</span>
@@ -80,6 +107,7 @@ export function AuthView() {
 
 function AuthCard() {
   const { toast } = useToast();
+  const start = useApp((s) => s.start);
   const [tab, setTab] = useState<'teacher' | 'student' | 'register'>('teacher');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,23 +124,33 @@ function AuthCard() {
     setBusy(true);
     setError(null);
     try {
+      let session: SessionInfo;
       if (kind === 'teacher') {
-        const me = await api.post<{ role: 'teacher' | 'student'; name: string }>('/api/auth/login', {
+        const res = await api.post<{ session: SessionInfo }>('/api/auth/login', {
           role: 'teacher',
           identifier: tId,
           password: tPw,
         });
-        toast({ title: `Welcome back, ${me.name}` });
-        window.location.reload(); // let the boot flow pick up the cookie session
+        session = res.session;
+        toast({ title: `Welcome back, ${session.name}` });
       } else if (kind === 'student') {
-        await api.post('/api/auth/login', { role: 'student', identifier: sId, password: sPw });
-        toast({ title: 'Welcome back!' });
-        window.location.reload();
+        const res = await api.post<{ session: SessionInfo }>('/api/auth/login', {
+          role: 'student',
+          identifier: sId,
+          password: sPw,
+        });
+        session = res.session;
+        toast({ title: `Welcome back, ${session.name.split(' ')[0]}!` });
       } else {
-        await api.post('/api/auth/register', { name: rName, email: rEmail, password: rPw });
+        const res = await api.post<{ session: SessionInfo }>('/api/auth/register', {
+          name: rName,
+          email: rEmail,
+          password: rPw,
+        });
+        session = res.session;
         toast({ title: 'Account created', description: 'Set up your first class next.' });
-        window.location.reload();
       }
+      start(session); // straight in — no page reload
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -121,7 +159,7 @@ function AuthCard() {
   }
 
   return (
-    <Card className="shadow-xl shadow-black/5 border">
+    <Card className="shadow-sm border">
       <CardContent className="p-6 sm:p-8">
         <Tabs value={tab} onValueChange={(v) => { setTab(v as typeof tab); setError(null); }}>
           <TabsList className="grid grid-cols-3 w-full mb-5">
@@ -154,7 +192,7 @@ function AuthCard() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="s-pw">Password</Label>
-              <Input id="s-pw" type="password" value={sPw} onChange={(e) => setSPw(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit('student')} placeholder="•••••••" />
+              <Input id="s-pw" type="password" value={sPw} onChange={(e) => setSPw(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit('student')} placeholder="e.g. brave-otter-23" />
             </div>
             <Button className="w-full" disabled={busy || !sId || !sPw} onClick={() => submit('student')}>
               {busy ? 'Signing in…' : 'Sign in as student'}

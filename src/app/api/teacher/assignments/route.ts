@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { col, put, values } from '@/lib/firebase';
+import { col, colCached, put, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { generateQuestions } from '@/lib/questions';
 import { QUIZ_MAP } from '@/data/bank';
@@ -67,9 +67,9 @@ export async function GET() {
   const session = await requireRole('teacher');
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const assignments = values(await col<Assignment>('assignments')).filter((a) => a.teacherId === session.uid);
-  const students = values(await col<Student>('students')).filter((s) => s.teacherId === session.uid);
-  const attempts = values(await col<Attempt>('attempts')).filter((a) => a.teacherId === session.uid);
+  const assignments = values(await colCached<Assignment>('assignments')).filter((a) => a.teacherId === session.uid);
+  const students = values(await colCached<Student>('students')).filter((s) => s.teacherId === session.uid);
+  const attempts = values(await colCached<Attempt>('attempts')).filter((a) => a.teacherId === session.uid);
 
   const rows = assignments
     .sort((a, b) => b.createdAt - a.createdAt)
@@ -114,7 +114,7 @@ export async function POST(req: Request) {
   const body = (await req.json()) as CreateBody;
   const title = (body.title ?? '').toString().trim();
   if (title.length < 3 || title.length > 80) {
-    return NextResponse.json({ error: 'Give the assignment a title (3-80 characters).' }, { status: 400 });
+    return NextResponse.json({ error: 'Give your assignment a name (3–80 characters).' }, { status: 400 });
   }
   const timeLimitMin =
     body.timeLimitMin && Number(body.timeLimitMin) >= 3 && Number(body.timeLimitMin) <= 180

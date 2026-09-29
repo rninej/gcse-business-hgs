@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { col, values } from '@/lib/firebase';
+import { colCached, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { topicTitle } from '@/lib/topics';
 import type { Attempt, Student } from '@/lib/types';
@@ -8,11 +8,11 @@ export async function GET() {
   const session = await requireRole('student');
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const students = await col<Student>('students');
+  const students = await colCached<Student>('students');
   const me = students[session.uid];
   if (!me) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
 
-  const attempts = values(await col<Attempt>('attempts'))
+  const attempts = values(await colCached<Attempt>('attempts'))
     .filter((a) => a.studentId === session.uid && a.status === 'submitted' && a.result)
     .sort((a, b) => (b.result?.submittedAt ?? 0) - (a.result?.submittedAt ?? 0));
 

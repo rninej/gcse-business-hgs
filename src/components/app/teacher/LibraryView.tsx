@@ -116,7 +116,7 @@ export function LibraryView() {
   );
 }
 
-function QuizPreview({ quizId, load }: { quizId: string; load: () => Promise<Question[]> }) {
+function QuizPreview({ quizId, load }: { quizId: string; load: (quizId: string) => Promise<Question[]> }) {
   const [open, setOpen] = useState(false);
   const [qs, setQs] = useState<Question[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -126,7 +126,7 @@ function QuizPreview({ quizId, load }: { quizId: string; load: () => Promise<Que
     setOpen(next);
     if (next && !qs && !err) {
       try {
-        setQs(await load());
+        setQs(await load(quizId));
       } catch (e) {
         setErr((e as Error).message);
       }

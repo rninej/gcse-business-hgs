@@ -34,10 +34,11 @@ export async function POST(req: Request, ctx: Ctx) {
   }
 
   const body = (await req.json().catch(() => ({}))) as SubmitBody;
-  const answers: Record<string, string> = {};
+  const answers: Record<string, string> = { ...(attempt.answers ?? {}) };
   for (const [qid, val] of Object.entries(body.answers ?? {})) {
     if (typeof qid === 'string' && attempt.questions.some((q) => q.id === qid)) {
-      answers[qid] = (val ?? '').toString().slice(0, 300);
+      // confirmed answers are locked server-side; unchecked ones accept the client value
+      if (!attempt.checked?.[qid]) answers[qid] = (val ?? '').toString().slice(0, 300);
     }
   }
   const perQ: Record<string, PerQTelemetry> = {};
@@ -119,6 +120,7 @@ export async function POST(req: Request, ctx: Ctx) {
   await merge('attempts', attempt.id, {
     status: 'submitted' as const,
     answers,
+    checked: attempt.checked ?? {},
     perQ,
     events,
     wallMs,
