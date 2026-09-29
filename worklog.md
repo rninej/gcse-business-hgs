@@ -213,3 +213,23 @@ Stage Summary:
 - Bonus fixes found during E2E: hand-in counts and dashboard stats double-counted redos (now unique-student / latest-attempt based).
 - E2E artefacts: screenshots qa-lb-01…06 in download/. Test accounts (isolated under teacher E2e Check): e2e-lb@test.uk / testpass123; students ava.stone/dizzydolphin91, noah.reid/cheerfulrobin43.
 - Next-phase ideas: Monday-aligned leaderboard weeks, spaced-repetition queue, per-question drill-down charts, teacher question editing, more banks (dedicated 1.3 break-even), AI diagram generation.
+
+---
+Task ID: 10
+Agent: main (Z.ai Code)
+Task: Revert logo to the original SVG mark (user regretted the uploaded PNG logo); ensure logo never shows twice on desktop
+
+Work Log:
+- Read worklog + git history: original logo (commit 654aadb) was an SVG BrandMark — ascending bar chart in emerald tile (#0d5c46) with amber growth bar (#f0a63c) — later replaced by uploaded PNGs (logo.png / logo-icon.png).
+- Rewrote src/components/app/Brand.tsx: restored BrandMark SVG + BrandLockup (mark + "Learn Business" wordmark, "Business" in text-primary emerald to match the mark). Dropped BrandLogo/BrandLockup PNG paths.
+- AuthView.tsx: removed the duplicate `<img src="/logo.png">` (hidden lg:block) in the desktop pitch column — root cause of the logo appearing twice on desktop (header BrandLockup + pitch image). Header lockup is now the only logo.
+- Restored src/app/icon.svg (old bar-chart favicon) from git history; deleted src/app/icon.png, public/logo.png, public/logo-icon.png.
+- globals.css: removed now-unused --brand-red / --brand-navy vars (only existed for the PNG artwork).
+- Verified with agent-browser + VLM at 1280px and 390px: desktop landing = exactly 1 logo (header), no duplicate in pitch column; mobile landing = 1 logo in header + auth card above fold; desktop sidebar + mobile top bar = 1 logo each. Favicon /icon.svg 200, /logo.png 404.
+- Console check: a hydration error seen in the agent-browser buffer was isolated to the Fast Refresh transition while editing (stale HTML + new code); fresh cache-busted loads show no error dialog/badge in the Next.js dev overlay. Lint 0/0, tsc clean in src/.
+- Committed aa215ff and pushed to github.com/rninej/gcse-business-hgs.
+
+Stage Summary:
+- Logo reverted to the original coded SVG bar-chart mark everywhere (sidebar, mobile top bar, landing header, favicon); name remains "Learn Business".
+- Desktop double-logo fixed (pitch-column image removed); no PNG logo assets remain in the repo.
+- Test accounts still valid: teacher e2e-lb@test.uk/testpass123; students ava.stone/dizzydolphin91, noah.reid/cheerfulrobin43.
