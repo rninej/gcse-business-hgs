@@ -29,7 +29,7 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
     if (!session) return;
     const paths = isTeacher
       ? ['/api/teacher/overview', '/api/teacher/classes', '/api/teacher/assignments', '/api/quizzes']
-      : ['/api/student/assignments', '/api/student/overview'];
+      : ['/api/student/assignments', '/api/student/overview', '/api/student/leaderboard'];
     for (const p of paths) {
       api.get(p).catch(() => undefined);
     }
@@ -117,7 +117,7 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
       {/* Main */}
       <div className="flex-1 flex flex-col md:pl-60">
         <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-28 md:pb-10">{children}</main>
-        <footer className="mt-auto border-t bg-[var(--sidebar)]">
+        <footer className="mt-auto border-t bg-[var(--sidebar)] pb-20 md:pb-0">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>© {new Date().getFullYear()} HGSBusiness — for Edexcel GCSE (9–1) Business</span>
             <span className="flex items-center gap-1.5">

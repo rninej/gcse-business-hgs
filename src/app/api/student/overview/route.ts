@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { colCached, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
+import { streaksFrom } from '@/lib/streaks';
 import { topicTitle } from '@/lib/topics';
 import type { Attempt, Student } from '@/lib/types';
 
@@ -38,6 +39,7 @@ export async function GET() {
     .sort((x, y) => x.pct - y.pct);
 
   const points = attempts.reduce((sum, a) => sum + (a.result?.points ?? 0), 0);
+  const streak = streaksFrom(attempts.map((a) => a.result?.submittedAt ?? 0));
 
   return NextResponse.json({
     stats: {
@@ -46,6 +48,7 @@ export async function GET() {
       points,
       bestPct: pcts.length ? Math.max(...pcts) : null,
     },
+    streak,
     recent: attempts.slice(0, 8).map((a) => ({
       id: a.id,
       title: a.assignmentTitle,

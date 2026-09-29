@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { item } from '@/lib/firebase';
+import { colCached, item, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
+import { streaksFrom } from '@/lib/streaks';
 import { toClientQuestions, toReview } from '@/lib/sanitize';
 import type { Attempt } from '@/lib/types';
 
@@ -22,6 +23,10 @@ export async function GET(_req: Request, ctx: Ctx) {
       const rec = r?.perQ?.[q.id];
       return toReview(q, i + 1, rec?.given ?? '—', rec?.expected ?? '', Boolean(rec?.correct));
     });
+    // streak for the celebration banner (cheap: collection read is cached)
+    const mySubmits = values(await colCached<Attempt>('attempts'))
+      .filter((a) => a.studentId === session.uid && a.status === 'submitted' && a.result)
+      .map((a) => a.result?.submittedAt ?? 0);
     return NextResponse.json({
       status: 'submitted',
       mode: attempt.mode,
@@ -29,6 +34,7 @@ export async function GET(_req: Request, ctx: Ctx) {
       result: r,
       reviews,
       topicStats: r?.topicStats ?? [],
+      streak: streaksFrom(mySubmits).current,
     });
   }
 

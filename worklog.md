@@ -172,3 +172,22 @@ Stage Summary:
 - All 12 user requests delivered: instant loads, human-made design, per-question right/wrong with correct answer, teacher password visibility + editing, memorable word passwords, "Give your assignment a name", no start animation, new logo, always light mode, mobile+desktop question formatting, whole-app QA, mid-test resume.
 - Platform verified end-to-end on mobile + desktop with zero console errors. Lint 0/0, tsc clean in src/.
 - Next-phase ideas: streaks/leaderboard, spaced repetition, per-question analytics drill-down charts, teacher question editing after set, more banks, AI diagram generation.
+
+---
+Task ID: 10 (15-min review round)
+Agent: Z.ai Code (main)
+Task: QA pass + fix expired-timed-attempt finalization + streaks & weekly class leaderboard + styling polish
+
+Work Log:
+- QA pass (agent-browser, 1280px + 390px): teacher dashboard/results, student flow, landing — all working, zero fresh console errors. Found two real issues (below).
+- BUGFIX (data integrity): timed attempts whose clock ran out while the student was away stayed "in-progress" forever (teacher saw "1 still working" indefinitely; class stats missed the attempt). New src/lib/finalize.ts — finalizeExpired() marks stored answers deterministically, computes risk from stored telemetry, uses instant template feedback (no slow AI in read-route hot path), in-flight Set guards double sweeps. Swept in GET /api/student/assignments and GET /api/teacher/assignments/[id]/results. Verified: backdated attempt (20-min limit, 30 min old) auto-finalized on next student home load → teacher results now "1 of 3 submitted, 0 still working", class average 8.3%.
+- FEATURE (gamification): src/lib/streaks.ts — streaksFrom() computes current/best/activeDays from submitted-attempt days (streak survives until end of "yesterday" so midnight doesn't punish). New GET /api/student/leaderboard: weekly (last-7-days) points per classmate + total points + streaks, my rank; students only ever see their own class. /api/student/overview now returns streak; attempt GET (submitted) returns streak for the result screen. AppShell prefetches the leaderboard for students.
+- UI (StudentHome): streak flame chip (amber) + points chip in header; "2 active days · best streak N" under the average card; new Class leaderboard card — rank chips (gold/silver/bronze), initials avatars, flame count for 2+ day streaks, relative points bars, "You" row highlighted (pinned below top-5 if outside it), weekly-reset footer note, friendly empty state for solo students.
+- UI (ResultScreen): streak badge in the headline card + "Do a quiz tomorrow to keep your streak alive" nudge; Next steps card gains a "Practice these topics" CTA button.
+- FIX: fixed bottom nav covered the footer on mobile (measured 60px overlap at full scroll) — footer now pb-20 md:pb-0, content clears the nav by 20px.
+- Verified end-to-end: auto-finalization (student + teacher views), leaderboard rows (Ben 20pts #1 of 3, Amelia/Priya 0pts), streak chip appears at 2+ days (backdated one submission to yesterday → "2-day streak" chip on home + result screen), no mobile overflow, VLM reviews: student home 9/10 ("premium EdTech product"), mobile leaderboard readable with no visual bugs. Lint 0/0, tsc clean, zero console errors.
+
+Stage Summary:
+- Platform now: 15 quizzes / 245 questions; per-question feedback; server-side resume; expired timed attempts auto-finalize; streaks; weekly class leaderboard; teacher credential management; memorable passwords; anti-cheat; analytics; light-only human-made design; instant loads (server + client caching).
+- Unresolved/risks: streak day boundary is UTC (fine for UK); leaderboard "week" is a rolling 7 days rather than Monday-reset (footer copy says "resets each week" — acceptable approximation, could switch to ISO week later); finalize uses template feedback only (AI feedback reserved for live submits).
+- Next-phase ideas: spaced-repetition practice queue, teacher question editing after set, per-question drill-down charts in results, more banks (dedicated 1.3 break-even), AI diagram generation, Monday-aligned leaderboard weeks.

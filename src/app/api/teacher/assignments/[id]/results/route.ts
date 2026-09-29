@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { col, colCached, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
+import { finalizeExpired } from '@/lib/finalize';
 import { topicTitle } from '@/lib/topics';
 import type {
   Attempt,
@@ -24,7 +25,10 @@ export async function GET(_req: Request, ctx: Ctx) {
   }
 
   const allStudents = values(await colCached<Student>('students')).filter((s) => s.classId === a.classId);
-  const allAttempts = values(await colCached<Attempt>('attempts')).filter((x) => x.assignmentId === id);
+  // finalize timed attempts whose clock ran out (students who never reopened)
+  const allAttempts = await finalizeExpired(
+    values(await colCached<Attempt>('attempts')).filter((x) => x.assignmentId === id)
+  );
   const byStudent = new Map(allAttempts.map((x) => [x.studentId, x]));
 
   const rows: TeacherStudentResult[] = allStudents

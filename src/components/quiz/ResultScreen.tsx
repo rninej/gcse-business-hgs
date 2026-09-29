@@ -14,6 +14,7 @@ import {
   BookOpenText,
   MessageSquareHeart,
   RotateCw,
+  Flame,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,7 @@ interface ResultData {
   result: AttemptResult;
   reviews: QReview[];
   topicStats: TopicStat[];
+  streak: number;
 }
 
 export function ResultScreen({ attemptId }: { attemptId: string }) {
@@ -81,6 +83,7 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
   const weak = [...topicRows].sort((a, b) => a.pct - b.pct).slice(0, 2).filter((t) => t.pct < 70);
   const timeMin = r.timeTakenSec ? Math.floor(r.timeTakenSec / 60) : 0;
   const timeSec = r.timeTakenSec % 60;
+  const streak = data.streak ?? 0;
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -114,7 +117,15 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
               <Badge variant="secondary" className="gap-1.5">
                 <Target className="h-3.5 w-3.5" /> {correctCount}/{data.reviews.length} correct
               </Badge>
+              {streak >= 2 ? (
+                <Badge className="bg-[var(--warn)]/15 text-[var(--warn)] border border-[var(--warn)]/30 gap-1.5">
+                  <Flame className="h-3.5 w-3.5" /> {streak}-day streak
+                </Badge>
+              ) : null}
             </div>
+            {streak >= 2 ? (
+              <p className="text-xs text-muted-foreground mt-2">Do a quiz tomorrow to keep your streak alive.</p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -134,9 +145,9 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
           <BarList items={topicRows} emptyText="No topic data." />
         </div>
         {weak.length > 0 ? (
-          <div className="rounded-xl border bg-[var(--accent)]/25 p-5">
+          <div className="rounded-xl border bg-[var(--accent)]/25 p-5 flex flex-col">
             <h3 className="font-semibold mb-2 text-sm">Next steps</h3>
-            <ul className="text-sm space-y-2 list-disc pl-5">
+            <ul className="text-sm space-y-2 list-disc pl-5 mb-4">
               {weak.map((w) => (
                 <li key={w.label}>
                   Revisit <span className="font-medium">{w.label}</span> — then retry a practice quiz on it.
@@ -144,6 +155,9 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
               ))}
               <li>Read the explanations below carefully; they are written to stick.</li>
             </ul>
+            <Button size="sm" variant="outline" className="self-start mt-auto" onClick={() => go({ name: 's-practice' })}>
+              <RotateCw className="h-3.5 w-3.5" /> Practice these topics
+            </Button>
           </div>
         ) : (
           <div className="rounded-xl border bg-[var(--success)]/10 p-5">

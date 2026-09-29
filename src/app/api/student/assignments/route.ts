@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { colCached, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
+import { finalizeExpired } from '@/lib/finalize';
 import type { Attempt, Assignment, Student } from '@/lib/types';
 
 export async function GET() {
@@ -14,7 +15,11 @@ export async function GET() {
   const assignments = values(await colCached<Assignment>('assignments'))
     .filter((a) => a.classId === me.classId)
     .sort((a, b) => (a.dueAt ?? Infinity) - (b.dueAt ?? Infinity));
-  const attempts = values(await colCached<Attempt>('attempts')).filter((a) => a.studentId === session.uid);
+  let attempts = values(await colCached<Attempt>('attempts')).filter((a) => a.studentId === session.uid);
+
+  // finalize timed attempts whose clock ran out while the student was away,
+  // so expired quizzes don't sit "in progress" forever
+  attempts = await finalizeExpired(attempts);
   const byAssignment = new Map(attempts.map((a) => [a.assignmentId, a]));
 
   const rows = assignments.map((a) => {
