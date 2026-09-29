@@ -14,10 +14,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Learn Business — GCSE Business made simple",
+  title: "gcsebusiness — self-marking homework & revision",
   description:
     "Quizzes, homework and instant marking for Edexcel GCSE (9-1) Business. Built for teachers and students.",
-  keywords: ["GCSE Business", "Edexcel", "Learn Business", "quizzes", "homework", "revision"],
+  keywords: ["GCSE Business", "Edexcel", "gcsebusiness", "quizzes", "homework", "revision"],
 };
 
 export const viewport: Viewport = {

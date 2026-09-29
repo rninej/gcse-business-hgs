@@ -233,3 +233,27 @@ Stage Summary:
 - Logo reverted to the original coded SVG bar-chart mark everywhere (sidebar, mobile top bar, landing header, favicon); name remains "Learn Business".
 - Desktop double-logo fixed (pitch-column image removed); no PNG logo assets remain in the repo.
 - Test accounts still valid: teacher e2e-lb@test.uk/testpass123; students ava.stone/dizzydolphin91, noah.reid/cheerfulrobin43.
+
+---
+Task ID: 11
+Agent: main (Z.ai Code)
+Task: Deployment env vars guidance; fast Set-assignment; rename to gcsebusiness; remove AI attribution; toast duration; password visibility + sharing exports; AI API status check
+
+Work Log:
+- ENV: audited all process.env usage (SESSION_SECRET, FIREBASE_DB_URL, GEMINI_API_KEY/MODELS, GROQ_API_KEY/MODELS). Prisma installed but unused (Firebase RTDB is the datastore) — DATABASE_URL not needed. Rewrote .env.example with Vercel/Netlify notes incl. the critical "reuse the same SESSION_SECRET" warning (it encrypts teacher-visible student passwords via AES-GCM).
+- AI STATUS (tested live): Gemini key → gemini-3.8-flash HTTP 400 "User location is not supported" (sandbox region), gemini-flash-latest HTTP 429 quota, 2.5/2.0-flash 404 retired; Groq key → 403 Forbidden on both models (dead/revoked); z.ai → works (306ms) but authenticates via sandbox-internal /etc/.z-ai-config so it CANNOT work on Vercel/Netlify. App handles all this via the chain → human-written bank fallback.
+- PERF (Set assignment): root cause — POST /api/teacher/assignments re-ran generateQuestions + verifyNumeric (2 extra AI round-trips) even though the teacher had already reviewed a preview. Fix: NewAssignment now sends previewQuestions with the POST; route validates them server-side (new validatePreview) and uses them directly. Measured: set-assignment 1496ms (was 20–60s+).
+- RENAME: sed Learn Business→gcsebusiness across src/ + README (42 hits); Brand.tsx wordmark now "gcse|business" two-tone; layout title "gcsebusiness — self-marking homework & revision"; footers, bank file headers, generatedBy labels updated.
+- ATTRIBUTION: toast now "N questions — ready for CLASS"; generatedBy labels neutral (Quiz bank · title / AI generated / Written by you); verified zero "z.ai" text anywhere in DOM.
+- TOASTS: TOAST_REMOVE_DELAY 1000000ms (~16.7 min!) → 2500ms. Verified auto-dismiss.
+- PASSWORDS: found 7 students in DB with pwEnc=MISSING (created before reversible storage; incl. user's own class 111bus). Fixes: (a) password cell shows "Set & show" button for legacy rows → PATCH regenerate → password appears; (b) new "Logins" dialog with bulk "Generate now" for all missing; (c) E2E verified: cleared ava.stone pwEnc in DB, Set & show → happysquirrel26 shown + student login works with it; bulk generate → eagercod44/eagertiger86.
+- SHARING (new src/lib/credentialsheet.ts): dependency-free hand-rolled PDF builder (A4, Helvetica/Courier table, multi-page, correct xref — validated with qpdf + pdftotext) + CSV with proper quoting + plain-text builder. Logins dialog offers: CSV table download, PDF download, Copy all, Print (clean popup sheet → also Save as PDF), Email (mailto). New-logins sheet after bulk-add also got CSV/PDF/Copy downloads.
+- BUG FIX (bonus, root-caused): hydration mismatch on every load — zustand v5's server snapshot is frozen at store creation, so SSR always rendered AuthView for logged-in users (verified: SSR HTML contained "Sign in as teacher" with a teacher cookie). HomeApp rewritten: SSR derives from initialSession prop; client adopts session into the store once BEFORE the first selector read (no effect, lint-clean). Verified: SSR now emits the dashboard for logged-in cookies; 0 console errors on fresh loads in both states; login/logout flows clean. Faster first paint for logged-in users as a side effect.
+- E2E (agent-browser, 1280px + 390px): teacher login → class → Logins dialog (banner, table, 5 share buttons) → CSV download (file correct) → PDF download (qpdf-valid, passwords present) → bulk generate → Set & show per-row → New task → AI mode → topic 1.1 → generate (18.8s preview, AI-bound) → Set assignment 1.5s → results page "AI generated", no z.ai → student login with regenerated password → mobile dialog no horizontal overflow (scrollW=clientW=390) → VLM checks on landing (mobile auth card top, 1 logo) and dialog. Lint 0/0, tsc clean.
+- Committed and pushed to github.com/rninej/gcse-business-hgs.
+
+Stage Summary:
+- All 8 requested items done + hydration root-cause fix.
+- Deployment env vars (Vercel/Netlify): FIREBASE_DB_URL + SESSION_SECRET required (reuse hgs-b3ss-… to keep passwords decryptable); GEMINI_API_KEY/GROQ_API_KEY optional (chain falls back to bank); z.ai not portable (skipped automatically).
+- AI status: Gemini ⚠️ (location/quota issues from this sandbox; may work from Vercel's US regions), Groq ❌ 403 (get a new key at console.groq.com/keys), z.ai ✅ sandbox-only.
+- Test accounts: teacher e2e-lb@test.uk/testpass123; students ava.stone/eagercod44, noah.reid/eagertiger86.

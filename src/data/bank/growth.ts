@@ -1,5 +1,5 @@
-// Learn Business question bank — Business Growth (Topic 2.1)
-// Author: Learn Business content team. All real-world figures are verifiable.
+// gcsebusiness question bank — Business Growth (Topic 2.1)
+// Author: gcsebusiness content team. All real-world figures are verifiable.
 
 import type { QuizDef } from '@/lib/bank';
 

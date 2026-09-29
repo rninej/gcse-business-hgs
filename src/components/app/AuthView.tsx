@@ -98,7 +98,7 @@ export function AuthView() {
 
       <footer className="mt-auto border-t bg-background">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 text-xs text-muted-foreground flex flex-wrap justify-between gap-2">
-          <span>© {new Date().getFullYear()} Learn Business</span>
+          <span>© {new Date().getFullYear()} gcsebusiness</span>
           <span>Students: your teacher creates your account and hands out your login.</span>
         </div>
       </footer>

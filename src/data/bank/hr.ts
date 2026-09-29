@@ -1,5 +1,5 @@
-// Learn Business question bank — Making Human Resource Decisions (Topic 2.5)
-// Author: Learn Business content team. Diagram questions reference the Fernfield Foods org chart.
+// gcsebusiness question bank — Making Human Resource Decisions (Topic 2.5)
+// Author: gcsebusiness content team. Diagram questions reference the Fernfield Foods org chart.
 
 import type { QuizDef } from '@/lib/bank';
 

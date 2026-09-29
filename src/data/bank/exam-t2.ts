@@ -1,5 +1,5 @@
-// Learn Business question bank — Theme 2 Exam Practice (Topics 2.1–2.5)
-// Author: Learn Business content team. Real takeover facts are verifiable;
+// gcsebusiness question bank — Theme 2 Exam Practice (Topics 2.1–2.5)
+// Author: gcsebusiness content team. Real takeover facts are verifiable;
 // Dough House figures match the project parameter sheet (price £2.50,
 // variable cost £1.00, fixed costs £4,500/month, output 4,200 loaves).
 

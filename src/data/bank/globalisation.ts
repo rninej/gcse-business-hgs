@@ -1,5 +1,5 @@
-// Learn Business question bank — Globalisation, Ethics & the Environment (Topic 2.1)
-// Author: Learn Business content team. All real-world claims are verifiable.
+// gcsebusiness question bank — Globalisation, Ethics & the Environment (Topic 2.1)
+// Author: gcsebusiness content team. All real-world claims are verifiable.
 
 import type { QuizDef } from '@/lib/bank';
 

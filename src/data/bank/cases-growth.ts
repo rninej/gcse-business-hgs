@@ -1,5 +1,5 @@
-// Learn Business question bank — Growth Case Studies (Topic 2.1)
-// Author: Learn Business content team. Real cases: Purplebricks/Strike,
+// gcsebusiness question bank — Growth Case Studies (Topic 2.1)
+// Author: gcsebusiness content team. Real cases: Purplebricks/Strike,
 // Biscuiteers, Primark & ABF — all figures verifiable. The Old Mill Bakery
 // is fictional with clean, internally consistent numbers.
 

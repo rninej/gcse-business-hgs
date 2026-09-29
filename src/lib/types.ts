@@ -1,4 +1,4 @@
-// Learn Business — shared domain types
+// gcsebusiness — shared domain types
 // Single source of truth used by the question bank, API routes and UI.
 
 export type Role = 'teacher' | 'student';

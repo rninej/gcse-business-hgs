@@ -1,4 +1,4 @@
-# Learn Business
+# gcsebusiness
 
 **GCSE Business, made simple** — an [Educake](https://www.educake.co.uk)-style homework and quiz platform built for **Edexcel GCSE (9–1) Business (spec 1BS0)**.
 
@@ -26,8 +26,8 @@ Teachers set quizzes in under a minute. Students get instant, accurate marking, 
 15 quizzes · 245 questions · 286 marks · every topic 1.1–2.5 covered, in the style of a GCSE examiner:
 - Real, verifiable UK business cases (Purplebricks/Strike, Sainsbury's/Argos, Morrisons/McColl's, Kraft/Cadbury, ABF/Primark, Innocent, Ryanair, ASOS, Deliveroo…)
 - Fictional small firms with clean, internally consistent numbers for calculations
-- Hand-drawn SVG diagrams (break-even, product life cycle, cash flow, org charts, average cost curves)
-- Case-study photography throughout
+- Hand-coded SVG diagrams throughout (break-even, share price, cash flow, org charts, market share, average cost curves)
+- Shareable class logins — CSV, PDF, copy, print and email sheets from the class page
 
 ### The AI chain
 Question generation and student feedback run through a fallback chain: **Gemini → Groq → z.ai → the human-written bank**. Numeric questions are double-checked: an independent AI pass re-derives the arithmetic, then a deterministic guard requires the explanation's working to reach the claimed answer. If every provider fails, quizzes are served from the curated bank — students never see an error.
@@ -39,11 +39,11 @@ Question generation and student feedback run through a fallback chain: **Gemini 
 | Layer | Choice |
 |---|---|
 | Framework | Next.js 16 (App Router), TypeScript, single-page app on `/` |
-| UI | Tailwind CSS 4, shadcn/ui (New York), dark mode, mobile bottom-nav |
+| UI | Tailwind CSS 4, shadcn/ui (New York), light-mode only, mobile bottom-nav |
 | Data | Firebase Realtime Database (europe-west1) via REST |
 | Auth | HMAC-signed httpOnly cookies, scrypt password hashing |
 | Marking | Deterministic, server-side only — answers never reach the browser before submission |
-| AI | Gemini → Groq → z-ai-web-dev-sdk (server-side only) |
+| AI | Gemini → Groq → z-ai-web-dev-sdk (server-side only); human-written bank as final fallback |
 
 ## Getting started
 

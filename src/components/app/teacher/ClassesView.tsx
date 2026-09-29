@@ -12,6 +12,10 @@ import {
   KeyRound,
   Pencil,
   RefreshCw,
+  FileDown,
+  FileText,
+  Mail,
+  Wand2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +54,14 @@ import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { PageHeader, ThemedSkeleton, ErrorNote, EmptyState } from '@/components/shared';
+import {
+  buildLoginsCsv,
+  buildLoginsPdf,
+  buildLoginsText,
+  downloadFile,
+  slugFilename,
+  type LoginRow,
+} from '@/lib/credentialsheet';
 
 interface ClassRow { id: string; name: string; createdAt: number; studentCount: number }
 interface StudentRow { id: string; username: string; displayName: string; password: string | null; createdAt: number }
@@ -189,6 +201,10 @@ function ClassDetail({ classId }: { classId: string }) {
   const [adding, setAdding] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
 
+  // class logins sheet (share/export all credentials)
+  const [loginsOpen, setLoginsOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+
   // edit dialog state
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<StudentRow | null>(null);
@@ -290,6 +306,92 @@ function ClassDetail({ classId }: { classId: string }) {
     }
   }
 
+  /** Legacy accounts (created before reversible storage) have no viewable
+   *  password — one click sets a fresh memorable one so it can be shown. */
+  async function setAndShow(sid: string, name: string) {
+    try {
+      const res = await api.patch<{ ok: true; password: string }>(
+        `/api/teacher/classes/${classId}/students/${sid}`,
+        { regenerate: true }
+      );
+      toast({ title: `New password for ${name.split(' ')[0]}`, description: res.password });
+      load();
+    } catch (e) {
+      toast({ title: 'Could not set password', description: (e as Error).message, variant: 'destructive' });
+    }
+  }
+
+  /** Set fresh passwords for every account whose password can't be shown */
+  async function generateMissing() {
+    if (!students) return;
+    const missing = students.filter((s) => !s.password);
+    if (missing.length === 0) return;
+    setBulkBusy(true);
+    try {
+      let last: string | null = null;
+      for (const s of missing) {
+        const res = await api.patch<{ ok: true; password: string }>(
+          `/api/teacher/classes/${classId}/students/${s.id}`,
+          { regenerate: true }
+        );
+        last = res.password;
+      }
+      toast({
+        title: `${missing.length} new password${missing.length === 1 ? '' : 's'} generated`,
+        description: `Each student gets a fresh memorable login${last ? ` (e.g. ${last})` : ''}. Download or copy them below.`,
+      });
+      load();
+    } catch (e) {
+      toast({ title: 'Could not generate passwords', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  function printLogins() {
+    if (!students || !cls) return;
+    const w = window.open('', '_blank', 'width=820,height=640');
+    if (!w) {
+      toast({ title: 'Pop-up blocked', description: 'Allow pop-ups to print the login sheet.' });
+      return;
+    }
+    const rows = students
+      .map(
+        (s) => `<tr><td>${escapeHtml(s.displayName)}</td><td class="mono">${escapeHtml(s.username)}</td><td class="mono">${s.password ? escapeHtml(s.password) : '— set a new password —'}</td></tr>`
+      )
+      .join('');
+    w.document.write(`<!doctype html><html><head><title>${escapeHtml(cls!.name)} — class logins</title>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; padding: 40px; color: #1a1a1a; }
+  h1 { font-size: 20px; margin: 0 0 2px; }
+  p.sub { color: #666; font-size: 12px; margin: 0 0 18px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid #ddd; font-size: 13px; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #555; border-bottom: 1.5px solid #999; }
+  .mono { font-family: 'Courier New', monospace; }
+  footer { margin-top: 20px; color: #888; font-size: 11px; }
+  @media print { body { padding: 0; } }
+</style></head><body>
+<h1>Class logins — ${escapeHtml(cls!.name)}</h1>
+<p class="sub">${students.length} students · gcsebusiness · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+<table><thead><tr><th>Student</th><th>Username</th><th>Password</th></tr></thead><tbody>${rows}</tbody></table>
+<footer>Passwords stay visible (and changeable) in the class list on gcsebusiness.</footer>
+<script>window.onload = function () { window.print(); }</script>
+</body></html>`);
+    w.document.close();
+  }
+
+  function emailLogins() {
+    if (!students || !cls) return;
+    const text = buildLoginsText(cls.name, students);
+    const subject = `${cls!.name} — student logins (gcsebusiness)`;
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+  }
+
+  function escapeHtml(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   async function deleteClass() {
     try {
       await api.del(`/api/teacher/classes/${classId}`);
@@ -327,6 +429,87 @@ function ClassDetail({ classId }: { classId: string }) {
             <Button variant="ghost" onClick={() => go({ name: 't-classes' })}>
               <ArrowLeft className="h-4 w-4" /> Classes
             </Button>
+            <Dialog open={loginsOpen} onOpenChange={setLoginsOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <KeyRound className="h-4 w-4" /> Logins
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Class logins — {cls.name}</DialogTitle>
+                  <DialogDescription>
+                    Every username and password in {cls.name}. Download the table, copy it, or print it for the class.
+                  </DialogDescription>
+                </DialogHeader>
+
+                {students.some((s) => !s.password) ? (
+                  <div className="rounded-lg border border-[var(--warn)]/50 bg-[var(--warn)]/10 p-3 flex flex-wrap items-center justify-between gap-3">
+                    <div className="text-sm">
+                      <span className="font-medium">{students.filter((s) => !s.password).length} logins need a new password.</span>
+                      <span className="block text-xs text-muted-foreground">
+                        These accounts were made before passwords were stored viewably — generate fresh ones to hand out.
+                      </span>
+                    </div>
+                    <Button size="sm" onClick={() => void generateMissing()} disabled={bulkBusy}>
+                      <Wand2 className="h-3.5 w-3.5" /> {bulkBusy ? 'Generating…' : 'Generate now'}
+                    </Button>
+                  </div>
+                ) : null}
+
+                <div className="max-h-72 overflow-y-auto scroll-slim rounded-md border">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-card">
+                      <TableRow>
+                        <TableHead>Student</TableHead>
+                        <TableHead>Username</TableHead>
+                        <TableHead className="font-mono">Password</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {students.map((s) => (
+                        <TableRow key={s.id}>
+                          <TableCell className="font-medium">{s.displayName}</TableCell>
+                          <TableCell className="font-mono text-sm">{s.username}</TableCell>
+                          <TableCell className="font-mono text-sm font-semibold">
+                            {s.password ?? <span className="text-xs font-normal text-muted-foreground">— generate above —</span>}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => downloadFile(`${slugFilename(cls.name)}-logins.csv`, 'text/csv;charset=utf-8', buildLoginsCsv(cls.name, students as LoginRow[]))}>
+                    <FileDown className="h-3.5 w-3.5" /> CSV table
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => downloadFile(`${slugFilename(cls.name)}-logins.pdf`, 'application/pdf', buildLoginsPdf(cls.name, students as LoginRow[]))}>
+                    <FileText className="h-3.5 w-3.5" /> PDF
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      navigator.clipboard.writeText(buildLoginsText(cls.name, students as LoginRow[])).then(() =>
+                        toast({ title: 'Copied to clipboard' })
+                      );
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" /> Copy all
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={printLogins}>
+                    <Printer className="h-3.5 w-3.5" /> Print
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={emailLogins}>
+                    <Mail className="h-3.5 w-3.5" /> Email
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Tip: “Print” opens a clean sheet — choose “Save as PDF” there for a second PDF route.
+                </p>
+              </DialogContent>
+            </Dialog>
             <Dialog open={addOpen} onOpenChange={setAddOpen}>
               <DialogTrigger asChild>
                 <Button><UserPlus className="h-4 w-4" /> Add students</Button>
@@ -399,7 +582,33 @@ function ClassDetail({ classId }: { classId: string }) {
             <div className="flex items-center gap-2 font-semibold text-sm">
               <KeyRound className="h-4 w-4 text-primary" /> New logins — copy or print now
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  downloadFile(
+                    `${slugFilename(cls.name)}-new-logins.csv`,
+                    'text/csv;charset=utf-8',
+                    buildLoginsCsv(cls.name, creds as LoginRow[])
+                  )
+                }
+              >
+                <FileDown className="h-3.5 w-3.5" /> CSV
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  downloadFile(
+                    `${slugFilename(cls.name)}-new-logins.pdf`,
+                    'application/pdf',
+                    buildLoginsPdf(cls.name, creds as LoginRow[])
+                  )
+                }
+              >
+                <FileText className="h-3.5 w-3.5" /> PDF
+              </Button>
               <Button
                 size="sm"
                 variant="outline"
@@ -407,10 +616,7 @@ function ClassDetail({ classId }: { classId: string }) {
                   navigator.clipboard.writeText(credsCsv).then(() => toast({ title: 'Copied to clipboard' }));
                 }}
               >
-                <Copy className="h-3.5 w-3.5" /> Copy CSV
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => window.print()}>
-                <Printer className="h-3.5 w-3.5" /> Print
+                <Copy className="h-3.5 w-3.5" /> Copy
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setCreds(null)}>
                 Done
@@ -492,7 +698,13 @@ function ClassDetail({ classId }: { classId: string }) {
                           {s.password}
                         </button>
                       ) : (
-                        <span className="text-xs text-muted-foreground">— set in “Edit” —</span>
+                        <button
+                          className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10"
+                          onClick={() => void setAndShow(s.id, s.displayName)}
+                          title="This account predates viewable passwords — set a new memorable one"
+                        >
+                          <KeyRound className="h-3 w-3" /> Set &amp; show
+                        </button>
                       )}
                     </TableCell>
                     <TableCell className="text-right">

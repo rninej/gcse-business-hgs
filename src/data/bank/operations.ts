@@ -1,5 +1,5 @@
-// Learn Business question bank — Making Operational Decisions (Topic 2.3)
-// Author: Learn Business content team. Fictional firm figures are internally consistent.
+// gcsebusiness question bank — Making Operational Decisions (Topic 2.3)
+// Author: gcsebusiness content team. Fictional firm figures are internally consistent.
 
 import type { QuizDef } from '@/lib/bank';
 

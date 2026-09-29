@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import { useApp } from '@/lib/store';
 import type { SessionInfo } from '@/lib/types';
+import type { View } from '@/lib/store';
 import { AppShell } from '@/components/app/AppShell';
 import { AuthView } from '@/components/app/AuthView';
 
@@ -18,21 +18,34 @@ import { StudentHistory } from '@/components/app/student/StudentHistory';
 import { QuizRunner } from '@/components/quiz/QuizRunner';
 import { ResultScreen } from '@/components/quiz/ResultScreen';
 
-export function HomeApp({ initialSession }: { initialSession: SessionInfo | null }) {
-  const session = useApp((s) => s.session);
-  const view = useApp((s) => s.view);
+function homeView(s: SessionInfo): View {
+  return s.role === 'teacher' ? { name: 't-home' } : { name: 's-home' };
+}
 
-  // adopt the server-known session synchronously on the very first render so
-  // the correct screen paints immediately — no splash, no flash
-  useState(() => {
+// The zustand store's server snapshot is frozen at store creation, so SSR must
+// render from the server-passed session prop. On the client we adopt the
+// session into the store ONCE, before the first selector read — the same
+// render then paints the same tree the server sent, so hydration matches and
+// logged-in users get their dashboard in the very first paint.
+let clientBootstrapped = false;
+
+export function HomeApp({ initialSession }: { initialSession: SessionInfo | null }) {
+  if (typeof window !== 'undefined' && !clientBootstrapped) {
+    clientBootstrapped = true;
     if (initialSession) {
-      useApp.setState({
-        session: initialSession,
-        view: initialSession.role === 'teacher' ? { name: 't-home' } : { name: 's-home' },
-      });
+      useApp.setState({ session: initialSession, view: homeView(initialSession) });
     }
-    return true;
-  });
+  }
+
+  const storeSession = useApp((s) => s.session);
+  const storeView = useApp((s) => s.view);
+  const onServer = typeof window === 'undefined';
+  const session = onServer ? initialSession : storeSession;
+  const view: View = onServer
+    ? initialSession
+      ? homeView(initialSession)
+      : { name: 'auth' }
+    : storeView;
 
   if (!session) return <AuthView />;
 

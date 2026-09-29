@@ -1,5 +1,5 @@
-// Learn Business question bank — Business Calculations & Break-even (Topic 2.4)
-// Author: Learn Business content team. Dough House figures are internally consistent.
+// gcsebusiness question bank — Business Calculations & Break-even (Topic 2.4)
+// Author: gcsebusiness content team. Dough House figures are internally consistent.
 
 import type { QuizDef } from '@/lib/bank';
 

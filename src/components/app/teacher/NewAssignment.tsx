@@ -166,13 +166,16 @@ export function NewAssignment({ presetQuizId }: { presetQuizId?: string }) {
           mode === 'ai'
             ? { topics: aiTopics, count: aiQuestions?.length ?? aiCount, types: aiTypes, difficulty: aiDifficulty === 'mixed' ? 'mixed' : Number(aiDifficulty), caseStudies: aiCases }
             : undefined,
+        // the reviewed preview goes with the request — the server uses it
+        // directly instead of generating a second set (that was the slow part)
+        previewQuestions: mode === 'ai' && aiQuestions ? aiQuestions : undefined,
         customQuestions: mode === 'custom' ? custom : undefined,
       };
-      const res = await api.post<{ assignmentId: string; questionCount: number; generatedBy: string }>(
+      const res = await api.post<{ assignmentId: string; questionCount: number }>(
         '/api/teacher/assignments',
         body
       );
-      toast({ title: 'Assignment set', description: `${res.questionCount} questions · ${res.generatedBy}` });
+      toast({ title: 'Assignment set', description: `${res.questionCount} questions — ready for ${selClass?.name ?? 'your class'}.` });
       go({ name: 't-results', assignmentId: res.assignmentId });
     } catch (e) {
       setError((e as Error).message);

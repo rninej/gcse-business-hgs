@@ -9,6 +9,53 @@ import type { Attempt, Assignment, Question, QuestionType, Student, StudentClass
 
 type CustomInput = Partial<Question> & { type: QuestionType };
 
+/** Validate a question that comes from the teacher-reviewed AI preview.
+ *  These were already validated once by /api/teacher/generate — this is a
+ *  defensive re-check so a tampered client can't smuggle malformed data in. */
+function validatePreview(raw: CustomInput): Question | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const topic = typeof raw.topic === 'string' && TOPICS.some((t) => t.id === raw.topic) ? raw.topic : null;
+  const stem = (raw.stem ?? '').toString().trim();
+  const explain = (raw.explain ?? '').toString().trim();
+  const marks = Math.min(3, Math.max(1, Number(raw.marks) || 1));
+  const difficulty = raw.difficulty === 1 || raw.difficulty === 2 || raw.difficulty === 3 ? raw.difficulty : 2;
+  if (!topic || stem.length < 12 || explain.length < 10) return null;
+
+  const extract =
+    raw.extract && typeof raw.extract === 'object'
+      ? { title: (raw.extract.title ?? 'Case study').toString().slice(0, 80), text: (raw.extract.text ?? '').toString().trim().slice(0, 900) }
+      : undefined;
+  if (extract && extract.text.length < 20) return null;
+
+  if (raw.type === 'mcq') {
+    const options = (raw.options ?? []).map((o) => String(o ?? '').trim()).slice(0, 4);
+    const correct = Number(raw.correct);
+    if (options.length !== 4 || options.some((o) => !o)) return null;
+    if (!Number.isInteger(correct) || correct < 0 || correct > 3) return null;
+    return { id: '', type: 'mcq', topic, difficulty, marks, stem, extract, explain, options, correct };
+  }
+  if (raw.type === 'term' || raw.type === 'fib') {
+    const accept = (raw.accept ?? []).map((a) => String(a ?? '').trim()).filter(Boolean).slice(0, 6);
+    if (accept.length < 1) return null;
+    return { id: '', type: raw.type, topic, difficulty, marks, stem, extract, explain, accept };
+  }
+  if (raw.type === 'truefalse') {
+    if (typeof raw.answer !== 'boolean') return null;
+    return { id: '', type: 'truefalse', topic, difficulty, marks, stem, extract, explain, answer: raw.answer };
+  }
+  if (raw.type === 'numeric') {
+    const value = Number(raw.value);
+    const tol = Number(raw.tol);
+    if (!Number.isFinite(value) || !Number.isFinite(tol) || tol < 0 || tol > 2) return null;
+    return {
+      id: '', type: 'numeric', topic, difficulty, marks, stem, extract, explain, value, tol,
+      unit: typeof raw.unit === 'string' ? raw.unit : undefined,
+      dp: Number.isInteger(raw.dp) ? (raw.dp as number) : undefined,
+    };
+  }
+  return null;
+}
+
 function validateCustom(raw: CustomInput): Question | null {
   const topic = typeof raw.topic === 'string' && TOPICS.some((t) => t.id === raw.topic) ? raw.topic : null;
   const stem = (raw.stem ?? '').toString().trim();
@@ -108,6 +155,9 @@ interface CreateBody {
   quizId?: string;
   aiParams?: { topics: string[]; count: number; types: QuestionType[]; difficulty: number | 'mixed'; caseStudies: boolean };
   customQuestions?: CustomInput[];
+  /** Questions the teacher already reviewed in the AI preview — skips a second,
+   *  slow generation round-trip on the server. Validated below all the same. */
+  previewQuestions?: (Partial<Question> & { type: QuestionType })[];
 }
 
 export async function POST(req: Request) {
@@ -142,22 +192,31 @@ export async function POST(req: Request) {
     const quiz = body.quizId ? QUIZ_MAP[body.quizId] : undefined;
     if (!quiz) return NextResponse.json({ error: 'Choose a quiz from the library.' }, { status: 400 });
     questions = quiz.questions.map((q) => ({ ...q }));
-    generatedBy = `Learn Business bank · ${quiz.title}`;
+    generatedBy = `Quiz bank · ${quiz.title}`;
   } else if (mode === 'ai') {
-    const p = body.aiParams;
-    if (!p || !Array.isArray(p.topics) || p.topics.length === 0) {
-      return NextResponse.json({ error: 'Select at least one topic.' }, { status: 400 });
+    // Fast path: the teacher already reviewed these questions in the preview —
+    // accept them as-is instead of generating a fresh set server-side.
+    const preview = Array.isArray(body.previewQuestions) ? body.previewQuestions : [];
+    const parsedPreview = preview.map(validatePreview).filter((q): q is Question => q !== null);
+    if (parsedPreview.length >= 4) {
+      questions = parsedPreview as Question[];
+      generatedBy = 'AI generated';
+    } else {
+      const p = body.aiParams;
+      if (!p || !Array.isArray(p.topics) || p.topics.length === 0) {
+        return NextResponse.json({ error: 'Select at least one topic.' }, { status: 400 });
+      }
+      const gen = await generateQuestions({
+        topics: p.topics,
+        count: Math.max(5, Math.min(30, Number(p.count) || 10)),
+        types: Array.isArray(p.types) ? p.types : [],
+        difficulty: (p.difficulty === 1 || p.difficulty === 2 || p.difficulty === 3 ? p.difficulty : 'mixed'),
+        caseStudies: Boolean(p.caseStudies),
+      });
+      questions = gen.questions;
+      generatedBy = gen.provider === 'bank' ? 'Human-written quiz bank' : 'AI generated';
+      if (gen.provider === 'bank') source = 'library';
     }
-    const gen = await generateQuestions({
-      topics: p.topics,
-      count: Math.max(5, Math.min(30, Number(p.count) || 10)),
-      types: Array.isArray(p.types) ? p.types : [],
-      difficulty: (p.difficulty === 1 || p.difficulty === 2 || p.difficulty === 3 ? p.difficulty : 'mixed'),
-      caseStudies: Boolean(p.caseStudies),
-    });
-    questions = gen.questions;
-    generatedBy = gen.provider === 'bank' ? 'Learn Business bank (AI unavailable)' : `AI · ${gen.provider}`;
-    if (gen.provider === 'bank') source = 'library';
   } else {
     const custom = Array.isArray(body.customQuestions) ? body.customQuestions : [];
     if (custom.length < 1) return NextResponse.json({ error: 'Add at least one question.' }, { status: 400 });
@@ -167,7 +226,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Some questions were incomplete. Check each one has a stem, answer and explanation.' }, { status: 400 });
     }
     questions = parsed;
-    generatedBy = 'Written by teacher';
+    generatedBy = 'Written by you';
   }
 
   if (questions.length === 0) {

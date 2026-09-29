@@ -192,7 +192,7 @@ ${SCHEMA_HINT}`;
     return {
       questions: bankFallback({ ...params, count }),
       provider: 'bank',
-      note: 'All AI providers were unreachable — questions were drawn from the human-authored Learn Business bank instead.',
+      note: 'All AI providers were unreachable — questions were drawn from the human-authored gcsebusiness bank instead.',
     };
   }
 
