@@ -34,6 +34,13 @@ import { topicTitle, TOPICS } from '@/lib/topics';
 import type { Question, QuestionType } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
+/** Friendly badge label for the AI provider (never shows internal names). */
+function providerLabel(provider: string): string {
+  if (provider === 'gemini') return 'Gemini';
+  if (provider === 'groq') return 'Groq';
+  return 'AI';
+}
+
 interface ClassRow { id: string; name: string; studentCount: number }
 interface QuizRow { id: string; title: string; blurb: string; theme: 1 | 2; topics: string[]; questionCount: number; types: QuestionType[] }
 
@@ -446,7 +453,7 @@ export function NewAssignment({ presetQuizId }: { presetQuizId?: string }) {
                 {aiQuestions ? (
                   <span className="text-sm flex items-center gap-1.5 text-[var(--success)]">
                     <CheckCircle2 className="h-4 w-4" /> {aiQuestions.length} questions · {totalMarks} marks
-                    {aiProvider && aiProvider !== 'bank' ? <Badge variant="outline" className="ml-1">{aiProvider}</Badge> : null}
+                    {aiProvider && aiProvider !== 'bank' ? <Badge variant="outline" className="ml-1">{providerLabel(aiProvider)}</Badge> : null}
                   </span>
                 ) : null}
               </div>

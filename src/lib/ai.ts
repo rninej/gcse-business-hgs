@@ -28,13 +28,13 @@ export interface AIRequest {
   timeoutMs?: number;
 }
 
-const GEMINI_MODELS = (process.env.GEMINI_MODELS || 'gemini-3.8-flash,gemini-flash-latest,gemini-2.5-flash')
+const GEMINI_MODELS = (process.env.GEMINI_MODELS || 'gemini-3.8-flash,gemini-flash-latest,gemini-3.5-flash-lite')
   .split(',')
   .map((m) => m.trim())
   .filter(Boolean);
 const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
 
-const GROQ_MODELS = (process.env.GROQ_MODELS || 'llama-3.3-70b-versatile,llama-3.1-8b-instant')
+const GROQ_MODELS = (process.env.GROQ_MODELS || 'llama-3.3-70b-versatile,llama-3.1-8b-instant,openai/gpt-oss-120b')
   .split(',')
   .map((m) => m.trim())
   .filter(Boolean);
