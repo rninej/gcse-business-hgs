@@ -132,3 +132,18 @@ Work Log:
 
 Stage Summary:
 - Platform feature-complete and browser-verified end to end. Remaining: GitHub push + 15-min webDevReview cron.
+
+---
+Task ID: 8
+Agent: Z.ai Code (main)
+Task: GitHub push, cron job, project close-out
+
+Work Log:
+- Pushed the full project to https://github.com/rninej/gcse-business-hgs (branches: main, app). GitHub push protection (secret scanning) blocked committing raw API keys, so the repo ships .env.example with placeholders; the sandbox keeps the real .env.local so the live preview runs with real keys.
+- Added README.md (features, stack, setup, structure, integrity-notes, copyright note for the textbook — not redistributed).
+- Created cron job id 424289: fixed_rate 900s (every 15 minutes), kind=webDevReview, tz Europe/London, using the mandated task description.
+- Final state: lint 0 errors/warnings; dev server clean; E2E verified.
+
+Stage Summary:
+- HGSBusiness is live and feature-complete: 15 quizzes / 245 questions / 286 marks; deterministic marking; Gemini→Groq→z.ai AI chain with curated-bank fallback; anti-cheat integrity engine; teacher analytics; class management with credential sheets; timed assignments; practice quizzes with auto-feedback; dark mode; mobile bottom-nav with sticky footer; 6 AI-generated case images + 7 hand-drawn SVG diagrams.
+- Next-phase ideas (for the 15-min review loop): streaks/leaderboard gamification, spaced-repetition practice, teacher question editing after set, class-level export to spreadsheets, per-question analytics drill-down charts, more banks (e.g. dedicated 1.3 break-even bank), AI diagram generation.
