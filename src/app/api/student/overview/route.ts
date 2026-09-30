@@ -58,6 +58,7 @@ export async function GET() {
       total: a.result!.total,
       submittedAt: a.result!.submittedAt,
       feedbackBy: a.result!.feedbackBy,
+      hasTeacherFeedback: Boolean(a.teacherFeedback?.text),
     })),
     mastery,
   });

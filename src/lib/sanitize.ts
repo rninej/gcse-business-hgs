@@ -45,3 +45,18 @@ export function toReview(q: Question, n: number, given: string, expected: string
   };
   return review;
 }
+
+/** Human-friendly text for a confirmed answer: MCQ index → "B. option text",
+ *  true/false stored as "true"/"false" → "True"/"False". */
+export function displayGiven(q: Pick<Question, 'type'> & { options?: string[] }, given: string): string {
+  if (!given || given === '—') return given;
+  if (q.type === 'mcq' && q.options && q.options.length > 0) {
+    const idx = Number.parseInt(given, 10);
+    if (Number.isInteger(idx) && idx >= 0 && idx < q.options.length) {
+      return `${String.fromCharCode(65 + idx)}. ${q.options[idx]}`;
+    }
+    return given;
+  }
+  if (q.type === 'truefalse') return given === 'true' ? 'True' : given === 'false' ? 'False' : given;
+  return given;
+}

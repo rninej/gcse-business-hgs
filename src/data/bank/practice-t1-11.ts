@@ -4,7 +4,7 @@ import type { QuizDef } from '@/lib/bank';
 
 const def: QuizDef = {
   id: 'practice-1-1',
-  title: 'Enterprise: Practice',
+  title: 'Risk, Reward & the Entrepreneur',
   blurb: 'Self-study practice on risk, reward and adding value, with case studies on Airbnb, BrewDog and two craft start-ups.',
   theme: 1,
   topics: ['1.1'],

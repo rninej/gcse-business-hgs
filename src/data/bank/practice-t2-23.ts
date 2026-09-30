@@ -4,7 +4,7 @@ import type { QuizDef } from '@/lib/bank';
 
 const def: QuizDef = {
   id: 'practice-2-3',
-  title: 'Operational Decisions: Practice',
+  title: 'Production, Quality & Suppliers',
   blurb: 'Production methods, productivity, automation, stock, suppliers, quality and location — featuring Amazon’s warehouse robots, Nando’s and JD Wetherspoon.',
   theme: 2,
   topics: ['2.3'],

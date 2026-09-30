@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { History, Eye } from 'lucide-react';
+import { History, Eye, MessageSquareHeart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
@@ -10,7 +10,7 @@ import { ScoreRing, BarList } from '@/components/charts';
 
 interface Overview {
   stats: { quizzesDone: number; avgPct: number | null; points: number; bestPct: number | null };
-  recent: { id: string; title: string; mode: string; pct: number; score: number; total: number; submittedAt: number; feedbackBy: string }[];
+  recent: { id: string; title: string; mode: string; pct: number; score: number; total: number; submittedAt: number; feedbackBy: string; hasTeacherFeedback?: boolean }[];
   mastery: { topic: string; title: string; pct: number; attempts: number }[];
 }
 
@@ -95,7 +95,17 @@ export function StudentHistory() {
                 onClick={() => go({ name: 'result', attemptId: r.id })}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{r.title}</div>
+                  <div className="text-sm font-medium truncate flex items-center gap-1.5">
+                    <span className="truncate">{r.title}</span>
+                    {r.hasTeacherFeedback ? (
+                      <span
+                        className="inline-flex items-center gap-0.5 shrink-0 rounded-full bg-primary/10 border border-primary/25 px-1.5 py-0.5 text-[10px] font-semibold text-primary"
+                        title="Your teacher left you feedback on this quiz"
+                      >
+                        <MessageSquareHeart className="h-3 w-3" aria-hidden /> Teacher note
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
                     {new Date(r.submittedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
                     {' · '}{r.score}/{r.total}

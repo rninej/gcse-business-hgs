@@ -4,7 +4,7 @@ import type { QuizDef } from '@/lib/bank';
 
 const def: QuizDef = {
   id: 'practice-1-5',
-  title: 'External Influences: Practice',
+  title: 'Stakeholders, Law & the Economy',
   blurb: 'Self-study practice on stakeholders, technology, the economy and business law, with Netflix, Toyota, Dyson and Richer Sounds.',
   theme: 1,
   topics: ['1.5'],

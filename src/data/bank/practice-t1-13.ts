@@ -4,7 +4,7 @@ import type { QuizDef } from '@/lib/bank';
 
 const def: QuizDef = {
   id: 'practice-1-3',
-  title: 'Idea into Practice: Practice',
+  title: 'Costs, Cash & Break-even',
   blurb: 'Self-study practice on SMART objectives, profit, break-even and sources of finance, with case studies on LEGO and Monzo.',
   theme: 1,
   topics: ['1.3'],

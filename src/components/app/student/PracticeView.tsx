@@ -157,7 +157,7 @@ export function PracticeView() {
                     <div className="flex flex-wrap gap-1.5 mt-3">
                       {q.topics.map((t) => (
                         <Badge key={t} variant="outline" className="text-[10px] font-normal">
-                          {t} {topicTitle(t).split(' ')[0]}
+                          {t} · {topicTitle(t)}
                         </Badge>
                       ))}
                       {q.types.map((t) => (

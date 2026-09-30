@@ -4,7 +4,7 @@ import type { QuizDef } from '@/lib/bank';
 
 const def: QuizDef = {
   id: 'practice-2-2',
-  title: 'Marketing Decisions: Practice',
+  title: 'Product, Price, Promotion & Place',
   blurb: 'Product life cycles, pricing strategies, sponsorship and distribution — featuring Zara, Spotify, Notonthehighstreet.com and Arsenal’s Emirates deal.',
   theme: 2,
   topics: ['2.2'],

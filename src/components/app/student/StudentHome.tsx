@@ -162,43 +162,71 @@ export function StudentHome() {
         }
       />
 
-      <div className="grid gap-3 mb-6 sm:grid-cols-3">
-        <div className="rounded-lg border bg-card p-4 sm:p-5 flex items-center gap-4">
-          <ScoreRing pct={overview.stats.avgPct ?? 0} label="average" size={88} />
-          <div className="text-sm min-w-0">
-            <div className="font-semibold">{overview.stats.quizzesDone} completed</div>
-            <div className="text-xs text-muted-foreground mt-1">
-              {overview.stats.bestPct !== null ? `Best: ${overview.stats.bestPct}%` : 'Take your first quiz'}
-            </div>
-            {streak && streak.activeDays > 0 ? (
-              <div className="text-xs text-muted-foreground/80 mt-0.5">
-                {streak.activeDays} active {streak.activeDays === 1 ? 'day' : 'days'} · best streak {streak.best}
+      {/* assignments first — the work the teacher set comes before everything else */}
+      <h2 className="font-semibold mb-3">Your assignments</h2>
+      {assignments.length === 0 ? (
+        <EmptyState
+          icon={ClipboardList}
+          title="Nothing set yet"
+          body="When your teacher sets work it will appear here. Meanwhile, try a practice quiz!"
+          action={<Button size="sm" variant="outline" onClick={() => go({ name: 's-practice' })}>Practice quizzes</Button>}
+        />
+      ) : (
+        <div className="space-y-3 mb-6">
+          {assignments.map((a) => {
+            const submitted = a.status === 'submitted';
+            return (
+              <div
+                key={a.id}
+                className={cn(
+                  'rounded-lg border bg-card p-4 sm:p-5 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3',
+                  submitted ? 'opacity-90' : a.status === 'in-progress' ? 'border-primary/50' : undefined
+                )}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold break-words">{a.title}</span>
+                    {a.timeLimitMin ? (
+                      <Badge variant="outline" className="text-[10px] gap-1">
+                        <RotateCw className="h-3 w-3" /> {a.timeLimitMin} min
+                      </Badge>
+                    ) : null}
+                    {!submitted ? <DueChip dueAt={a.dueAt} /> : null}
+                    {submitted && a.result ? <PctChip pct={a.result.pct} /> : null}
+                    {a.attemptCount > 1 ? (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {a.attemptCount} goes{a.bestPct !== null ? ` · best ${a.bestPct}%` : ''}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {a.questionCount} questions · {a.totalMarks} marks
+                    {a.description ? ` · ${a.description}` : ''}
+                  </p>
+                </div>
+                {submitted ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm tabular-nums font-semibold">
+                      {a.result?.score}/{a.result?.total}
+                    </span>
+                    <Button size="sm" variant="outline" onClick={() => start(a)}>
+                      <Eye className="h-3.5 w-3.5" /> Review
+                    </Button>
+                    <Button size="sm" variant="outline" className="border-primary/40 text-primary hover:bg-primary/5" onClick={() => redo(a)}>
+                      <RotateCw className="h-3.5 w-3.5" /> Redo
+                    </Button>
+                  </div>
+                ) : (
+                  <Button size="sm" className="self-start sm:self-auto" onClick={() => start(a)}>
+                    <PlayCircle className="h-4 w-4" />
+                    {a.status === 'in-progress' ? 'Continue' : 'Start'}
+                  </Button>
+                )}
               </div>
-            ) : null}
-          </div>
+            );
+          })}
         </div>
-        <div className="rounded-lg border bg-card p-4 sm:p-5">
-          <div className="flex items-center gap-2 text-sm font-semibold mb-3">
-            <ClipboardList className="h-4 w-4 text-primary" /> To do
-          </div>
-          <p className="text-3xl font-bold tabular-nums">{pending.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {done.length} submitted · {assignments.length} total
-          </p>
-        </div>
-        <div className="rounded-lg border bg-card p-4 sm:p-5">
-          <div className="flex items-center gap-2 text-sm font-semibold mb-3">
-            <TrendingUp className="h-4 w-4 text-primary" /> Strongest areas
-          </div>
-          {overview.mastery.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Complete quizzes to unlock your progress map.</p>
-          ) : (
-            <BarList
-              items={[...overview.mastery].sort((a, b) => b.pct - a.pct).slice(0, 3).map((m) => ({ label: m.title, pct: m.pct }))}
-            />
-          )}
-        </div>
-      </div>
+      )}
 
       {/* weekly class leaderboard */}
       {board ? (
@@ -312,70 +340,43 @@ export function StudentHome() {
         </section>
       ) : null}
 
-      <h2 className="font-semibold mb-3">Your assignments</h2>
-      {assignments.length === 0 ? (
-        <EmptyState
-          icon={ClipboardList}
-          title="Nothing set yet"
-          body="When your teacher sets work it will appear here. Meanwhile, try a practice quiz!"
-          action={<Button size="sm" variant="outline" onClick={() => go({ name: 's-practice' })}>Practice quizzes</Button>}
-        />
-      ) : (
-        <div className="space-y-3">
-          {assignments.map((a) => {
-            const submitted = a.status === 'submitted';
-            return (
-              <div
-                key={a.id}
-                className={cn(
-                  'rounded-lg border bg-card p-4 sm:p-5 flex flex-wrap items-center gap-3',
-                  submitted ? 'opacity-90' : a.status === 'in-progress' ? 'border-primary/50' : undefined
-                )}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold">{a.title}</span>
-                    {a.timeLimitMin ? (
-                      <Badge variant="outline" className="text-[10px] gap-1">
-                        <RotateCw className="h-3 w-3" /> {a.timeLimitMin} min
-                      </Badge>
-                    ) : null}
-                    {!submitted ? <DueChip dueAt={a.dueAt} /> : null}
-                    {submitted && a.result ? <PctChip pct={a.result.pct} /> : null}
-                    {a.attemptCount > 1 ? (
-                      <Badge variant="secondary" className="text-[10px]">
-                        {a.attemptCount} goes{a.bestPct !== null ? ` · best ${a.bestPct}%` : ''}
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {a.questionCount} questions · {a.totalMarks} marks
-                    {a.description ? ` · ${a.description}` : ''}
-                  </p>
-                </div>
-                {submitted ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm tabular-nums font-semibold">
-                      {a.result?.score}/{a.result?.total}
-                    </span>
-                    <Button size="sm" variant="outline" onClick={() => start(a)}>
-                      <Eye className="h-3.5 w-3.5" /> Review
-                    </Button>
-                    <Button size="sm" variant="outline" className="border-primary/40 text-primary hover:bg-primary/5" onClick={() => redo(a)}>
-                      <RotateCw className="h-3.5 w-3.5" /> Redo
-                    </Button>
-                  </div>
-                ) : (
-                  <Button size="sm" onClick={() => start(a)}>
-                    <PlayCircle className="h-4 w-4" />
-                    {a.status === 'in-progress' ? 'Continue' : 'Start'}
-                  </Button>
-                )}
+      <div className="grid gap-3 mb-6 sm:grid-cols-3">
+        <div className="rounded-lg border bg-card p-4 sm:p-5 flex items-center gap-4">
+          <ScoreRing pct={overview.stats.avgPct ?? 0} label="average" size={88} />
+          <div className="text-sm min-w-0">
+            <div className="font-semibold">{overview.stats.quizzesDone} completed</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {overview.stats.bestPct !== null ? `Best: ${overview.stats.bestPct}%` : 'Take your first quiz'}
+            </div>
+            {streak && streak.activeDays > 0 ? (
+              <div className="text-xs text-muted-foreground/80 mt-0.5">
+                {streak.activeDays} active {streak.activeDays === 1 ? 'day' : 'days'} · best streak {streak.best}
               </div>
-            );
-          })}
+            ) : null}
+          </div>
         </div>
-      )}
+        <div className="rounded-lg border bg-card p-4 sm:p-5">
+          <div className="flex items-center gap-2 text-sm font-semibold mb-3">
+            <ClipboardList className="h-4 w-4 text-primary" /> To do
+          </div>
+          <p className="text-3xl font-bold tabular-nums">{pending.length}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {done.length} submitted · {assignments.length} total
+          </p>
+        </div>
+        <div className="rounded-lg border bg-card p-4 sm:p-5">
+          <div className="flex items-center gap-2 text-sm font-semibold mb-3">
+            <TrendingUp className="h-4 w-4 text-primary" /> Strongest areas
+          </div>
+          {overview.mastery.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Complete quizzes to unlock your progress map.</p>
+          ) : (
+            <BarList
+              items={[...overview.mastery].sort((a, b) => b.pct - a.pct).slice(0, 3).map((m) => ({ label: m.title, pct: m.pct }))}
+            />
+          )}
+        </div>
+      </div>
 
       {overview.recent.length > 0 ? (
         <>

@@ -4,7 +4,7 @@ import type { QuizDef } from '@/lib/bank';
 
 const def: QuizDef = {
   id: 'practice-2-1',
-  title: 'Business Growth: Practice',
+  title: 'Growth, Globalisation & Ethics',
   blurb: 'Organic growth, takeovers, economies of scale, finance, globalisation, ethics and the environment — featuring Aldi, Kraft’s Cadbury takeover, Alphabet, Tesla and Patagonia.',
   theme: 2,
   topics: ['2.1'],

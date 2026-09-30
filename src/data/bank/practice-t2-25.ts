@@ -4,7 +4,7 @@ import type { QuizDef } from '@/lib/bank';
 
 const def: QuizDef = {
   id: 'practice-2-5',
-  title: 'HR Decisions: Practice',
+  title: 'Recruitment, Training & Motivation',
   blurb: 'Structures, communication, ways of working, recruitment, training and motivation — featuring Spotify’s Work From Anywhere policy, Google’s perks, Maslow and Herzberg.',
   theme: 2,
   topics: ['2.5'],

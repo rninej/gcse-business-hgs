@@ -4,7 +4,7 @@ import type { QuizDef } from '@/lib/bank';
 
 const def: QuizDef = {
   id: 'practice-1-2',
-  title: 'Spotting Opportunities: Practice',
+  title: 'Market Research & Segmentation',
   blurb: 'Self-study practice on customer needs, research, segmentation and market mapping, with Greggs, Deliveroo, TikTok and Costa Coffee.',
   theme: 1,
   topics: ['1.2'],

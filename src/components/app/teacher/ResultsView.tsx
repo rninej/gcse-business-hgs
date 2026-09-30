@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
+  BookOpenCheck,
   Download,
   RefreshCw,
   ShieldAlert,
   Timer,
   TrendingUp,
   Users,
-  BookOpenCheck,
+  UserRoundSearch,
   AlertTriangle,
   Info,
   History,
@@ -25,6 +26,7 @@ import { api } from '@/lib/api';
 import { topicTitle } from '@/lib/topics';
 import { ScoreRing, RiskMeter, BarList } from '@/components/charts';
 import { PageHeader, ThemedSkeleton, ErrorNote, StatusPill, PctChip, EmptyState, TypeBadge } from '@/components/shared';
+import { StudentAnswersDialog, StudentProfileDialog } from './StudentProfile';
 import type { AttemptSummary, RiskBand, RiskSignal, TeacherStudentResult } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -73,6 +75,11 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
   const [tick, setTick] = useState(0);
   const [open, setOpen] = useState<Set<string>>(new Set());
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // per-student answers dialog + profile dialog
+  const [answersFor, setAnswersFor] = useState<{ name: string; ids: string[] } | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const toggle = (id: string) =>
     setOpen((prev) => {
@@ -253,7 +260,7 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
           ) : (
             <div className="rounded-xl border bg-card overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[820px]">
+                <table className="w-full text-sm min-w-[900px]">
                   <thead>
                     <tr className="border-b bg-secondary/50 text-left text-xs text-muted-foreground">
                       <th className="px-4 py-3 font-medium">Student</th>
@@ -261,7 +268,8 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
                       <th className="px-4 py-3 font-medium w-[24%]">Score</th>
                       <th className="px-4 py-3 font-medium">Time</th>
                       <th className="px-4 py-3 font-medium">Tries</th>
-                      <th className="px-4 py-3 font-medium w-[20%]">Integrity</th>
+                      <th className="px-4 py-3 font-medium w-[18%]">Integrity</th>
+                      <th className="px-4 py-3 font-medium text-right">Answers</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -316,10 +324,46 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
                             <RiskMeter score={r.riskScore} band={r.riskBand ?? 'low'} compact />
                           )}
                         </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-1">
+                            {(r.history ?? []).length > 0 ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 gap-1.5 px-2.5 text-xs"
+                                onClick={() =>
+                                  setAnswersFor({
+                                    name: r.displayName,
+                                    ids: (r.history ?? []).map((h) => h.id),
+                                  })
+                                }
+                                title="See every answer exactly as they gave it — and leave feedback"
+                              >
+                                <BookOpenCheck className="h-3.5 w-3.5" />
+                                <span className="hidden md:inline">Answers</span>
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              aria-label={`${r.displayName}'s profile`}
+                              title="Full profile — progress graph, every quiz, AI probability"
+                              onClick={() => {
+                                setProfileId(r.studentId);
+                                setProfileOpen(true);
+                              }}
+                            >
+                              <UserRoundSearch className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
                       </tr>
                       {open.has(r.studentId) && (r.history ?? []).length > 0 ? (
                         <tr className="border-b last:border-0 bg-[var(--sidebar)]/60">
-                          <td colSpan={6} className="px-4 py-3">
+                          <td colSpan={7} className="px-4 py-3">
                             <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-2">
                               <History className="h-3.5 w-3.5" aria-hidden /> Every attempt — the top row is the latest
                             </div>
@@ -461,6 +505,18 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
           </Collapsible>
         </TabsContent>
       </Tabs>
+
+      {/* per-student answers with feedback + full profile */}
+      <StudentAnswersDialog
+        studentName={answersFor?.name ?? ''}
+        assignmentTitle={data?.assignment.title ?? ''}
+        attemptIds={answersFor?.ids ?? []}
+        open={answersFor !== null}
+        onOpenChange={(v) => {
+          if (!v) setAnswersFor(null);
+        }}
+      />
+      <StudentProfileDialog studentId={profileId} open={profileOpen} onOpenChange={setProfileOpen} />
     </>
   );
 }

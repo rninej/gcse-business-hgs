@@ -21,9 +21,11 @@ import { Badge } from '@/components/ui/badge';
 import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
 import { topicTitle } from '@/lib/topics';
+import { displayGiven } from '@/lib/sanitize';
 import { ScoreRing, BarList, Diagram } from '@/components/charts';
 import { ErrorNote, PctChip } from '@/components/shared';
 import { ExplainMeButton } from '@/components/quiz/ExplainMeButton';
+import { QuizBackdrop } from '@/components/quiz/QuizBackdrop';
 import { useToast } from '@/hooks/use-toast';
 import type { AttemptResult, QReview, TopicStat } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -38,6 +40,7 @@ interface ResultData {
   reviews: QReview[];
   topicStats: TopicStat[];
   streak: number;
+  teacherFeedback?: { text: string; at: number; byName: string } | null;
 }
 
 export function ResultScreen({ attemptId }: { attemptId: string }) {
@@ -115,6 +118,7 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
 
   return (
     <div className="max-w-3xl mx-auto">
+      <QuizBackdrop attemptId={attemptId} />
       <div className="flex items-center justify-between mb-5 gap-2">
         <Button variant="ghost" onClick={home}>
           <ArrowLeft className="h-4 w-4" /> {isSelfTest ? 'Teacher home' : 'Home'}
@@ -168,6 +172,23 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
         </h2>
         <p className="text-[15px] leading-relaxed">{r.feedback}</p>
       </div>
+
+      {/* note from the teacher */}
+      {data.teacherFeedback ? (
+        <div className="rounded-xl border border-primary/35 bg-primary/[0.06] p-5 mb-5">
+          <h2 className="flex flex-wrap items-center gap-2 font-semibold mb-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 shrink-0" aria-hidden>
+              <MessageSquareHeart className="h-4 w-4 text-primary" />
+            </span>
+            From your teacher
+            <span className="text-xs font-normal text-muted-foreground">
+              {data.teacherFeedback.byName} ·{' '}
+              {new Date(data.teacherFeedback.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </h2>
+          <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{data.teacherFeedback.text}</p>
+        </div>
+      ) : null}
 
       {/* stats */}
       <div className="grid sm:grid-cols-2 gap-5 mb-5">
@@ -241,12 +262,18 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
               <div className="space-y-1.5 mb-3">
                 {rev.options.map((o, i) => {
                   const isCorrect = o === rev.expected;
+                  const chosenIdx = Number.parseInt(rev.given, 10);
+                  const isChosen = Number.isInteger(chosenIdx) && chosenIdx === i;
                   return (
                     <div
                       key={i}
                       className={cn(
                         'flex items-center gap-2 rounded-lg border px-3 py-2 text-sm',
-                        isCorrect ? 'border-[var(--success)] bg-[var(--success)]/10 font-medium' : 'border-transparent'
+                        isCorrect
+                          ? 'border-[var(--success)] bg-[var(--success)]/10 font-medium'
+                          : isChosen
+                            ? 'border-[var(--danger)] bg-[var(--danger)]/10'
+                            : 'border-transparent'
                       )}
                     >
                       <span className="w-5 text-xs font-bold text-muted-foreground" aria-hidden>
@@ -254,6 +281,7 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
                       </span>
                       {o}
                       {isCorrect ? <CheckCircle2 className="h-4 w-4 text-[var(--success)] ml-auto" aria-hidden /> : null}
+                      {!isCorrect && isChosen ? <XCircle className="h-4 w-4 text-[var(--danger)] ml-auto" aria-label="Your choice" /> : null}
                     </div>
                   );
                 })}
@@ -263,7 +291,9 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
             <div className="grid sm:grid-cols-2 gap-2 text-sm mb-3">
               <div className="rounded-lg bg-card border px-3 py-2">
                 <span className="text-xs text-muted-foreground block">Your answer</span>
-                <span className={cn('font-medium', rev.correct && 'text-[var(--success)]')}>{rev.given}</span>
+                <span className={cn('font-medium', rev.correct && 'text-[var(--success)]')}>
+                  {rev.given && rev.given !== '—' ? displayGiven(rev, rev.given) : '—'}
+                </span>
               </div>
               {!rev.correct ? (
                 <div className="rounded-lg bg-card border px-3 py-2">

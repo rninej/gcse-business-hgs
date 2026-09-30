@@ -16,6 +16,7 @@ import {
   FileText,
   Mail,
   Wand2,
+  UserRoundSearch,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,6 +63,7 @@ import {
   slugFilename,
   type LoginRow,
 } from '@/lib/credentialsheet';
+import { StudentProfileDialog } from './StudentProfile';
 
 interface ClassRow { id: string; name: string; createdAt: number; studentCount: number }
 interface StudentRow { id: string; username: string; displayName: string; password: string | null; createdAt: number }
@@ -212,6 +214,15 @@ function ClassDetail({ classId }: { classId: string }) {
   const [editUser, setEditUser] = useState('');
   const [editPw, setEditPw] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+
+  // student profile dialog
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  function openProfile(sid: string) {
+    setProfileId(sid);
+    setProfileOpen(true);
+  }
 
   const load = useCallback(() => {
     api
@@ -672,7 +683,15 @@ function ClassDetail({ classId }: { classId: string }) {
               <TableBody>
                 {students.map((s) => (
                   <TableRow key={s.id}>
-                    <TableCell className="font-medium">{s.displayName}</TableCell>
+                    <TableCell className="font-medium">
+                      <button
+                        className="hover:text-primary hover:underline underline-offset-2 text-left"
+                        onClick={() => openProfile(s.id)}
+                        title={`Open ${s.displayName}'s profile`}
+                      >
+                        {s.displayName}
+                      </button>
+                    </TableCell>
                     <TableCell>
                       <button
                         className="inline-flex items-center gap-1.5 font-mono text-sm text-muted-foreground hover:text-foreground"
@@ -709,6 +728,17 @@ function ClassDetail({ classId }: { classId: string }) {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1.5 px-2.5 text-xs"
+                          onClick={() => openProfile(s.id)}
+                          aria-label={`Open ${s.displayName}'s profile`}
+                          title="Profile — stats, progress graph, every quiz and answer"
+                        >
+                          <UserRoundSearch className="h-4 w-4" />
+                          <span className="hidden sm:inline">Profile</span>
+                        </Button>
                         <Button variant="ghost" size="icon" aria-label={`Edit ${s.displayName} login`} onClick={() => openEdit(s)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -745,6 +775,9 @@ function ClassDetail({ classId }: { classId: string }) {
           </div>
         )}
       </div>
+
+      {/* student profile dialog */}
+      <StudentProfileDialog studentId={profileId} open={profileOpen} onOpenChange={setProfileOpen} />
 
       {/* edit login dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>

@@ -216,6 +216,13 @@ export interface AttemptResult {
   submittedAt: number;
 }
 
+/** Written feedback a teacher leaves on a student's submitted quiz */
+export interface TeacherFeedback {
+  text: string;
+  at: number;
+  byName: string;
+}
+
 export interface Attempt {
   id: string;
   mode: AttemptMode;
@@ -234,6 +241,7 @@ export interface Attempt {
   answers: Record<string, string>; // confirmed (checked) answers are persisted here
   checked: Record<string, CheckedState>; // qid -> outcome, filled as the student confirms
   explanations?: Record<string, ExplainNote>; // qid -> stored "explain it to me" text
+  teacherFeedback?: TeacherFeedback; // teacher's written note on the submitted quiz
   perQ: Record<string, PerQTelemetry>;
   events: TelemetryEvent[];
   wallMs: number;

@@ -699,3 +699,83 @@ export function BarList({
     </ul>
   );
 }
+
+/* Progress over time — one dot per submitted quiz, oldest → newest */
+export function ProgressLine({
+  points,
+  height = 190,
+}: {
+  points: { at: number; pct: number; title: string; mode?: string }[];
+  height?: number;
+}) {
+  if (points.length === 0) {
+    return <p className="text-sm text-muted-foreground">No completed quizzes yet — the graph appears after the first submission.</p>;
+  }
+
+  const W = 640;
+  const H = 190;
+  const PAD_L = 30;
+  const PAD_R = 14;
+  const PAD_T = 14;
+  const PAD_B = 26;
+  const iw = W - PAD_L - PAD_R;
+  const ih = H - PAD_T - PAD_B;
+
+  const n = points.length;
+  const x = (i: number) => (n === 1 ? PAD_L + iw / 2 : PAD_L + (i / (n - 1)) * iw);
+  const y = (pct: number) => PAD_T + ih * (1 - Math.max(0, Math.min(100, pct)) / 100);
+
+  const line = points.map((p, i) => `${x(i)},${y(p.pct)}`).join(' ');
+  const area = `${PAD_L},${PAD_T + ih} ${line} ${x(n - 1)},${PAD_T + ih}`;
+
+  const fmt = (t: number) =>
+    new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+  // x labels: first, middle, last (never crowd)
+  const labelIdx = n <= 2 ? [0, n - 1] : n <= 6 ? [0, Math.floor((n - 1) / 2), n - 1] : [0, Math.floor((n - 1) / 2), n - 1];
+
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height }} role="img" aria-label="Score per quiz over time">
+        <defs>
+          <linearGradient id="pgline" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--chart-1)" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="var(--chart-1)" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {/* gridlines */}
+        {[0, 25, 50, 75, 100].map((v) => (
+          <g key={v}>
+            <line x1={PAD_L} x2={W - PAD_R} y1={y(v)} y2={y(v)} stroke={AX} strokeWidth={1} opacity={v === 0 ? 0.9 : 0.45} strokeDasharray={v === 0 ? undefined : '3 4'} />
+            <text x={PAD_L - 6} y={y(v) + 3.5} textAnchor="end" fontSize={9.5} fill={TXT}>
+              {v}
+            </text>
+          </g>
+        ))}
+        {/* area + line */}
+        <polygon points={area} fill="url(#pgline)" />
+        <polyline points={line} fill="none" stroke="var(--chart-1)" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+        {/* dots */}
+        {points.map((p, i) => (
+          <g key={i}>
+            <circle cx={x(i)} cy={y(p.pct)} r={n > 24 ? 2.6 : 3.4} fill="var(--card)" stroke="var(--chart-1)" strokeWidth={2}>
+              <title>{`${p.title} — ${p.pct}% (${fmt(p.at)})`}</title>
+            </circle>
+          </g>
+        ))}
+        {/* x labels */}
+        {labelIdx.map((i) => (
+          <text key={i} x={x(i)} y={H - 8} textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'} fontSize={9.5} fill={TXT}>
+            {fmt(points[i].at)}
+          </text>
+        ))}
+      </svg>
+      <div className="flex items-center justify-between mt-1 text-[11px] text-muted-foreground">
+        <span>{n} completed quiz{n === 1 ? '' : 'zes'}</span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-full bg-[var(--chart-1)]" /> score %
+        </span>
+      </div>
+    </div>
+  );
+}

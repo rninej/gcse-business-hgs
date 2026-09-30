@@ -64,7 +64,9 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    // no bg-background here: the body provides it, which lets the quiz
+    // backdrop photo (fixed, -z-10) show through behind the content
+    <div className="min-h-screen flex flex-col">
       {/* Desktop sidebar */}
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col border-r bg-[var(--sidebar)] z-40">
         <div className="px-5 pt-5 pb-4 border-b border-[var(--sidebar-border)]">

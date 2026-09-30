@@ -4,7 +4,7 @@ import type { QuizDef } from '@/lib/bank';
 
 const def: QuizDef = {
   id: 'practice-1-4',
-  title: 'Making Business Effective: Practice',
+  title: 'Start-ups, Location & the 4Ps',
   blurb: 'Self-study practice on ownership, franchising, location, the 4Ps and business plans, with John Lewis, McDonald’s, IKEA and Nike.',
   theme: 1,
   topics: ['1.4'],

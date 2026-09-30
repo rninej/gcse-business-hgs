@@ -1,17 +1,58 @@
 'use client';
 
-// Random decorative background for quiz-taking — a different hand-drawn
-// business-doodle pattern every attempt (seeded by attempt id so it stays
-// put during one quiz). Pure SVG tiles, ultra-light, sits behind the cards
-// at whisper opacity so it never fights the questions.
+// Random decorative background for quiz-taking. Every attempt picks a random
+// business-scene photo (seeded by attempt id, so it stays put during one quiz
+// but differs between quizzes). The photo sits behind everything at low
+// opacity with a gradient wash, so it is clearly visible yet never fights the
+// questions. If the image fails to load, a hand-drawn doodle pattern takes
+// over instead.
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+
+/** Files in /public/quiz-backdrops — numbered so the seeded pick is stable. */
+const PHOTOS = [1, 2, 3, 4, 5, 6].map((n) => `/quiz-backdrops/${String(n).padStart(2, '0')}.jpg`);
+
+/** Deterministic pick from an attempt id — same quiz, same backdrop. */
+function pick(seed: string, len: number): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return h % len;
+}
+
+export function QuizBackdrop({ attemptId }: { attemptId: string }) {
+  const idx = useMemo(() => pick(attemptId, PHOTOS.length), [attemptId]);
+  const [ok, setOk] = useState(true);
+  const photo = PHOTOS[idx];
+
+  if (ok) {
+    return (
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        {/* the scene — clearly visible; blur + wash keep it calm, and every
+            reading surface (question card, header) is opaque on top of it */}
+        <img
+          src={photo}
+          alt=""
+          onError={() => setOk(false)}
+          className="h-full w-full object-cover opacity-45 dark:opacity-35 blur-[2px] scale-[1.06]"
+        />
+        {/* soft wash tames the busiest areas without hiding the scene */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/10 to-background/45" />
+      </div>
+    );
+  }
+
+  // fallback — the original doodle pattern
+  return <DoodleBackdrop idx={pick(attemptId, DOODLE_COUNT)} />;
+}
+
+/* ------------------------------------------------------------------ */
+/* Hand-drawn doodle tiles (the original backdrop, kept as the backup) */
+
+const DOODLE_COUNT = 6;
 
 interface DoodleSpec {
-  /** repeat tile size */
   w: number;
   h: number;
-  /** draw one tile of doodles; stroke-only, uses currentColor */
   tile: (id: string) => React.ReactNode;
 }
 
@@ -102,16 +143,9 @@ const DOODLES: DoodleSpec[] = [
   },
 ];
 
-/** Deterministic pick from an attempt id — same quiz, same backdrop. */
-function pick(seed: string): number {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  return h % DOODLES.length;
-}
-
-export function QuizBackdrop({ attemptId }: { attemptId: string }) {
-  const spec = useMemo(() => DOODLES[pick(attemptId)], [attemptId]);
-  const patternId = `qdoodle-${pick(attemptId)}`;
+function DoodleBackdrop({ idx }: { idx: number }) {
+  const spec = DOODLES[idx];
+  const patternId = `qdoodle-${idx}`;
   return (
     <div
       aria-hidden
@@ -125,7 +159,6 @@ export function QuizBackdrop({ attemptId }: { attemptId: string }) {
         </defs>
         <rect width="100%" height="100%" fill={`url(#${patternId})`} />
       </svg>
-      {/* soft fade so the edges of the viewport stay calm */}
       <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-transparent to-background/40" />
     </div>
   );

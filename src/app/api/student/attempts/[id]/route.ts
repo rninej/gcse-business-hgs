@@ -36,6 +36,7 @@ export async function GET(_req: Request, ctx: Ctx) {
       topicStats: r?.topicStats ?? [],
       streak: streaksFrom(mySubmits).current,
       explanations: attempt.explanations ?? {},
+      teacherFeedback: attempt.teacherFeedback ?? null,
     });
   }
 

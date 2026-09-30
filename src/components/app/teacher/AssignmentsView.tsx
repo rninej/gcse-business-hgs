@@ -127,10 +127,10 @@ export function AssignmentsView() {
                 key={a.id}
                 className="rounded-xl border bg-card p-4 hover:border-primary/50 transition-colors no-print"
               >
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                  <button className="flex-1 min-w-0 text-left" onClick={() => go({ name: 't-results', assignmentId: a.id })}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-x-3">
+                  <button className="min-w-0 text-left" onClick={() => go({ name: 't-results', assignmentId: a.id })}>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold truncate">{a.title}</span>
+                      <span className="font-semibold break-words sm:truncate">{a.title}</span>
                       <Badge variant="secondary" className="text-[10px]">{SOURCE_LABEL[a.source]}</Badge>
                       {a.timeLimitMin ? (
                         <Badge variant="outline" className="text-[10px] gap-1">
@@ -145,13 +145,13 @@ export function AssignmentsView() {
                     </div>
                   </button>
 
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
+                  <div className="flex items-center justify-between gap-2 sm:justify-end sm:gap-4">
+                    <div className="text-left sm:text-right shrink-0">
                       <div className="text-sm font-bold tabular-nums">
                         {a.submitted}
                         <span className="text-muted-foreground font-normal">/{a.totalStudents}</span>
                       </div>
-                      <div className="text-[11px] text-muted-foreground">handed in</div>
+                      <div className="text-[11px] text-muted-foreground whitespace-nowrap">handed in</div>
                     </div>
                     <div className="hidden sm:block w-28">
                       <div className="h-2 rounded-full bg-secondary overflow-hidden">
@@ -162,47 +162,60 @@ export function AssignmentsView() {
                       </div>
                       <div className="text-[11px] text-muted-foreground mt-1 text-right">{done}% complete</div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void selfTest(a)}
-                      disabled={testing === a.id}
-                      title="Try this quiz yourself — a private dry run"
-                    >
-                      <FlaskConical className="h-3.5 w-3.5" />
-                      <span className="hidden lg:inline">{testing === a.id ? 'Starting…' : 'Test it'}</span>
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => go({ name: 't-results', assignmentId: a.id })}>
-                      Results <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-[var(--danger)]" aria-label={`Delete ${a.title}`}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete “{a.title}”?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {a.submitted > 0
-                              ? `${a.submitted} submission${a.submitted === 1 ? '' : 's'} will be deleted with it.`
-                              : 'No one has submitted yet.'}{' '}
-                            This cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Keep it</AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-[var(--danger)] text-white hover:bg-[var(--danger)]/90"
-                            onClick={() => remove(a.id, a.title)}
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void selfTest(a)}
+                        disabled={testing === a.id}
+                        title="Try this quiz yourself — a private dry run"
+                      >
+                        <FlaskConical className="h-3.5 w-3.5" />
+                        <span className="hidden lg:inline">{testing === a.id ? 'Starting…' : 'Test it'}</span>
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => go({ name: 't-results', assignmentId: a.id })}>
+                        Results <ArrowRight className="h-3.5 w-3.5" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="text-[var(--danger)]" aria-label={`Delete ${a.title}`}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete “{a.title}”?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {a.submitted > 0
+                                ? `${a.submitted} submission${a.submitted === 1 ? '' : 's'} will be deleted with it.`
+                                : 'No one has submitted yet.'}{' '}
+                              This cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Keep it</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-[var(--danger)] text-white hover:bg-[var(--danger)]/90"
+                              onClick={() => remove(a.id, a.title)}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
+                </div>
+
+                {/* mobile progress bar */}
+                <div className="sm:hidden mt-3">
+                  <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                    <div
+                      className={cn('h-full rounded-full', done === 100 ? 'bg-[var(--success)]' : 'bg-primary')}
+                      style={{ width: `${done}%` }}
+                    />
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-1">{done}% complete</div>
                 </div>
               </div>
             );

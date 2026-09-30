@@ -4,7 +4,7 @@ import type { QuizDef } from '@/lib/bank';
 
 const def: QuizDef = {
   id: 'practice-2-4',
-  title: 'Financial Decisions: Practice',
+  title: 'Margins, Forecasts & Finance',
   blurb: 'Profit margins, break-even, average rate of return, cash flow forecasts, finance for growth and financial documents — featuring Wise’s stock-exchange flotation.',
   theme: 2,
   topics: ['2.4'],
