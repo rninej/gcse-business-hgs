@@ -487,4 +487,4 @@ Stage Summary:
 - PWA: installable (manifest+SW+icons), and the one-time install popup works on real phones — native dialog on Chrome/Android, taught Add-to-Home-Screen on iOS, never on desktop, never twice; 25s auto-dismiss.
 - New files: src/components/app/PwaProvider.tsx, src/components/app/InstallPrompt.tsx, public/manifest.webmanifest, public/sw.js, public/icon-{192,512,maskable-512}.png, public/apple-touch-icon.png, scripts/make-icons.mjs.
 - Known non-blockers unchanged: zustand SSR hydration warning on logged-in hard reload (pre-existing, shows as the dev-tools "1 Issue" badge in dev only); .next CSS cache staleness workaround documented above.
-- Vercel: redeploy to ship. Env vars unchanged. Test accounts unchanged. Cron 15-min webDevReview job 424289 still to be verified/kept active.
+- Vercel: redeploy to ship. Env vars unchanged. Test accounts unchanged. Cron 15-min webDevReview job 424289 verified active (fixed_rate 900s).
