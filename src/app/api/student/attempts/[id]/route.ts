@@ -1,21 +1,19 @@
 import { NextResponse } from 'next/server';
-import { colCached, item, values } from '@/lib/firebase';
-import { requireRole } from '@/lib/session';
+import { colCached, values } from '@/lib/firebase';
+import { loadAccessibleAttempt } from '@/lib/attemptAccess';
 import { streaksFrom } from '@/lib/streaks';
 import { toClientQuestions, toReview } from '@/lib/sanitize';
 import type { Attempt } from '@/lib/types';
 
-type Ctx = { params: Promise<{ id: string }> };
+ type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, ctx: Ctx) {
-  const session = await requireRole('student');
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await ctx.params;
 
-  const attempt = await item<Attempt>('attempts', id);
-  if (!attempt || attempt.studentId !== session.uid) {
-    return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
-  }
+  const access = await loadAccessibleAttempt(id);
+  if (!access) return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
+  const { attempt } = access;
+  const isSelfTest = attempt.mode === 'selftest';
 
   if (attempt.status === 'submitted') {
     const r = attempt.result;
@@ -25,7 +23,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     });
     // streak for the celebration banner (cheap: collection read is cached)
     const mySubmits = values(await colCached<Attempt>('attempts'))
-      .filter((a) => a.studentId === session.uid && a.status === 'submitted' && a.result)
+      .filter((a) => a.studentId === attempt.studentId && a.status === 'submitted' && a.result && a.mode !== 'selftest')
       .map((a) => a.result?.submittedAt ?? 0);
     return NextResponse.json({
       status: 'submitted',
@@ -37,6 +35,7 @@ export async function GET(_req: Request, ctx: Ctx) {
       reviews,
       topicStats: r?.topicStats ?? [],
       streak: streaksFrom(mySubmits).current,
+      explanations: attempt.explanations ?? {},
     });
   }
 
@@ -45,7 +44,8 @@ export async function GET(_req: Request, ctx: Ctx) {
   const remainingMs = limitMs ? Math.max(0, limitMs - (now - attempt.startedAt)) : null;
   return NextResponse.json({
     status: 'in-progress',
-    mode: attempt.mode,
+    mode: isSelfTest ? 'assignment' : attempt.mode, // the runner badge just reads practice/assignment
+    selfTest: isSelfTest,
     title: attempt.assignmentTitle,
     assignmentId: attempt.assignmentId ?? null,
     quizId: attempt.quizId ?? null,

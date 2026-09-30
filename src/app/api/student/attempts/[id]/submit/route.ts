@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { merge, item } from '@/lib/firebase';
-import { requireRole } from '@/lib/session';
+import { merge } from '@/lib/firebase';
+import { loadAccessibleAttempt } from '@/lib/attemptAccess';
 import { markAttempt } from '@/lib/marking';
 import { assessRisk, pointsFor } from '@/lib/risk';
 import { generateFeedback } from '@/lib/ai';
@@ -21,14 +21,12 @@ interface SubmitBody {
 const MAX_EVENTS = 400;
 
 export async function POST(req: Request, ctx: Ctx) {
-  const session = await requireRole('student');
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await ctx.params;
 
-  const attempt = await item<Attempt>('attempts', id);
-  if (!attempt || attempt.studentId !== session.uid) {
-    return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
-  }
+  const access = await loadAccessibleAttempt(id);
+  if (!access) return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
+  const attempt = access.attempt;
+  const isSelfTest = attempt.mode === 'selftest';
   if (attempt.status === 'submitted') {
     return NextResponse.json({ error: 'Already submitted.', alreadySubmitted: true }, { status: 409 });
   }
@@ -78,7 +76,7 @@ export async function POST(req: Request, ctx: Ctx) {
     perQCorrect: correctMap,
   });
 
-  const points = pointsFor(marked.score, marked.total, marked.pct);
+  const points = isSelfTest ? 0 : pointsFor(marked.score, marked.total, marked.pct); // self-tests earn no points
   const timeTakenSec = Math.round(wallMs / 1000);
 
   // feedback (AI with template fallback — never blocks the result)

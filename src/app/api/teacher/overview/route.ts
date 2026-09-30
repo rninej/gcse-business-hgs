@@ -20,7 +20,7 @@ export async function GET() {
   const myAssignments = values(assignments)
     .filter((a) => a.teacherId === session.uid)
     .sort((a, b) => b.createdAt - a.createdAt);
-  const myAttempts = values(attempts).filter((a) => a.teacherId === session.uid);
+  const myAttempts = values(attempts).filter((a) => a.teacherId === session.uid && a.mode !== 'selftest');
 
   // students may redo assignments — use each student's LATEST submitted go per
   // assignment for dashboard stats, so redos don't inflate counts or averages

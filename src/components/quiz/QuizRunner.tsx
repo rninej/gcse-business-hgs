@@ -43,6 +43,8 @@ import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { ErrorNote, MarksChip, TypeBadge } from '@/components/shared';
 import { Diagram } from '@/components/charts';
+import { ExplainMeButton } from '@/components/quiz/ExplainMeButton';
+import { QuizBackdrop } from '@/components/quiz/QuizBackdrop';
 import type { ClientQuestion, PerQTelemetry, TelemetryEvent } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -57,6 +59,7 @@ interface CheckedInfo {
 interface RunData {
   status: 'in-progress' | 'submitted';
   mode: 'assignment' | 'practice';
+  selfTest?: boolean; // teacher trying their own assignment
   title: string;
   dueAt: number | null;
   startedAt: number;
@@ -427,12 +430,12 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
             <Button onClick={() => void doSubmit()} disabled={submitting}>
               {submitting ? 'Marking…' : 'Try submitting again'}
             </Button>
-            <Button variant="ghost" onClick={() => go({ name: 's-home' })}>
+            <Button variant="ghost" onClick={() => go(data?.selfTest ? { name: 't-home' } : { name: 's-home' })}>
               <ArrowLeft className="h-4 w-4" /> Back home
             </Button>
           </div>
         ) : (
-          <Button variant="ghost" className="mt-4" onClick={() => go({ name: 's-home' })}>
+          <Button variant="ghost" className="mt-4" onClick={() => go(data?.selfTest ? { name: 't-home' } : { name: 's-home' })}>
             <ArrowLeft className="h-4 w-4" /> Back home
           </Button>
         )}
@@ -470,6 +473,8 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
 
   return (
     <div className="max-w-4xl mx-auto" data-attempt={attemptId}>
+      {/* decorative doodle backdrop — a different pattern every attempt */}
+      <QuizBackdrop attemptId={attemptId} />
       {/* header */}
       <div className="sticky top-14 md:top-0 z-30 -mx-4 sm:mx-0 px-4 sm:px-0 mb-4 md:mb-5">
         <div className="rounded-lg border bg-card/95 backdrop-blur px-4 py-3 shadow-sm">
@@ -508,7 +513,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Keep working</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => go({ name: 's-home' })}>Leave</AlertDialogAction>
+                  <AlertDialogAction onClick={() => go(data.selfTest ? { name: 't-home' } : { name: 's-home' })}>Leave</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -746,6 +751,9 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                     )}
                     {qChecked.explain ? (
                       <p className="text-sm text-muted-foreground leading-relaxed mt-2">{qChecked.explain}</p>
+                    ) : null}
+                    {!qChecked.correct ? (
+                      <ExplainMeButton attemptId={attemptId} qid={q.id} className="mt-3" />
                     ) : null}
                   </div>
                 </div>

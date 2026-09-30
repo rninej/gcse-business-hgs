@@ -25,9 +25,10 @@ export async function GET(_req: Request, ctx: Ctx) {
   }
 
   const allStudents = values(await colCached<Student>('students')).filter((s) => s.classId === a.classId);
-  // finalize timed attempts whose clock ran out (students who never reopened)
+  // finalize timed attempts whose clock ran out (students who never reopened);
+  // teacher self-tests are excluded — they never count as class statistics
   const allAttempts = await finalizeExpired(
-    values(await colCached<Attempt>('attempts')).filter((x) => x.assignmentId === id)
+    values(await colCached<Attempt>('attempts')).filter((x) => x.assignmentId === id && x.mode !== 'selftest')
   );
   // students may redo the assignment — group every attempt per student,
   // oldest first; the latest go is the headline row, the rest stay in history

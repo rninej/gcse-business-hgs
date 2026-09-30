@@ -14,6 +14,7 @@ export type View =
   | { name: 't-library' }
   | { name: 's-home' }
   | { name: 's-practice' }
+  | { name: 's-revise' }
   | { name: 's-history' }
   | { name: 'quiz'; attemptId: string }
   | { name: 'result'; attemptId: string };

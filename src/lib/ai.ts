@@ -1,8 +1,10 @@
 // AI provider chain — always try in this order: Gemini → Groq → z.ai
-// Each provider gets one shot per request; JSON-mode callers validate the
-// output themselves and can reject (which surfaces as a failure) so the
-// caller can fall back to the next provider or to deterministic content.
+// Model order inside Gemini/Groq is health-aware (src/lib/aiHealth.ts):
+// models that just hit their free-tier limit are skipped for a short cooldown
+// and the next model on the SAME provider is used, spreading usage across
+// every model each API offers.
 import ZAI from 'z-ai-web-dev-sdk';
+import { markDead, markRateLimited, orderedModels } from './aiHealth';
 import type { AttemptResult } from './types';
 
 export type Provider = 'gemini' | 'groq' | 'zai';
@@ -33,7 +35,6 @@ const GEMINI_MODELS = (process.env.GEMINI_MODELS || 'gemini-3.8-flash,gemini-fla
   .map((m) => m.trim())
   .filter(Boolean);
 const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
-
 const GROQ_MODELS = (process.env.GROQ_MODELS || 'llama-3.3-70b-versatile,llama-3.1-8b-instant,openai/gpt-oss-120b')
   .split(',')
   .map((m) => m.trim())
@@ -50,7 +51,7 @@ function withTimeout(ms: number): { signal: AbortSignal; done: () => void } {
 async function tryGemini(req: AIRequest): Promise<string> {
   if (!GEMINI_KEY) throw new Error('no gemini key');
   let lastErr = 'unknown';
-  for (const model of GEMINI_MODELS) {
+  for (const model of await orderedModels('gemini', GEMINI_MODELS)) {
     const t = withTimeout(req.timeoutMs ?? 30_000);
     try {
       const res = await fetch(
@@ -70,6 +71,8 @@ async function tryGemini(req: AIRequest): Promise<string> {
       );
       if (!res.ok) {
         lastErr = `gemini ${model} -> ${res.status}`;
+        if (res.status === 429) await markRateLimited('gemini', model);
+        else if (res.status === 404 || res.status === 400) await markDead('gemini', model);
         continue;
       }
       const data = (await res.json()) as {
@@ -97,7 +100,7 @@ async function tryGemini(req: AIRequest): Promise<string> {
 async function tryGroq(req: AIRequest): Promise<string> {
   if (!GROQ_KEY) throw new Error('no groq key');
   let lastErr = 'unknown';
-  for (const model of GROQ_MODELS) {
+  for (const model of await orderedModels('groq', GROQ_MODELS)) {
     const t = withTimeout(req.timeoutMs ?? 30_000);
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -116,6 +119,8 @@ async function tryGroq(req: AIRequest): Promise<string> {
       });
       if (!res.ok) {
         lastErr = `groq ${model} -> ${res.status}`;
+        if (res.status === 429) await markRateLimited('groq', model);
+        else if (res.status === 404 || res.status === 400 || res.status === 403) await markDead('groq', model);
         continue;
       }
       const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };

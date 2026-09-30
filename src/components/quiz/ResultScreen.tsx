@@ -23,13 +23,14 @@ import { api } from '@/lib/api';
 import { topicTitle } from '@/lib/topics';
 import { ScoreRing, BarList, Diagram } from '@/components/charts';
 import { ErrorNote, PctChip } from '@/components/shared';
+import { ExplainMeButton } from '@/components/quiz/ExplainMeButton';
 import { useToast } from '@/hooks/use-toast';
 import type { AttemptResult, QReview, TopicStat } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface ResultData {
   status: 'submitted';
-  mode: 'assignment' | 'practice';
+  mode: 'assignment' | 'practice' | 'selftest';
   title: string;
   assignmentId: string | null;
   quizId: string | null;
@@ -99,6 +100,8 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
     );
 
   const r = data.result;
+  const isSelfTest = data.mode === 'selftest';
+  const home = () => go(isSelfTest ? { name: 't-home' } : { name: 's-home' });
   const correctCount = data.reviews.filter((x) => x.correct).length;
   const topicRows = (data.topicStats ?? []).map((v) => ({
     label: `${v.topic} · ${topicTitle(v.topic)}`,
@@ -113,13 +116,17 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-5 gap-2">
-        <Button variant="ghost" onClick={() => go({ name: 's-home' })}>
-          <ArrowLeft className="h-4 w-4" /> Home
+        <Button variant="ghost" onClick={home}>
+          <ArrowLeft className="h-4 w-4" /> {isSelfTest ? 'Teacher home' : 'Home'}
         </Button>
-        <Button variant="outline" onClick={() => void redo()} disabled={redoing}>
-          <RotateCw className={cn('h-4 w-4', redoing && 'animate-spin')} />
-          {redoing ? 'Starting…' : 'Redo this quiz'}
-        </Button>
+        {!isSelfTest ? (
+          <Button variant="outline" onClick={() => void redo()} disabled={redoing}>
+            <RotateCw className={cn('h-4 w-4', redoing && 'animate-spin')} />
+            {redoing ? 'Starting…' : 'Redo this quiz'}
+          </Button>
+        ) : (
+          <Badge variant="secondary">Your own dry run — not saved to class stats</Badge>
+        )}
       </div>
 
       {/* headline */}
@@ -270,22 +277,27 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
               <span className="font-medium text-foreground">Why: </span>
               {rev.explain}
             </p>
+            {!rev.correct ? <ExplainMeButton attemptId={attemptId} qid={rev.qid} className="mt-3" /> : null}
           </li>
         ))}
       </ol>
 
       <div className="mt-6 flex flex-wrap gap-3">
-        <Button onClick={() => go({ name: 's-home' })}>
-          <ArrowLeft className="h-4 w-4" /> Back to home
+        <Button onClick={home}>
+          <ArrowLeft className="h-4 w-4" /> {isSelfTest ? 'Back to teacher home' : 'Back to home'}
         </Button>
-        <Button variant="outline" onClick={() => void redo()} disabled={redoing}>
-          <RotateCw className={cn('h-4 w-4', redoing && 'animate-spin')} />
-          {redoing ? 'Starting…' : data.mode === 'practice' ? 'Try this quiz again' : 'Redo this quiz'}
-        </Button>
+        {!isSelfTest ? (
+          <Button variant="outline" onClick={() => void redo()} disabled={redoing}>
+            <RotateCw className={cn('h-4 w-4', redoing && 'animate-spin')} />
+            {redoing ? 'Starting…' : data.mode === 'practice' ? 'Try this quiz again' : 'Redo this quiz'}
+          </Button>
+        ) : null}
         {data.mode === 'practice' ? (
           <Button variant="ghost" onClick={() => go({ name: 's-practice' })}>
             Choose a different quiz
           </Button>
+        ) : isSelfTest ? (
+          <p className="text-xs text-muted-foreground self-center">Self-tests never appear in class results or leaderboards.</p>
         ) : (
           <p className="text-xs text-muted-foreground self-center">Every attempt is saved — your teacher can see all of them.</p>
         )}

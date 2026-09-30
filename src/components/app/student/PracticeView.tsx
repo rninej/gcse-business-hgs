@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { PlayCircle, Layers3, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { PlayCircle, Layers3, Sparkles, Search, X, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
 import { PageHeader, ThemedSkeleton, ErrorNote, TypeBadge } from '@/components/shared';
-import { topicTitle } from '@/lib/topics';
+import { topicTitle, TOPIC_MAP } from '@/lib/topics';
 import type { QuestionType } from '@/lib/types';
 
 interface QuizRow {
@@ -16,6 +17,7 @@ interface QuizRow {
   blurb: string;
   theme: 1 | 2;
   topics: string[];
+  audience: 'practice' | 'assignment';
   questionCount: number;
   types: QuestionType[];
 }
@@ -25,10 +27,11 @@ export function PracticeView() {
   const [quizzes, setQuizzes] = useState<QuizRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     api
-      .get<{ quizzes: QuizRow[] }>('/api/quizzes')
+      .get<{ quizzes: QuizRow[] }>('/api/quizzes?audience=practice')
       .then((d) => setQuizzes(d.quizzes))
       .catch((e) => setError((e as Error).message));
   }, []);
@@ -44,6 +47,25 @@ export function PracticeView() {
       setStarting(null);
     }
   }
+
+  /** search across title, blurb, topic ids + topic titles, question types */
+  const matches = useMemo(() => {
+    if (!quizzes) return [];
+    const q = query.trim().toLowerCase();
+    if (!q) return quizzes;
+    return quizzes.filter((z) => {
+      const hay = [
+        z.title,
+        z.blurb,
+        ...z.topics,
+        ...z.topics.map((t) => TOPIC_MAP[t]?.title ?? ''),
+        ...z.types,
+      ]
+        .join(' ')
+        .toLowerCase();
+      return q.split(/\s+/).every((w) => hay.includes(w));
+    });
+  }, [quizzes, query]);
 
   if (error)
     return (
@@ -65,28 +87,62 @@ export function PracticeView() {
       <PageHeader
         title="Practice quizzes"
         sub="Pick a topic and test yourself — as many times as you like. Your marks update your progress map."
+        actions={
+          <Button variant="outline" size="sm" onClick={() => go({ name: 's-revise' })}>
+            <Layers className="h-4 w-4" /> Flashcards
+          </Button>
+        }
       />
 
-      <div className="rounded-xl border bg-[var(--accent)]/25 p-4 mb-6 flex gap-3 text-sm">
+      <div className="rounded-xl border bg-[var(--accent)]/25 p-4 mb-5 flex gap-3 text-sm">
         <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" aria-hidden />
         <p className="text-muted-foreground">
-          Every attempt gets automatic feedback and full explanations — the more you retry, the more the
-          marking sinks in.
+          Every attempt gets automatic feedback and full explanations — and these practice quizzes are
+          completely separate from the tasks your teacher sets you.
         </p>
       </div>
+
+      {/* search */}
+      <div className="relative mb-6" role="search">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search quizzes — try “break-even”, “marketing”, “2.4”…"
+          className="pl-10 pr-10 h-12 text-base rounded-xl bg-card"
+          aria-label="Search practice quizzes"
+        />
+        {query ? (
+          <button
+            onClick={() => setQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            aria-label="Clear search"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        ) : null}
+      </div>
+
+      {query && matches.length === 0 ? (
+        <p className="text-sm text-muted-foreground mb-6">
+          No practice quizzes match “{query}”. Try a topic number like <span className="font-medium">1.3</span> or a word like <span className="font-medium">cash</span>.
+        </p>
+      ) : null}
 
       {[
         { title: 'Theme 1 · Investigating small business', theme: 1 as const },
         { title: 'Theme 2 · Building a business', theme: 2 as const },
       ].map((group) => {
-        const rows = quizzes.filter((q) => q.theme === group.theme);
+        const rows = matches.filter((q) => q.theme === group.theme);
         return (
           <section key={group.title} className="mb-8">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
               <Layers3 className="h-4 w-4" /> {group.title}
             </h2>
             {rows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Quizzes coming soon.</p>
+              <p className="text-sm text-muted-foreground">
+                {query ? 'Nothing in this theme matches your search.' : 'Quizzes coming soon.'}
+              </p>
             ) : (
               <div className="grid sm:grid-cols-2 gap-4">
                 {rows.map((q) => (

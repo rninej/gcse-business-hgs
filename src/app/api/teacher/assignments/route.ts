@@ -191,6 +191,11 @@ export async function POST(req: Request) {
   if (mode === 'library') {
     const quiz = body.quizId ? QUIZ_MAP[body.quizId] : undefined;
     if (!quiz) return NextResponse.json({ error: 'Choose a quiz from the library.' }, { status: 400 });
+    // teachers may only set assignment-pool quizzes — the student practice pool
+    // stays separate so self-study can never be the homework itself
+    if (quiz.audience !== 'assignment') {
+      return NextResponse.json({ error: 'This quiz is reserved for student practice.' }, { status: 400 });
+    }
     questions = quiz.questions.map((q) => ({ ...q }));
     generatedBy = `Quiz bank · ${quiz.title}`;
   } else if (mode === 'ai') {

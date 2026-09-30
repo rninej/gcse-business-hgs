@@ -117,11 +117,13 @@ export interface Quiz {
   blurb: string;
   theme: 1 | 2;
   topics: string[];
+  /** practice = student self-study pool only; assignment = teacher-set pool only.
+   *  The two pools never share questions, so practice can never leak homework. */
+  audience: 'practice' | 'assignment';
   questions: Question[];
 }
 
 export type AssignmentSource = 'library' | 'ai' | 'custom';
-
 export interface Assignment {
   id: string;
   teacherId: string;
@@ -138,7 +140,7 @@ export interface Assignment {
 }
 
 // ---------- Attempts ----------
-export type AttemptMode = 'assignment' | 'practice';
+export type AttemptMode = 'assignment' | 'practice' | 'selftest';
 export type AttemptStatus = 'in-progress' | 'submitted';
 
 /** Per-question outcome, stored the moment a student confirms an answer */
@@ -148,6 +150,12 @@ export interface CheckedState {
   expected: string;
   explain: string;
   at: number;
+}
+
+/** Stored "explain it to me" explanation for a wrong answer */
+export interface ExplainNote {
+  text: string;
+  by: 'gemini' | 'groq' | 'zai' | 'template';
 }
 
 export interface TelemetryEvent {
@@ -225,11 +233,26 @@ export interface Attempt {
   questions: Question[]; // full snapshot — SERVER ONLY, never sent to client pre-submission
   answers: Record<string, string>; // confirmed (checked) answers are persisted here
   checked: Record<string, CheckedState>; // qid -> outcome, filled as the student confirms
+  explanations?: Record<string, ExplainNote>; // qid -> stored "explain it to me" text
   perQ: Record<string, PerQTelemetry>;
   events: TelemetryEvent[];
   wallMs: number;
   hiddenMs: number;
   result: AttemptResult | null;
+}
+
+// ---------- Flashcards ----------
+export interface Flashcard {
+  front: string; // term or prompt
+  back: string; // definition or answer
+  hint?: string;
+}
+
+export interface FlashcardDeck {
+  topic: string; // topic id e.g. '1.1'
+  title: string;
+  blurb: string;
+  cards: Flashcard[];
 }
 
 // ---------- API DTOs ----------

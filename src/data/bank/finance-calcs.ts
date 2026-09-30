@@ -1,0 +1,258 @@
+// gcsebusiness question bank — Finance: Calculations Practice (Topic 2.4)
+// Author: gcsebusiness content team. Numeric practice bank: every fictional case
+// (Hungry Hedgehog, Kestrel Print, Overhang, Sew & Sow, Hearth & Harvest) has
+// clean, internally consistent figures with full working in each explanation.
+
+import type { QuizDef } from '@/lib/bank';
+
+const def: QuizDef = {
+  id: 'finance-calcs',
+  title: 'Finance: Calculations Practice',
+  blurb:
+    'The numeric practice bank — gross and net profit margins, ARR, break-even, margin of safety and cash-flow gaps, with interpretation questions featuring Halfords.',
+  theme: 2,
+  topics: ['2.4'],
+  questions: [
+    {
+      id: 'fc1',
+      type: 'numeric',
+      topic: '2.4',
+      difficulty: 2,
+      marks: 2,
+      stem: 'Using the case study, calculate The Hungry Hedgehog’s gross profit margin for last year. Give your answer to the nearest whole number.',
+      extract: {
+        title: 'The Hungry Hedgehog — a gastropub',
+        text: 'The Hungry Hedgehog is a gastropub in Yorkshire. Last year its revenue was £180,000. The cost of sales — the food and drink it sold — came to £72,000. The remaining money has to cover the overheads: staff wages, rent, utilities and marketing.',
+      },
+      value: 60,
+      tol: 0.5,
+      unit: '%',
+      dp: 0,
+      explain:
+        'Gross profit = revenue − cost of sales = £180,000 − £72,000 = £108,000. Gross profit margin = (£108,000 ÷ £180,000) × 100 = 60%. Sixty pence in every £1 of food and drink sales is left over to pay the overheads.',
+    },
+    {
+      id: 'fc2',
+      type: 'numeric',
+      topic: '2.4',
+      difficulty: 3,
+      marks: 2,
+      stem: 'Using the case study, calculate The Hungry Hedgehog’s net profit margin for last year. Give your answer to the nearest whole number.',
+      extract: {
+        title: 'The Hungry Hedgehog — the full picture',
+        text: 'Last year The Hungry Hedgehog had revenue of £180,000 and cost of sales of £72,000. Its operating expenses — wages, rent, utilities and marketing — came to £63,000. Net (operating) profit is what remains after all of these costs.',
+      },
+      value: 25,
+      tol: 0.5,
+      unit: '%',
+      dp: 0,
+      explain:
+        'Net profit = £180,000 − £72,000 − £63,000 = £45,000. Net profit margin = (£45,000 ÷ £180,000) × 100 = 25%. Comparing with the 60% gross margin shows the overheads consume 35 pence of every £1 of sales.',
+    },
+    {
+      id: 'fc3',
+      type: 'numeric',
+      topic: '2.4',
+      difficulty: 2,
+      marks: 2,
+      stem: 'Using the case study, calculate the average rate of return (ARR) on the new press, as a percentage. Give your answer as a whole number.',
+      extract: {
+        title: 'Kestrel Print Co. — a new press',
+        text: 'Kestrel Print Co. is planning to buy a new printing press costing £80,000. The owners expect the investment to generate total profit of £128,000 over its 4-year life. They will compare the result with the 5% their money could earn in the bank.',
+      },
+      value: 40,
+      tol: 0.5,
+      unit: '%',
+      dp: 0,
+      explain:
+        'Average annual profit = £128,000 ÷ 4 years = £32,000. ARR = (£32,000 ÷ £80,000) × 100 = 40%. A 40% return comfortably beats the 5% from the bank — but the £128,000 is only a forecast, and it arrives over four years, not on day one.',
+    },
+    {
+      id: 'fc4',
+      type: 'numeric',
+      topic: '2.4',
+      difficulty: 2,
+      marks: 2,
+      stem: 'Using the case study, calculate Overhang’s monthly break-even output in customer sessions. Give your answer as a whole number of sessions.',
+      extract: {
+        title: 'Overhang Climbing Centre',
+        text: 'Overhang is an indoor bouldering centre. Each entry session sells for £15.00, and the variable cost per customer (staff cover per head, chalk, insurance and cleaning) is £6.00. The centre’s fixed costs — rent, rates, full-time staff and equipment leases — are £10,800 a month.',
+      },
+      value: 1200,
+      tol: 0.5,
+      unit: 'sessions',
+      explain:
+        'Contribution per session = £15.00 − £6.00 = £9.00. Break-even output = fixed costs ÷ contribution = £10,800 ÷ £9.00 = 1,200 sessions a month. Below 1,200 sessions the centre makes a loss; every session beyond it adds £9.00 of profit.',
+    },
+    {
+      id: 'fc5',
+      type: 'numeric',
+      topic: '2.4',
+      difficulty: 1,
+      marks: 1,
+      stem: 'Using the case study figures, calculate Overhang’s monthly margin of safety in sessions. Give your answer as a whole number of sessions.',
+      extract: {
+        title: 'Overhang Climbing Centre — a reminder',
+        text: 'Entry sessions sell for £15.00 each with a variable cost of £6.00 per session, and fixed costs are £10,800 a month. Overhang currently welcomes 1,600 sessions a month. Remember: margin of safety = current output − break-even output.',
+      },
+      value: 400,
+      tol: 0.5,
+      unit: 'sessions',
+      explain:
+        'Break-even = £10,800 ÷ £9.00 = 1,200 sessions. Margin of safety = 1,600 − 1,200 = 400 sessions. Visits could fall by 400 a month — a quarter of current demand — before the centre slips into loss.',
+    },
+    {
+      id: 'fc6',
+      type: 'numeric',
+      topic: '2.4',
+      difficulty: 2,
+      marks: 2,
+      stem: 'Using the case study figures, calculate Overhang’s total profit in a month where it sells exactly 2,000 sessions. Give your answer in pounds.',
+      extract: {
+        title: 'Overhang Climbing Centre — the school-holiday month',
+        text: 'Entry sessions sell for £15.00 each with a variable cost of £6.00 per session, and fixed costs are £10,800 a month. In a busy school-holiday month, Overhang expects to welcome 2,000 sessions.',
+      },
+      value: 7200,
+      tol: 5,
+      unit: '£',
+      explain:
+        'Total contribution = 2,000 × (£15.00 − £6.00) = 2,000 × £9.00 = £18,000. Profit = total contribution − fixed costs = £18,000 − £10,800 = £7,200. Once break-even (1,200 sessions) is passed, each extra session contributes £9.00 straight to profit.',
+    },
+    {
+      id: 'fc7',
+      type: 'numeric',
+      topic: '2.4',
+      difficulty: 3,
+      marks: 2,
+      stem: 'Using the case study, calculate how far into overdraft Sew & Sow expects to be at the end of the month — the size of the negative closing balance. Give your answer in pounds as a positive number.',
+      extract: {
+        title: 'Sew & Sow — a tight month ahead',
+        text: 'Sew & Sow is a haberdashery and fabric shop. Its cash flow forecast for next month shows an opening balance of £2,400, expected cash inflows of £9,850 (sales plus a market stall fee refund), and expected cash outflows of £13,250 (a bulk fabric purchase, rent, wages and bills).',
+      },
+      value: 1000,
+      tol: 5,
+      unit: '£',
+      explain:
+        'Net cash flow = inflows − outflows = £9,850 − £13,250 = −£3,400. Closing balance = opening balance + net cash flow = £2,400 − £3,400 = −£1,000, so the shop expects to be £1,000 overdrawn. The bulk fabric buy is the culprit — delaying it, or arranging an overdraft in advance, would close the gap.',
+    },
+    {
+      id: 'fc8',
+      type: 'numeric',
+      topic: '2.4',
+      difficulty: 2,
+      marks: 2,
+      stem: 'Using the case study, calculate the forecast percentage change in Hearth & Harvest’s revenue. Give your answer to 1 decimal place.',
+      extract: {
+        title: 'Hearth & Harvest — two years of growth',
+        text: 'Hearth & Harvest runs a small chain of village bakeries. Revenue was £640,000 last year and is forecast to be £752,000 this year, helped by two new village shops.',
+      },
+      value: 17.5,
+      tol: 0.25,
+      unit: '%',
+      dp: 1,
+      explain:
+        'Percentage change = ((new − original) ÷ original) × 100 = ((£752,000 − £640,000) ÷ £640,000) × 100 = 17.5%. Revenue is forecast to grow by more than a sixth — though investors would also want to know what is happening to margins along the way.',
+    },
+    {
+      id: 'fc9',
+      type: 'mcq',
+      topic: '2.4',
+      difficulty: 2,
+      marks: 1,
+      stem: 'Halfords reports a gross profit margin of 42% this year. Which additional comparison would MOST help an investor judge whether 42% is good?',
+      options: [
+        'The margin in previous years, and the margins of rival bike and motoring retailers',
+        'The number of letters in the company’s name',
+        'The weather on the day the accounts were published',
+        'Nothing — a margin can only ever be judged on its own',
+      ],
+      correct: 0,
+      explain:
+        'Margins mean little in isolation. Comparing with previous years shows the trend, and comparing with rivals benchmarks efficiency: a 42% margin that has fallen from 48% tells a very different story from one that has risen from 38%.',
+    },
+    {
+      id: 'fc10',
+      type: 'mcq',
+      topic: '2.4',
+      difficulty: 3,
+      marks: 1,
+      stem: 'A project has a calculated ARR of 14%, while the business’s bank offers 6% interest on savings. Which conclusion is most reasonable?',
+      options: [
+        'The project should be rejected because 14% is lower than 6%',
+        'The project earns more than double the return of leaving the money in the bank, so it is attractive — provided the profit forecasts are realistic',
+        'An ARR above 6% guarantees the project cannot fail',
+        'The bank’s rate is irrelevant to business decisions',
+      ],
+      correct: 1,
+      explain:
+        'ARR is compared with what the money could earn elsewhere, and 14% beats 6% comfortably, so the project looks worthwhile. But the figure rests on forecasts: if profits fall short, the true return will be lower — so the risk matters too.',
+    },
+    {
+      id: 'fc11',
+      type: 'term',
+      topic: '2.4',
+      difficulty: 1,
+      marks: 1,
+      stem: 'What is the term for the direct costs of the goods a business has sold — for a bike retailer, the price it paid for the very bikes it sold this year?',
+      accept: ['cost of sales', 'the cost of sales', 'costs of sales', 'cost of goods sold', 'cogs'],
+      explain:
+        'Cost of sales is the direct cost of whatever was sold — the bikes themselves for a retailer, or the flour and fillings for a bakery. Revenue minus cost of sales gives gross profit, and dividing gross profit by revenue gives the gross profit margin.',
+    },
+    {
+      id: 'fc12',
+      type: 'term',
+      topic: '2.4',
+      difficulty: 2,
+      marks: 1,
+      stem: 'What is the term for the profit left after the cost of sales AND all the operating expenses — such as rent, wages and marketing — have been deducted?',
+      accept: ['operating profit', 'net profit', 'the operating profit', 'the net profit'],
+      explain:
+        'Operating (net) profit is what survives after every cost of trading: cost of sales plus overheads. It is the figure behind the net profit margin and ROCE — the key measures of overall profitability and efficiency.',
+    },
+    {
+      id: 'fc13',
+      type: 'fib',
+      topic: '2.4',
+      difficulty: 1,
+      marks: 1,
+      stem: 'Average rate of return = (average annual ________ ÷ cost of investment) × 100. What one word completes the formula?',
+      accept: ['profit', 'profits', 'the profit', 'annual profit'],
+      explain:
+        'ARR divides the average yearly profit a project generates by what it cost to invest. A higher percentage means the investment rewards its cost faster — and can be compared with the return on alternatives such as leaving the money in the bank.',
+    },
+    {
+      id: 'fc14',
+      type: 'fib',
+      topic: '2.4',
+      difficulty: 1,
+      marks: 1,
+      stem: 'Net profit = gross profit − operating ________. What one word completes the formula?',
+      accept: ['expenses', 'expense', 'costs', 'overheads'],
+      explain:
+        'Gross profit must also cover operating expenses — rent, wages, insurance, marketing and utilities — before net profit appears. That is why a healthy gross margin can still leave a business barely profitable if overheads balloon.',
+    },
+    {
+      id: 'fc15',
+      type: 'truefalse',
+      topic: '2.4',
+      difficulty: 1,
+      marks: 1,
+      stem: 'For any business, the gross profit margin can never be lower than the net profit margin.',
+      answer: true,
+      explain:
+        'True. Net profit is gross profit minus expenses, so as a percentage of the same revenue it must be smaller — or equal if there were no expenses at all. If a calculation ever shows a net margin above the gross margin, a mistake has crept in somewhere.',
+    },
+    {
+      id: 'fc16',
+      type: 'truefalse',
+      topic: '2.4',
+      difficulty: 2,
+      marks: 1,
+      stem: 'The project with the highest calculated ARR is always the best choice for a business, whatever the risks.',
+      answer: false,
+      explain:
+        'False. ARR is based on forecasts, and a higher predicted return often comes with higher risk — the profit may never arrive. Businesses also weigh other factors: how long the money is tied up, whether the project fits the strategy, and the cost of the finance.',
+    },
+  ],
+};
+export default def;

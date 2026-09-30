@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { BookOpen, Layers3, ArrowRight, Eye, SendHorizonal } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { BookOpen, Layers3, ArrowRight, Eye, SendHorizonal, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Collapsible,
   CollapsibleContent,
@@ -13,7 +14,7 @@ import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
 import { PageHeader, ThemedSkeleton, ErrorNote, MarksChip, TypeBadge } from '@/components/shared';
 import { Diagram } from '@/components/charts';
-import { topicTitle } from '@/lib/topics';
+import { topicTitle, TOPIC_MAP } from '@/lib/topics';
 import type { Question } from '@/lib/types';
 
 interface QuizRow {
@@ -22,6 +23,7 @@ interface QuizRow {
   blurb: string;
   theme: 1 | 2;
   topics: string[];
+  audience: 'practice' | 'assignment';
   questionCount: number;
   types: Question['type'][];
 }
@@ -30,10 +32,11 @@ export function LibraryView() {
   const go = useApp((s) => s.go);
   const [quizzes, setQuizzes] = useState<QuizRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     api
-      .get<{ quizzes: QuizRow[] }>('/api/quizzes')
+      .get<{ quizzes: QuizRow[] }>('/api/quizzes?audience=assignment')
       .then((d) => setQuizzes(d.quizzes))
       .catch((e) => setError((e as Error).message));
   }, []);
@@ -43,6 +46,25 @@ export function LibraryView() {
     const res = await api.get<{ questions: Question[] }>(`/api/teacher/assignments/preview/${quizId}`);
     return res.questions;
   }, []);
+
+  /** search across title, blurb, topic ids + titles, question types */
+  const matches = useMemo(() => {
+    if (!quizzes) return [];
+    const q = query.trim().toLowerCase();
+    if (!q) return quizzes;
+    return quizzes.filter((z) => {
+      const hay = [
+        z.title,
+        z.blurb,
+        ...z.topics,
+        ...z.topics.map((t) => TOPIC_MAP[t]?.title ?? ''),
+        ...z.types,
+      ]
+        .join(' ')
+        .toLowerCase();
+      return q.split(/\s+/).every((w) => hay.includes(w));
+    });
+  }, [quizzes, query]);
 
   if (error)
     return (
@@ -59,8 +81,8 @@ export function LibraryView() {
       </>
     );
 
-  const t1 = quizzes.filter((q) => q.theme === 1);
-  const t2 = quizzes.filter((q) => q.theme === 2);
+  const t1 = matches.filter((q) => q.theme === 1);
+  const t2 = matches.filter((q) => q.theme === 2);
 
   return (
     <>
@@ -68,6 +90,33 @@ export function LibraryView() {
         title="Quiz library"
         sub="Hand-written banks aligned to the Edexcel spec — preview every question before you set it."
       />
+
+      {/* search */}
+      <div className="relative mb-6" role="search">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search the library — try “cash flow”, “2.4”, “motivation”…"
+          className="pl-10 pr-10 h-12 text-base rounded-xl bg-card"
+          aria-label="Search the quiz library"
+        />
+        {query ? (
+          <button
+            onClick={() => setQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            aria-label="Clear search"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        ) : null}
+      </div>
+
+      {query && matches.length === 0 ? (
+        <p className="text-sm text-muted-foreground mb-6">
+          No quizzes match “{query}”. Try a topic number like <span className="font-medium">1.3</span> or a word like <span className="font-medium">marketing</span>.
+        </p>
+      ) : null}
 
       {[
         { title: 'Theme 1 · Investigating small business', rows: t1 },

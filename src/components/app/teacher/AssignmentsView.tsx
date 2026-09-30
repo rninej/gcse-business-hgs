@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, ClipboardList, PlusCircle, Timer, Trash2 } from 'lucide-react';
+import { ArrowRight, ClipboardList, FlaskConical, PlusCircle, Timer, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -45,6 +45,7 @@ export function AssignmentsView() {
   const { toast } = useToast();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [testing, setTesting] = useState<string | null>(null);
 
   const load = useCallback(() => {
     api
@@ -62,6 +63,20 @@ export function AssignmentsView() {
       load();
     } catch (e) {
       toast({ title: 'Could not delete', description: (e as Error).message, variant: 'destructive' });
+    }
+  }
+
+  // try your own assignment exactly as a student sees it — a private dry run
+  // that never appears in class statistics
+  async function selfTest(a: Row) {
+    setTesting(a.id);
+    try {
+      const res = await api.post<{ attemptId: string }>(`/api/teacher/assignments/${a.id}/selftest`);
+      go({ name: 'quiz', attemptId: res.attemptId });
+    } catch (e) {
+      toast({ title: 'Could not start the self-test', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setTesting(null);
     }
   }
 
@@ -147,6 +162,16 @@ export function AssignmentsView() {
                       </div>
                       <div className="text-[11px] text-muted-foreground mt-1 text-right">{done}% complete</div>
                     </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void selfTest(a)}
+                      disabled={testing === a.id}
+                      title="Try this quiz yourself — a private dry run"
+                    >
+                      <FlaskConical className="h-3.5 w-3.5" />
+                      <span className="hidden lg:inline">{testing === a.id ? 'Starting…' : 'Test it'}</span>
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => go({ name: 't-results', assignmentId: a.id })}>
                       Results <ArrowRight className="h-3.5 w-3.5" />
                     </Button>

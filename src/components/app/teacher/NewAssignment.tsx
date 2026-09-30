@@ -83,7 +83,7 @@ export function NewAssignment({ presetQuizId }: { presetQuizId?: string }) {
       setClasses(d.classes);
       if (d.classes.length > 0 && !presetQuizId) setClassId(d.classes[0].id);
     }).catch((e) => setError((e as Error).message));
-    api.get<{ quizzes: QuizRow[] }>('/api/quizzes').then((d) => setQuizzes(d.quizzes)).catch(() => undefined);
+    api.get<{ quizzes: QuizRow[] }>('/api/quizzes?audience=assignment').then((d) => setQuizzes(d.quizzes)).catch(() => undefined);
      
   }, []);
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useApp } from '@/lib/store';
 import type { SessionInfo } from '@/lib/types';
 import type { View } from '@/lib/store';
@@ -14,6 +15,7 @@ import { ResultsView } from '@/components/app/teacher/ResultsView';
 import { LibraryView } from '@/components/app/teacher/LibraryView';
 import { StudentHome } from '@/components/app/student/StudentHome';
 import { PracticeView } from '@/components/app/student/PracticeView';
+import { FlashcardView } from '@/components/app/student/FlashcardView';
 import { StudentHistory } from '@/components/app/student/StudentHistory';
 import { QuizRunner } from '@/components/quiz/QuizRunner';
 import { ResultScreen } from '@/components/quiz/ResultScreen';
@@ -30,6 +32,12 @@ function homeView(s: SessionInfo): View {
 let clientBootstrapped = false;
 
 export function HomeApp({ initialSession }: { initialSession: SessionInfo | null }) {
+  // every visit (signed in or not) refreshes the shared AI model-health
+  // snapshot in the background — quota-stricken models rotate out automatically
+  useEffect(() => {
+    fetch('/api/ai/health').catch(() => undefined);
+  }, []);
+
   if (typeof window !== 'undefined' && !clientBootstrapped) {
     clientBootstrapped = true;
     if (initialSession) {
@@ -60,6 +68,7 @@ export function HomeApp({ initialSession }: { initialSession: SessionInfo | null
       {view.name === 't-library' ? <LibraryView /> : null}
       {view.name === 's-home' ? <StudentHome /> : null}
       {view.name === 's-practice' ? <PracticeView /> : null}
+      {view.name === 's-revise' ? <FlashcardView /> : null}
       {view.name === 's-history' ? <StudentHistory /> : null}
       {view.name === 'quiz' ? <QuizRunner key={view.attemptId} attemptId={view.attemptId} /> : null}
       {view.name === 'result' ? <ResultScreen key={view.attemptId} attemptId={view.attemptId} /> : null}

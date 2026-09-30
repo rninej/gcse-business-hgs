@@ -17,6 +17,10 @@ export async function POST(req: Request) {
   const body = (await req.json()) as { quizId?: string };
   const quiz = body.quizId ? QUIZ_MAP[body.quizId] : undefined;
   if (!quiz) return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
+  // students may only self-study on the practice pool — never a teacher-set quiz
+  if (quiz.audience !== 'practice') {
+    return NextResponse.json({ error: 'This quiz is only available as a teacher-set task.' }, { status: 403 });
+  }
 
   // NB: Firebase RTDB drops null values, so assignmentId reads back as
   // undefined for practice attempts — treat both as "no assignment".

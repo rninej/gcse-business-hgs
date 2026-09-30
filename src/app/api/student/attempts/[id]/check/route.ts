@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { item, merge } from '@/lib/firebase';
+import { loadAccessibleAttempt } from '@/lib/attemptAccess';
 import { markQuestion } from '@/lib/marking';
-import { requireRole } from '@/lib/session';
 import type { Attempt } from '@/lib/types';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -13,14 +13,11 @@ type Ctx = { params: Promise<{ id: string }> };
  * return the stored outcome, which also makes answer-guessing pointless.
  */
 export async function POST(req: Request, ctx: Ctx) {
-  const session = await requireRole('student');
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await ctx.params;
 
-  const attempt = await item<Attempt>('attempts', id);
-  if (!attempt || attempt.studentId !== session.uid) {
-    return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
-  }
+  const access = await loadAccessibleAttempt(id);
+  if (!access) return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
+  const attempt: Attempt = access.attempt;
   if (attempt.status === 'submitted') {
     return NextResponse.json({ error: 'Already submitted.', alreadySubmitted: true }, { status: 409 });
   }

@@ -2,11 +2,13 @@
 
 // Application shell: desktop sidebar + mobile bottom nav + sticky footer.
 // Light-mode only. Warms the API cache on mount so clicking around the app
-// is instant.
+// is instant, and pings the AI health endpoint so model availability stays
+// fresh in the background on every visit.
 import { useEffect } from 'react';
 import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BrandLockup } from './Brand';
+import { PasswordDialog } from './PasswordDialog';
 import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
 import type { View } from '@/lib/store';
@@ -24,15 +26,17 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
   const isTeacher = session?.role === 'teacher';
 
   // prefetch the views the user is most likely to open next (results are
-  // per-assignment and only fetched on demand)
+  // per-assignment and only fetched on demand); also ping the AI health
+  // endpoint — a background probe refreshes which models have quota left
   useEffect(() => {
     if (!session) return;
     const paths = isTeacher
-      ? ['/api/teacher/overview', '/api/teacher/classes', '/api/teacher/assignments', '/api/quizzes']
-      : ['/api/student/assignments', '/api/student/overview', '/api/student/leaderboard'];
+      ? ['/api/teacher/overview', '/api/teacher/classes', '/api/teacher/assignments', '/api/quizzes?audience=assignment']
+      : ['/api/student/assignments', '/api/student/overview', '/api/student/leaderboard', '/api/quizzes?audience=practice'];
     for (const p of paths) {
       api.get(p).catch(() => undefined);
     }
+    fetch('/api/ai/health').catch(() => undefined);
      
   }, [session?.uid]);
 
@@ -47,6 +51,7 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
     : [
         { label: 'Home', icon: HomeIcon, view: { name: 's-home' } },
         { label: 'Practice', icon: GraduationCapIcon, view: { name: 's-practice' } },
+        { label: 'Revise', icon: LayersIcon, view: { name: 's-revise' } },
         { label: 'Results', icon: HistoryIcon, view: { name: 's-history' } },
       ];
 
@@ -98,6 +103,7 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
               </div>
             </div>
           </div>
+          <PasswordDialog />
           <Button variant="outline" size="sm" className="w-full" onClick={() => logout()}>
             <LogOut className="h-4 w-4" /> Log out
           </Button>
@@ -108,9 +114,12 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
       <header className="md:hidden sticky top-0 z-40 bg-background/95 backdrop-blur border-b">
         <div className="flex items-center justify-between px-4 h-14">
           <BrandLockup compact />
-          <Button variant="ghost" size="icon" onClick={() => logout()} aria-label="Log out">
-            <LogOut className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <PasswordDialog variant="ghost" />
+            <Button variant="ghost" size="icon" onClick={() => logout()} aria-label="Log out">
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -178,6 +187,9 @@ function HomeIcon({ className }: { className?: string }) {
 }
 function GraduationCapIcon({ className }: { className?: string }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>;
+}
+function LayersIcon({ className }: { className?: string }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.84z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>;
 }
 function HistoryIcon({ className }: { className?: string }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>;

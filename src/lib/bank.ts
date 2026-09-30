@@ -10,6 +10,8 @@ export interface QuizDef {
   blurb: string;
   theme: 1 | 2;
   topics: string[];
+  /** 'practice' = student self-study pool · 'assignment' (default) = teacher pool */
+  audience?: 'practice' | 'assignment';
   questions: Question[];
 }
 
@@ -20,6 +22,7 @@ export function compileQuiz(def: QuizDef): Quiz {
     blurb: def.blurb,
     theme: def.theme,
     topics: def.topics,
+    audience: def.audience ?? 'assignment',
     questions: def.questions.map((q) => ({ ...q, id: `${def.id}:${q.id}` })),
   };
 }
