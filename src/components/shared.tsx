@@ -96,6 +96,7 @@ const TYPE_LABEL: Record<QuestionType, string> = {
   fib: 'Fill the blank',
   numeric: 'Calculation',
   truefalse: 'True or false',
+  written: 'Written · AI marked',
 };
 
 export function TypeBadge({ type }: { type: QuestionType }) {

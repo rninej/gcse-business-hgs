@@ -27,6 +27,14 @@ export async function POST(req: Request, ctx: Ctx) {
   const q = attempt.questions.find((x) => x.id === qid);
   if (!q) return NextResponse.json({ error: 'Question not found' }, { status: 404 });
 
+  // written answers: saved (and re-savable) but never auto-marked or locked —
+  // the AI examiner marks them after submission
+  if (q.type === 'written') {
+    const answer = (body.answer ?? '').toString().slice(0, 5000);
+    await merge('attempts', attempt.id, { [`answers/${qid}`]: answer });
+    return NextResponse.json({ ok: true, saved: true, marks: q.marks });
+  }
+
   // already confirmed → replay the stored outcome
   const prior = attempt.checked?.[qid];
   if (prior) {

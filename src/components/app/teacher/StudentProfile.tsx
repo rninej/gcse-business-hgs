@@ -11,9 +11,14 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
+  Activity,
+  AppWindow,
   BookOpenCheck,
   CheckCircle2,
+  ClipboardCopy,
+  ClipboardPaste,
   Copy,
+  EyeOff,
   Flame,
   KeyRound,
   MessageSquareHeart,
@@ -24,6 +29,7 @@ import {
   Timer,
   TrendingUp,
   XCircle,
+  Zap,
 } from 'lucide-react';
 import {
   Dialog,
@@ -52,6 +58,31 @@ interface FeedbackNote {
   byName: string;
 }
 
+/** Raw behavioural evidence recorded on one submitted attempt — the
+ *  telemetry the AI probability for that quiz was computed from. */
+interface AttemptEvidence {
+  pasteCount: number;
+  copyCount: number;
+  tabSwitches: number;
+  blurCount: number;
+  avgMsPerQ: number | null;
+  hiddenPct: number;
+  wallSec: number;
+}
+
+/** The same evidence aggregated across every submitted quiz — what the
+ *  overall AI probability is based on. */
+interface ProfileEvidence {
+  pasteCount: number;
+  copyCount: number;
+  tabSwitches: number;
+  totalHiddenMin: number;
+  avgMsPerQ: number | null;
+  fastAnswers: number;
+  quizzesWithSignals: number;
+  signalCounts: { label: string; count: number }[];
+}
+
 export interface AttemptDetail {
   id: string;
   mode: 'assignment' | 'practice';
@@ -67,7 +98,9 @@ export interface AttemptDetail {
   riskSignals: RiskSignal[];
   aiFeedback: string | null;
   teacherFeedback: FeedbackNote | null;
+  writtenPending?: number;
   reviews: QReview[];
+  evidence?: AttemptEvidence | null; // profile API only
 }
 
 interface ProfileData {
@@ -93,6 +126,7 @@ interface ProfileData {
     lastActive: number | null;
   };
   progress: { at: number; pct: number; title: string; mode: string }[];
+  evidence?: ProfileEvidence;
   attempts: AttemptDetail[];
 }
 
@@ -142,7 +176,55 @@ export function AnswersList({ reviews }: { reviews: QReview[] }) {
   }
   return (
     <ol className="space-y-2">
-      {reviews.map((q) => (
+      {reviews.map((q) =>
+        q.type === 'written' ? (
+          <li key={q.qid} className="rounded-lg border border-primary/30 bg-primary/[0.03] p-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2 text-xs mb-1.5">
+              <span className="font-bold text-primary tabular-nums">Q{q.n}</span>
+              <TypeBadge type={q.type} />
+              <span className="text-muted-foreground">{q.topic} · written</span>
+              <span className="ml-auto font-semibold">
+                {q.pendingMark ? (
+                  <span className="text-[var(--warn)]">AI marking in progress…</span>
+                ) : (
+                  <span className={(q.awarded ?? 0) >= q.marks ? 'text-[var(--success)]' : (q.awarded ?? 0) > 0 ? 'text-primary' : 'text-[var(--danger)]'}>
+                    {q.awarded ?? 0}/{q.marks} marks
+                  </span>
+                )}
+              </span>
+            </div>
+            <p className="font-medium leading-snug">{q.stem}</p>
+            <div className="mt-2 rounded-md px-2 py-1.5 border bg-card">
+              <span className="text-muted-foreground block mb-0.5">Their written answer</span>
+              <span className="leading-relaxed whitespace-pre-wrap">{q.given && q.given !== '—' ? q.given : '— left blank —'}</span>
+            </div>
+            {!q.pendingMark && q.comment ? (
+              <p className="text-xs text-muted-foreground mt-2">
+                <span className="font-medium text-foreground">Examiner: </span>
+                {q.comment}
+              </p>
+            ) : null}
+            {!q.pendingMark && q.pointResults && q.pointResults.length > 0 ? (
+              <ul className="mt-2 space-y-1">
+                {q.pointResults.map((p, pi) => (
+                  <li key={pi} className={cn('flex items-start gap-1.5 text-xs rounded-md px-2 py-1 border', p.awarded ? 'border-[var(--success)]/25 bg-[var(--success)]/5' : 'border-[var(--danger)]/25 bg-[var(--danger)]/5')}>
+                    {p.awarded ? <CheckCircle2 className="h-3.5 w-3.5 text-[var(--success)] mt-0.5 shrink-0" aria-hidden /> : <XCircle className="h-3.5 w-3.5 text-[var(--danger)] mt-0.5 shrink-0" aria-hidden />}
+                    <span>
+                      {p.text} <span className="text-muted-foreground">({p.marks})</span>
+                      {p.why ? <span className="block text-muted-foreground">{p.why}</span> : null}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {!q.pendingMark && q.explain ? (
+              <p className="text-xs text-muted-foreground mt-2">
+                <span className="font-medium text-foreground">Model answer: </span>
+                {q.explain}
+              </p>
+            ) : null}
+          </li>
+        ) : (
         <li
           key={q.qid}
           className={cn(
@@ -177,7 +259,8 @@ export function AnswersList({ reviews }: { reviews: QReview[] }) {
           </div>
           {!q.correct && q.explain ? <p className="text-xs text-muted-foreground mt-2">{q.explain}</p> : null}
         </li>
-      ))}
+        )
+      )}
     </ol>
   );
 }
@@ -258,6 +341,159 @@ export function FeedbackEditor({
   );
 }
 
+/** Colour for an integrity signal chip — stronger signals get hotter colours. */
+function signalTone(points: number): string {
+  if (points >= 20) return 'var(--danger)';
+  if (points >= 10) return 'var(--warn)';
+  return 'oklch(0.72 0.16 55)';
+}
+
+function fmtSec(ms: number | null | undefined): string {
+  return ms === null || ms === undefined ? '—' : `${(ms / 1000).toFixed(1)}s`;
+}
+
+/** Compact evidence strip for one attempt — what actually happened while the
+ *  quiz was open, straight from the recorded telemetry. */
+function AttemptEvidenceStrip({ a }: { a: AttemptDetail }) {
+  const ev = a.evidence;
+  if (!ev) return null;
+  const items: { icon: typeof Timer; text: string; color?: string }[] = [];
+  if (ev.pasteCount > 0)
+    items.push({ icon: ClipboardPaste, text: `${ev.pasteCount} paste event${ev.pasteCount === 1 ? '' : 's'}`, color: ev.pasteCount >= 3 ? 'var(--danger)' : 'var(--warn)' });
+  if (ev.copyCount > 0)
+    items.push({ icon: ClipboardCopy, text: `${ev.copyCount} cop${ev.copyCount === 1 ? 'y' : 'ies'} while open`, color: ev.copyCount >= 3 ? 'var(--warn)' : undefined });
+  if (ev.tabSwitches > 0)
+    items.push({ icon: AppWindow, text: `${ev.tabSwitches} tab switch${ev.tabSwitches === 1 ? '' : 'es'}`, color: ev.tabSwitches >= 4 ? 'var(--danger)' : 'var(--warn)' });
+  if (ev.avgMsPerQ !== null) items.push({ icon: Timer, text: `${fmtSec(ev.avgMsPerQ)} avg per question` });
+  if (ev.hiddenPct > 0) items.push({ icon: EyeOff, text: `${ev.hiddenPct}% of time hidden`, color: ev.hiddenPct > 35 ? 'var(--warn)' : undefined });
+
+  return (
+    <div className="rounded-lg border bg-card/60 p-2.5">
+      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground mb-2">
+        <Activity className="h-3.5 w-3.5" aria-hidden /> What happened during this quiz
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+        {items.map((it) => (
+          <span key={it.text} className="inline-flex items-center gap-1 tabular-nums" style={it.color ? { color: it.color } : undefined}>
+            <it.icon className="h-3.5 w-3.5" aria-hidden /> {it.text}
+          </span>
+        ))}
+      </div>
+      {a.riskSignals.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 mt-2.5">
+          {a.riskSignals.map((s) => {
+            const tone = signalTone(s.points);
+            return (
+              <span
+                key={s.label}
+                className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium"
+                style={{ color: tone, borderColor: `${tone}55`, background: `${tone}12` }}
+                title={`Added ${s.points} points to this quiz's AI probability`}
+              >
+                {s.label} <span className="font-bold tabular-nums">+{s.points}</span>
+              </span>
+            );
+          })}
+        </div>
+      ) : a.status === 'submitted' ? (
+        <p className="mt-2.5 text-[11px] text-[var(--success)] inline-flex items-center gap-1">
+          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> No integrity signals on this quiz
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** "What this score is based on" — the aggregated evidence behind the overall
+ *  AI probability: totals across every submitted quiz plus the most frequent
+ *  integrity signals. */
+function EvidenceCard({ ev, quizzes }: { ev: ProfileEvidence; quizzes: number }) {
+  const clean =
+    ev.pasteCount === 0 && ev.copyCount === 0 && ev.tabSwitches === 0 && ev.fastAnswers === 0 && ev.quizzesWithSignals === 0;
+  const tiles: { icon: typeof Timer; label: string; value: string; sub: string; color?: string }[] = [
+    {
+      icon: ClipboardPaste,
+      label: 'Paste events',
+      value: String(ev.pasteCount),
+      sub: 'into answer boxes',
+      color: ev.pasteCount >= 3 ? 'var(--danger)' : ev.pasteCount > 0 ? 'var(--warn)' : undefined,
+    },
+    {
+      icon: ClipboardCopy,
+      label: 'Copy events',
+      value: String(ev.copyCount),
+      sub: 'while quizzes open',
+      color: ev.copyCount >= 3 ? 'var(--warn)' : undefined,
+    },
+    {
+      icon: AppWindow,
+      label: 'Tab switches',
+      value: String(ev.tabSwitches),
+      sub: 'left the quiz tab',
+      color: ev.tabSwitches >= 4 ? 'var(--danger)' : ev.tabSwitches > 0 ? 'var(--warn)' : undefined,
+    },
+    { icon: EyeOff, label: 'Time hidden', value: `${ev.totalHiddenMin}m`, sub: 'total, all quizzes' },
+    { icon: Timer, label: 'Avg time per question', value: fmtSec(ev.avgMsPerQ), sub: 'across all quizzes' },
+    {
+      icon: Zap,
+      label: 'Unusually fast answers',
+      value: String(ev.fastAnswers),
+      sub: 'under 2.5s each',
+      color: ev.fastAnswers >= 4 ? 'var(--warn)' : undefined,
+    },
+    {
+      icon: ShieldAlert,
+      label: 'Quizzes with signals',
+      value: `${ev.quizzesWithSignals}/${quizzes}`,
+      sub: 'submitted quizzes',
+      color: ev.quizzesWithSignals > 0 ? 'var(--warn)' : undefined,
+    },
+  ];
+
+  return (
+    <div className="rounded-xl border bg-card p-4">
+      <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
+        <Activity className="h-4 w-4 text-primary" aria-hidden /> What this score is based on
+      </h3>
+      <p className="text-xs text-muted-foreground mb-3">
+        Behaviour recorded while {quizzes} quiz{quizzes === 1 ? ' was' : 'zes were'} open — paste, timing and tab signals feed the probability above.
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+        {tiles.map((t) => (
+          <div key={t.label} className="rounded-lg border bg-card p-2.5">
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground leading-tight">
+              <t.icon className="h-3.5 w-3.5 shrink-0" aria-hidden /> {t.label}
+            </div>
+            <div className="text-lg font-bold tabular-nums mt-1" style={t.color ? { color: t.color } : undefined}>
+              {t.value}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">{t.sub}</div>
+          </div>
+        ))}
+      </div>
+      {clean ? (
+        <p className="mt-3 rounded-lg border border-[var(--success)]/25 bg-[var(--success)]/[0.06] px-3 py-2 text-xs text-[var(--success)] flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+          Clean record — no paste, timing or tab-switch signals across {quizzes} quiz{quizzes === 1 ? '' : 'zes'}.
+        </p>
+      ) : (
+        <ul className="mt-3 space-y-1.5">
+          {ev.signalCounts.slice(0, 5).map((s) => (
+            <li key={s.label} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-xs">
+              <span className="text-muted-foreground inline-flex items-center gap-1.5 min-w-0">
+                <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-[var(--warn)]" aria-hidden /> {s.label}
+              </span>
+              <span className="tabular-nums text-muted-foreground shrink-0">
+                seen in {s.count} of {quizzes} quiz{quizzes === 1 ? '' : 'zes'}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /** Header strip with the key numbers of one attempt. */
 function AttemptSummary({ a }: { a: AttemptDetail }) {
   return (
@@ -324,6 +560,34 @@ export function StudentAnswersDialog({
       const okIds = attemptIds.filter((id) => map[id]);
       setSel(Math.max(0, okIds.length - 1));
       setState({ key, details: map, error: okIds.length === 0 ? 'No submitted answers to show yet.' : null });
+
+      // written answers still awaiting the AI examiner → mark them now and
+      // refresh the view once the marks land
+      const pendingIds = okIds.filter((id) => (map[id].writtenPending ?? 0) > 0);
+      if (pendingIds.length > 0) {
+        Promise.all(
+          pendingIds.map((id) =>
+            api.post<{ ok: boolean }>(`/api/teacher/attempts/${id}/mark-written`).catch(() => undefined)
+          )
+        ).then(() =>
+          Promise.all(
+            pendingIds.map((id) =>
+              api
+                .get<AttemptDetail>(`/api/teacher/attempts/${id}`)
+                .then((d) => [id, d] as const)
+                .catch(() => [id, null] as const)
+            )
+          ).then((refreshed) => {
+            if (cancelled) return;
+            setState((prev) => {
+              if (!prev || prev.key !== key) return prev;
+              const next = { ...prev.details };
+              for (const [id, d] of refreshed) if (d) next[id] = d;
+              return { ...prev, details: next };
+            });
+          })
+        );
+      }
     });
     return () => {
       cancelled = true;
@@ -547,6 +811,11 @@ export function StudentProfileDialog({
                 </div>
               ) : null}
 
+              {/* the evidence behind that score */}
+              {data.evidence && s.quizzesDone > 0 ? (
+                <EvidenceCard ev={data.evidence} quizzes={s.quizzesDone} />
+              ) : null}
+
               {/* every quiz */}
               <div>
                 <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
@@ -579,6 +848,7 @@ export function StudentProfileDialog({
                           {isOpen ? (
                             <div className="border-t px-3.5 py-3.5 space-y-3 bg-[var(--sidebar)]/40">
                               <AttemptSummary a={a} />
+                              <AttemptEvidenceStrip a={a} />
                               {a.teacherFeedback ? (
                                 <div className="rounded-lg border border-primary/25 bg-primary/5 p-3 text-sm">
                                   <p className="text-xs font-semibold flex items-center gap-1.5 mb-1">

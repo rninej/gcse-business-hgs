@@ -15,6 +15,8 @@ import {
   Info,
   History,
   ChevronRight,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -64,6 +66,12 @@ interface ResultsData {
     pctCorrect: number | null;
     correct: number;
     answered: number;
+    marks: number;
+    expected: string;
+    options?: string[];
+    distribution: { label: string; count: number; pct: number; correct: boolean }[] | null;
+    answers: { studentId: string; name: string; given: string; correct: boolean; awarded?: number }[];
+    avgAwarded?: number | null;
   }[];
   hardest: ResultsData['qAnalysis'];
 }
@@ -74,6 +82,7 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const [open, setOpen] = useState<Set<string>>(new Set());
+  const [openQ, setOpenQ] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // per-student answers dialog + profile dialog
@@ -486,20 +495,136 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
 
           <Collapsible className="rounded-xl border bg-card">
             <CollapsibleTrigger className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-medium">
-              <span className="flex items-center gap-2"><BookOpenCheck className="h-4 w-4 text-primary" /> All {a.questionCount} questions</span>
+              <span className="flex items-center gap-2"><BookOpenCheck className="h-4 w-4 text-primary" /> All {a.questionCount} questions — who said what</span>
               <span className="text-xs text-muted-foreground">click to expand</span>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <ol className="px-5 pb-5 space-y-2 max-h-[420px] overflow-y-auto scroll-slim">
-                {data.qAnalysis.map((q) => (
-                  <li key={q.id} className="rounded-lg border p-3 text-sm flex gap-3 items-start">
-                    <span className="font-bold text-primary tabular-nums w-10 shrink-0">Q{q.n}</span>
-                    <p className="flex-1">{q.stem}</p>
-                    <span className="text-xs tabular-nums text-muted-foreground w-24 text-right shrink-0">
-                      {q.pctCorrect === null ? '—' : `${q.pctCorrect}% · ${q.correct}/${q.answered}`}
-                    </span>
-                  </li>
-                ))}
+              <ol className="px-5 pb-5 space-y-2 max-h-[560px] overflow-y-auto scroll-slim">
+                {data.qAnalysis.map((q) => {
+                  const isOpen = openQ === q.id;
+                  const isWritten = q.type === 'written';
+                  return (
+                    <li key={q.id} className="rounded-lg border">
+                      <button
+                        className="w-full text-left p-3 flex gap-3 items-start hover:bg-secondary/30 transition-colors"
+                        onClick={() => setOpenQ(isOpen ? null : q.id)}
+                        aria-expanded={isOpen}
+                      >
+                        <span className="font-bold text-primary tabular-nums w-10 shrink-0">Q{q.n}</span>
+                        <span className="flex-1 min-w-0">
+                          <span className="flex flex-wrap items-center gap-2 mb-1">
+                            <TypeBadge type={q.type as never} />
+                            <span className="text-[10px] text-muted-foreground">{q.topicTitle}</span>
+                          </span>
+                          <span className="text-sm block leading-snug">{q.stem}</span>
+                        </span>
+                        <span className="text-xs tabular-nums text-muted-foreground w-28 text-right shrink-0">
+                          {q.answered === 0 ? (
+                            '—'
+                          ) : isWritten ? (
+                            q.avgAwarded !== null && q.avgAwarded !== undefined ? (
+                              <>avg {q.avgAwarded}/{q.marks} marks</>
+                            ) : (
+                              'marking…'
+                            )
+                          ) : (
+                            <>
+                              {q.pctCorrect}% · {q.correct}/{q.answered}
+                            </>
+                          )}
+                          <ChevronRight className={cn('inline h-3.5 w-3.5 ml-1 transition-transform align-middle', isOpen && 'rotate-90')} aria-hidden />
+                        </span>
+                      </button>
+
+                      {isOpen ? (
+                        <div className="border-t px-3.5 py-3.5 space-y-4 bg-[var(--sidebar)]/40">
+                          {/* what the class answered */}
+                          {q.distribution && q.distribution.length > 0 ? (
+                            <div>
+                              <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                                <Users className="h-3.5 w-3.5" aria-hidden /> What the class answered ({q.answered} submitted)
+                              </p>
+                              <div className="space-y-1.5">
+                                {q.distribution.map((d) => (
+                                  <div key={d.label} className="flex items-center gap-2.5">
+                                    <span
+                                      className={cn(
+                                        'text-xs truncate flex-1 min-w-0',
+                                        d.correct ? 'text-[var(--success)] font-semibold' : d.count > 0 ? 'text-foreground' : 'text-muted-foreground'
+                                      )}
+                                      title={d.label}
+                                    >
+                                      {d.label} {d.correct ? '✓' : ''}
+                                    </span>
+                                    <div className="w-1/3 h-2.5 rounded-full bg-secondary overflow-hidden shrink-0">
+                                      <div
+                                        className={cn('h-full rounded-full', d.correct ? 'bg-[var(--success)]' : d.count > 0 ? 'bg-[var(--danger)]/70' : 'bg-transparent')}
+                                        style={{ width: `${d.pct}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-[11px] tabular-nums text-muted-foreground w-14 text-right shrink-0">
+                                      {d.count} · {d.pct}%
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              <p className="text-[11px] text-muted-foreground mt-1.5">Correct answer: <span className="text-[var(--success)] font-medium">{q.expected}</span></p>
+                            </div>
+                          ) : null}
+
+                          {/* who said what */}
+                          <div>
+                            <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                              <UserRoundSearch className="h-3.5 w-3.5" aria-hidden /> Who said what
+                            </p>
+                            {q.answers.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">No submissions yet.</p>
+                            ) : (
+                              <ul className="grid sm:grid-cols-2 gap-1.5">
+                                {q.answers.map((ans) => (
+                                  <li
+                                    key={ans.studentId}
+                                    className={cn(
+                                      'flex items-center gap-2 rounded-lg border bg-card px-2.5 py-1.5 text-xs',
+                                      isWritten ? 'border-primary/20' : ans.correct ? 'border-[var(--success)]/25' : 'border-[var(--danger)]/25'
+                                    )}
+                                  >
+                                    <button
+                                      className="font-medium hover:text-primary transition-colors truncate text-left"
+                                      title={`${ans.name}'s full profile`}
+                                      onClick={() => {
+                                        setProfileId(ans.studentId);
+                                        setProfileOpen(true);
+                                      }}
+                                    >
+                                      {ans.name}
+                                    </button>
+                                    {isWritten ? (
+                                      <span className="ml-auto shrink-0 font-semibold tabular-nums text-primary">
+                                        {ans.awarded !== undefined ? `${ans.awarded}/${q.marks}` : 'marking…'}
+                                      </span>
+                                    ) : (
+                                      <>
+                                        <span className="ml-auto text-right truncate max-w-[55%]" title={ans.given}>
+                                          {ans.given === '—' ? <span className="text-muted-foreground italic">left blank</span> : ans.given}
+                                        </span>
+                                        {ans.correct ? (
+                                          <CheckCircle2 className="h-3.5 w-3.5 text-[var(--success)] shrink-0" aria-label="correct" />
+                                        ) : (
+                                          <XCircle className="h-3.5 w-3.5 text-[var(--danger)] shrink-0" aria-label="incorrect" />
+                                        )}
+                                      </>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
               </ol>
             </CollapsibleContent>
           </Collapsible>

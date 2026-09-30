@@ -124,17 +124,93 @@ export async function GET(_req: Request, ctx: Ctx) {
     }
   }
 
-  // question-level analysis (latest go per student)
+  // question-level analysis (latest go per student) — per-question answer
+  // distribution + who said what, for the Topics & questions tab
+  const latestByStudent = new Map<string, Attempt>();
+  for (const s of submitted) {
+    const at = (byStudent.get(s.studentId) ?? []).filter((x) => x.status === 'submitted').pop();
+    if (at) latestByStudent.set(s.studentId, at);
+  }
+
   const qAnalysis = a.questions.map((q, qi) => {
     let correct = 0;
     let answered = 0;
+    const answers: { studentId: string; name: string; given: string; correct: boolean; awarded?: number }[] = [];
     for (const s of submitted) {
-      const at = (byStudent.get(s.studentId) ?? []).filter((x) => x.status === 'submitted').pop();
+      const at = latestByStudent.get(s.studentId);
       const rec = at?.result?.perQ?.[q.id];
       if (!rec) continue;
       answered += 1;
       if (rec.correct) correct += 1;
+      // human-friendly given: MCQ index → "B. option text"
+      let given = rec.given;
+      if (q.type === 'mcq' && q.options) {
+        const idx = Number.parseInt(given, 10);
+        given = Number.isInteger(idx) && idx >= 0 && idx < q.options.length ? `${String.fromCharCode(65 + idx)}. ${q.options[idx]}` : given;
+      } else if (q.type === 'truefalse') {
+        given = given === 'true' ? 'True' : given === 'false' ? 'False' : given;
+      }
+      answers.push({
+        studentId: s.studentId,
+        name: s.displayName,
+        given,
+        correct: rec.correct,
+        awarded: q.type === 'written' ? rec.awarded : undefined,
+      });
     }
+
+    // distribution: what share of the class gave each answer
+    let distribution: { label: string; count: number; pct: number; correct: boolean }[] | null = null;
+    if (q.type === 'mcq' && q.options) {
+      distribution = q.options.map((opt, i) => {
+        const count = answers.filter((x) => x.given.startsWith(`${String.fromCharCode(65 + i)}. `)).length;
+        return {
+          label: `${String.fromCharCode(65 + i)}. ${opt}`,
+          count,
+          pct: answered ? Math.round((count / answered) * 100) : 0,
+          correct: i === q.correct,
+        };
+      });
+    } else if (q.type === 'truefalse') {
+      distribution = (['True', 'False'] as const).map((label) => {
+        const count = answers.filter((x) => x.given === label).length;
+        return {
+          label,
+          count,
+          pct: answered ? Math.round((count / answered) * 100) : 0,
+          correct: (q.answer ? 'True' : 'False') === label,
+        };
+      });
+    } else if (q.type === 'term' || q.type === 'fib' || q.type === 'numeric') {
+      // group typed/numeric answers by their normalised form
+      const groups = new Map<string, { label: string; count: number; correct: boolean }>();
+      for (const ans of answers) {
+        if (ans.given === '—' || ans.given === '') continue;
+        const key = ans.given.trim().toLowerCase().replace(/\s+/g, ' ');
+        const g = groups.get(key) ?? { label: ans.given, count: 0, correct: ans.correct };
+        g.count += 1;
+        groups.set(key, g);
+      }
+      distribution = [...groups.values()]
+        .sort((x, y) => y.count - x.count)
+        .slice(0, 8)
+        .map((g) => ({ ...g, pct: answered ? Math.round((g.count / answered) * 100) : 0 }));
+    }
+
+    let expected = '';
+    if (q.type === 'mcq') expected = q.options[q.correct] ?? '';
+    else if (q.type === 'truefalse') expected = q.answer ? 'True' : 'False';
+    else if (q.type === 'term' || q.type === 'fib') expected = q.accept[0] ?? '';
+    else if (q.type === 'numeric') expected = `${q.value}${q.unit === '%' ? '%' : q.unit ? ' ' + q.unit : ''}`;
+    else if (q.type === 'written') expected = `AI marked · ${q.marks} marks`;
+
+    // written questions: average marks awarded (null while marking is pending)
+    let avgAwarded: number | null = null;
+    if (q.type === 'written') {
+      const marks = answers.map((x) => x.awarded).filter((m): m is number => typeof m === 'number');
+      avgAwarded = marks.length ? Math.round((marks.reduce((x, y) => x + y, 0) / marks.length) * 10) / 10 : null;
+    }
+
     return {
       n: qi + 1,
       id: q.id,
@@ -145,6 +221,12 @@ export async function GET(_req: Request, ctx: Ctx) {
       pctCorrect: answered ? Math.round((correct / answered) * 100) : null,
       correct,
       answered,
+      marks: q.marks,
+      expected,
+      options: q.type === 'mcq' ? q.options : undefined,
+      distribution,
+      answers,
+      avgAwarded,
     };
   });
   const hardest = [...qAnalysis].filter((x) => x.answered > 0).sort((x, y) => (x.pctCorrect ?? 100) - (y.pctCorrect ?? 100)).slice(0, 5);

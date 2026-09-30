@@ -19,7 +19,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     const r = attempt.result;
     const reviews = attempt.questions.map((q, i) => {
       const rec = r?.perQ?.[q.id];
-      return toReview(q, i + 1, rec?.given ?? '—', rec?.expected ?? '', Boolean(rec?.correct));
+      return toReview(q, i + 1, rec?.given ?? '—', rec?.expected ?? '', Boolean(rec?.correct), rec);
     });
     // streak for the celebration banner (cheap: collection read is cached)
     const mySubmits = values(await colCached<Attempt>('attempts'))
@@ -43,6 +43,12 @@ export async function GET(_req: Request, ctx: Ctx) {
   const now = Date.now();
   const limitMs = attempt.timeLimitMin ? attempt.timeLimitMin * 60_000 : null;
   const remainingMs = limitMs ? Math.max(0, limitMs - (now - attempt.startedAt)) : null;
+  // written answers persist server-side as they are saved — they are never
+  // locked, so resume restores them on any device
+  const writtenAnswers: Record<string, string> = {};
+  for (const q of attempt.questions) {
+    if (q.type === 'written' && attempt.answers?.[q.id]) writtenAnswers[q.id] = attempt.answers[q.id];
+  }
   return NextResponse.json({
     status: 'in-progress',
     mode: isSelfTest ? 'assignment' : attempt.mode, // the runner badge just reads practice/assignment
@@ -59,5 +65,6 @@ export async function GET(_req: Request, ctx: Ctx) {
     // outcomes for questions already confirmed — safe to reveal, and it lets
     // the runner resume exactly where the student left off, on any device
     checked: attempt.checked ?? {},
+    writtenAnswers,
   });
 }

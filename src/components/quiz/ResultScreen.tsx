@@ -15,6 +15,8 @@ import {
   MessageSquareHeart,
   RotateCw,
   Flame,
+  PenLine,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -49,8 +51,9 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
   const [data, setData] = useState<ResultData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [redoing, setRedoing] = useState(false);
+  const [markingNow, setMarkingNow] = useState(false);
 
-  useEffect(() => {
+  const load = () =>
     api
       .get<ResultData>(`/api/student/attempts/${attemptId}`)
       .then((d) => {
@@ -61,8 +64,63 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
         setData(d);
       })
       .catch((e) => setError((e as Error).message));
+
+  useEffect(() => {
+    load();
      
   }, [attemptId]);
+
+  // written answers are marked by the AI examiner shortly after submission —
+  // poll until the marks land; if nothing has arrived after the first tick,
+  // kick marking again ourselves (idempotent) in case the submit-time request
+  // never made it
+  const pending = Math.max(
+    data?.result.writtenPending ?? 0,
+    data?.reviews.filter((r) => r.type === 'written' && r.pendingMark).length ?? 0
+  );
+  useEffect(() => {
+    if (pending <= 0) return;
+    let tries = 0;
+    let alive = true;
+    const timer = setInterval(() => {
+      tries += 1;
+      if (tries > 30 || !alive) {
+        clearInterval(timer);
+        return;
+      }
+      if (tries === 1) {
+        void api.post(`/api/student/attempts/${attemptId}/mark-written`).catch(() => undefined);
+      }
+      api
+        .get<ResultData>(`/api/student/attempts/${attemptId}`)
+        .then((d) => {
+          if (d.status === 'submitted') setData(d);
+          const still = Math.max(
+            d.result?.writtenPending ?? 0,
+            d.reviews?.filter((r) => r.type === 'written' && r.pendingMark).length ?? 0
+          );
+          if (still === 0) clearInterval(timer);
+        })
+        .catch(() => undefined);
+    }, 4000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+     
+  }, [pending > 0, attemptId]);
+
+  async function markNow() {
+    setMarkingNow(true);
+    try {
+      await api.post(`/api/student/attempts/${attemptId}/mark-written`);
+      await load();
+    } catch {
+      /* the poll will pick it up */
+    } finally {
+      setMarkingNow(false);
+    }
+  }
 
   // start the same quiz again — a brand-new attempt with a fresh shuffle
   async function redo() {
@@ -105,7 +163,9 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
   const r = data.result;
   const isSelfTest = data.mode === 'selftest';
   const home = () => go(isSelfTest ? { name: 't-home' } : { name: 's-home' });
-  const correctCount = data.reviews.filter((x) => x.correct).length;
+  const correctCount = data.reviews.filter((x) => x.type !== 'written' && x.correct).length;
+  const writtenReviews = data.reviews.filter((x) => x.type === 'written');
+  const pendingWritten = r.writtenPending ?? 0;
   const topicRows = (data.topicStats ?? []).map((v) => ({
     label: `${v.topic} · ${topicTitle(v.topic)}`,
     pct: v.t ? Math.round((v.c / v.t) * 100) : 0,
@@ -142,6 +202,11 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
             <div className="text-2xl font-bold mt-1">
               {r.score} out of {r.total} marks
             </div>
+            {pendingWritten > 0 ? (
+              <p className="text-sm text-[var(--warn)] font-medium mt-1 flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4" aria-hidden /> Temporary score — {pendingWritten} written {pendingWritten === 1 ? 'answer is' : 'answers are'} still being marked by the AI examiner.
+              </p>
+            ) : null}
             <div className="flex flex-wrap items-center gap-2 mt-3">
               <Badge className="bg-[var(--accent)] text-[var(--accent-foreground)] gap-1.5">
                 <Star className="h-3.5 w-3.5" /> +{r.points} points
@@ -150,7 +215,7 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
                 <Timer className="h-3.5 w-3.5" /> {timeMin}m {timeSec}s
               </Badge>
               <Badge variant="secondary" className="gap-1.5">
-                <Target className="h-3.5 w-3.5" /> {correctCount}/{data.reviews.length} correct
+                <Target className="h-3.5 w-3.5" /> {correctCount}/{data.reviews.length - writtenReviews.length} correct
               </Badge>
               {streak >= 2 ? (
                 <Badge className="bg-[var(--warn)]/15 text-[var(--warn)] border border-[var(--warn)]/30 gap-1.5">
@@ -224,7 +289,95 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
       {/* review */}
       <h2 className="font-semibold mb-3">Your answers</h2>
       <ol className="space-y-3">
-        {data.reviews.map((rev) => (
+        {data.reviews.map((rev) =>
+          rev.type === 'written' ? (
+            <li key={rev.qid} className="rounded-xl border border-primary/30 bg-primary/[0.03] p-4 sm:p-5">
+              <div className="flex items-center gap-2 flex-wrap mb-2">
+                <PenLine className="h-5 w-5 text-primary" aria-hidden />
+                <span className="font-semibold">Q{rev.n}</span>
+                <span className="text-xs text-muted-foreground">
+                  Written · {rev.marks} {rev.marks === 1 ? 'mark' : 'marks'} · {topicTitle(rev.topic)}
+                </span>
+                <span className="ml-auto">
+                  {rev.pendingMark ? (
+                    <Badge className="bg-[var(--warn)]/15 text-[var(--warn)] border border-[var(--warn)]/30 gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden /> Being marked…
+                    </Badge>
+                  ) : (
+                    <Badge
+                      className={cn(
+                        'gap-1.5',
+                        (rev.awarded ?? 0) >= rev.marks
+                          ? 'bg-[var(--success)]/15 text-[var(--success)]'
+                          : (rev.awarded ?? 0) > 0
+                            ? 'bg-primary/10 text-primary'
+                            : 'bg-[var(--danger)]/10 text-[var(--danger)]'
+                      )}
+                    >
+                      {rev.awarded ?? 0}/{rev.marks} marks
+                    </Badge>
+                  )}
+                </span>
+              </div>
+
+              <p className="text-[15px] font-medium leading-relaxed mb-3">{rev.stem}</p>
+
+              <div className="rounded-lg bg-card border px-3 py-2.5 mb-3">
+                <span className="text-xs text-muted-foreground block mb-1">Your answer</span>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{rev.given && rev.given !== '—' ? rev.given : '— left blank —'}</p>
+              </div>
+
+              {rev.pendingMark ? (
+                <div className="rounded-lg border border-[var(--warn)]/40 bg-[var(--warn)]/10 px-3 py-2.5 text-sm flex flex-wrap items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-[var(--warn)] animate-pulse" aria-hidden />
+                  The AI examiner is marking this now — your marks will appear here shortly.
+                  <Button size="sm" variant="outline" className="ml-auto" onClick={() => void markNow()} disabled={markingNow}>
+                    {markingNow ? 'Marking…' : 'Mark now'}
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {rev.comment ? (
+                    <div className="rounded-lg border bg-[var(--accent)]/20 px-3 py-2.5 mb-3 text-sm">
+                      <span className="text-xs text-muted-foreground block mb-1 flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden /> Examiner’s comment
+                      </span>
+                      {rev.comment}
+                    </div>
+                  ) : null}
+                  {rev.pointResults && rev.pointResults.length > 0 ? (
+                    <div className="space-y-1.5 mb-3">
+                      <span className="text-xs text-muted-foreground block">Mark scheme — how your answer scored</span>
+                      {rev.pointResults.map((p, pi) => (
+                        <div
+                          key={pi}
+                          className={cn(
+                            'flex items-start gap-2 rounded-lg border px-3 py-2 text-sm',
+                            p.awarded ? 'border-[var(--success)]/40 bg-[var(--success)]/10' : 'border-[var(--danger)]/30 bg-[var(--danger)]/5'
+                          )}
+                        >
+                          {p.awarded ? (
+                            <CheckCircle2 className="h-4 w-4 text-[var(--success)] shrink-0 mt-0.5" aria-label="Mark awarded" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-[var(--danger)] shrink-0 mt-0.5" aria-label="Not awarded" />
+                          )}
+                          <span className="min-w-0">
+                            <span className="font-medium">{p.text}</span>
+                            <span className="text-xs text-muted-foreground"> · {p.marks} {p.marks === 1 ? 'mark' : 'marks'}</span>
+                            {p.why ? <span className="block text-xs text-muted-foreground mt-0.5">{p.why}</span> : null}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <p className="text-sm text-muted-foreground leading-relaxed border-t pt-3">
+                    <span className="font-medium text-foreground">Model answer: </span>
+                    {rev.explain}
+                  </p>
+                </>
+              )}
+            </li>
+          ) : (
           <li
             key={rev.qid}
             className={cn('rounded-xl border p-4 sm:p-5', rev.correct ? 'border-[var(--success)]/40 bg-[var(--success)]/5' : 'border-[var(--danger)]/40 bg-[var(--danger)]/5')}
@@ -309,7 +462,8 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
             </p>
             {!rev.correct ? <ExplainMeButton attemptId={attemptId} qid={rev.qid} className="mt-3" /> : null}
           </li>
-        ))}
+          )
+        )}
       </ol>
 
       <div className="mt-6 flex flex-wrap gap-3">

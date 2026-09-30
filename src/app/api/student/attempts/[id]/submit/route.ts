@@ -33,10 +33,11 @@ export async function POST(req: Request, ctx: Ctx) {
 
   const body = (await req.json().catch(() => ({}))) as SubmitBody;
   const answers: Record<string, string> = { ...(attempt.answers ?? {}) };
+  const writtenIds = new Set(attempt.questions.filter((q) => q.type === 'written').map((q) => q.id));
   for (const [qid, val] of Object.entries(body.answers ?? {})) {
     if (typeof qid === 'string' && attempt.questions.some((q) => q.id === qid)) {
       // confirmed answers are locked server-side; unchecked ones accept the client value
-      if (!attempt.checked?.[qid]) answers[qid] = (val ?? '').toString().slice(0, 300);
+      if (!attempt.checked?.[qid]) answers[qid] = (val ?? '').toString().slice(0, writtenIds.has(qid) ? 5000 : 300);
     }
   }
   const perQ: Record<string, PerQTelemetry> = {};
@@ -113,6 +114,7 @@ export async function POST(req: Request, ctx: Ctx) {
     riskBand: risk.band,
     riskSignals: risk.signals,
     submittedAt: Date.now(),
+    writtenPending: marked.writtenPending,
   };
 
   await merge('attempts', attempt.id, {
@@ -128,7 +130,7 @@ export async function POST(req: Request, ctx: Ctx) {
 
   const reviews = attempt.questions.map((q, i) => {
     const rec = marked.perQ[q.id];
-    return toReview(q, i + 1, rec?.given ?? '—', rec?.expected ?? '', Boolean(rec?.correct));
+    return toReview(q, i + 1, rec?.given ?? '—', rec?.expected ?? '', Boolean(rec?.correct), rec);
   });
 
   return NextResponse.json({

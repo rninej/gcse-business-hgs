@@ -731,8 +731,8 @@ export function ProgressLine({
   const fmt = (t: number) =>
     new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
-  // x labels: first, middle, last (never crowd)
-  const labelIdx = n <= 2 ? [0, n - 1] : n <= 6 ? [0, Math.floor((n - 1) / 2), n - 1] : [0, Math.floor((n - 1) / 2), n - 1];
+  // x labels: first, middle, last (never crowd, never duplicate — n=1 gives [0])
+  const labelIdx = [...new Set(n <= 2 ? [0, n - 1] : [0, Math.floor((n - 1) / 2), n - 1])];
 
   return (
     <div>

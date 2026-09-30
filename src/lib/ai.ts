@@ -210,6 +210,119 @@ export function extractJson<T = unknown>(text: string): T | null {
   return null;
 }
 
+// ---------- Written-answer marking ----------
+// Large written answers are marked by an AI examiner against the teacher's
+// mark scheme. Every awarded mark must trace back to a marking point, and a
+// deterministic keyword fallback keeps marking working even if every AI
+// provider is unreachable.
+
+import type { WrittenMarkPoint, WrittenQuestion } from './types';
+
+export interface WrittenMark {
+  awarded: number;
+  comment: string;
+  points: WrittenMarkPoint[];
+  by: 'gemini' | 'groq' | 'zai' | 'template';
+}
+
+const STOPWORDS = new Set([
+  'the', 'a', 'an', 'and', 'or', 'but', 'of', 'to', 'in', 'on', 'for', 'with', 'that', 'this',
+  'is', 'are', 'was', 'were', 'be', 'been', 'it', 'its', 'as', 'at', 'by', 'from', 'their',
+  'they', 'them', 'can', 'could', 'will', 'would', 'should', 'may', 'might', 'must', 'have',
+  'has', 'had', 'do', 'does', 'did', 'not', 'no', 'yes', 'than', 'then', 'so', 'such', 'which',
+  'who', 'whom', 'whose', 'what', 'when', 'where', 'why', 'how', 'into', 'about', 'over',
+  'also', 'more', 'most', 'less', 'least', 'some', 'any', 'all', 'each', 'every', 'both',
+]);
+
+function significantWords(text: string, max = 8): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= 4 && !STOPWORDS.has(w))
+    .slice(0, max);
+}
+
+/** Deterministic fallback: a marking point is awarded when at least half of
+ *  its significant words appear in the student's answer. */
+function heuristicMark(q: WrittenQuestion, answer: string): WrittenMark {
+  const answerWords = new Set(significantWords(answer, 400));
+  const points: WrittenMarkPoint[] = q.points.map((p) => {
+    const words = significantWords(p.text, 8);
+    const hits = words.filter((w) => answerWords.has(w) || [...answerWords].some((a) => w.startsWith(a.slice(0, 5)) && a.length >= 5)).length;
+    return { ...p, awarded: words.length > 0 && hits / words.length >= 0.5, why: '' };
+  });
+  const awarded = points.reduce((s, p) => s + (p.awarded ? p.marks : 0), 0);
+  const ratio = q.marks > 0 ? awarded / q.marks : 0;
+  const comment =
+    ratio >= 0.8
+      ? 'A strong answer that covers most of the mark scheme.'
+      : ratio >= 0.5
+        ? 'A reasonable answer — develop each point further to pick up the remaining marks.'
+        : ratio > 0
+          ? 'You have made a start, but the mark scheme points need to be covered more directly.'
+          : 'Nothing on the mark scheme was covered — study the model answer and try again.';
+  return { awarded, comment, points, by: 'template' };
+}
+
+export async function markWrittenAnswer(q: WrittenQuestion, answer: string): Promise<WrittenMark> {
+  const scheme = q.points.map((p, i) => `${i + 1}. [${p.marks} mark${p.marks === 1 ? '' : 's'}] ${p.text}`).join('\n');
+  const system = `You are an experienced Edexcel GCSE (9-1) Business examiner marking a written answer. British English. Judge only against the mark scheme: award a point only when the student's answer clearly and substantively makes that point (a keyword alone is not enough; the meaning must be there). Be fair to spelling and phrasing. Reply with JSON ONLY, no markdown, in exactly this shape:
+{"points":[{"i":1,"awarded":true,"why":"short reason"},{"i":2,"awarded":false,"why":"short reason"}],"comment":"2-3 sentence examiner comment addressed to the student"}`;
+  const user = `Question (${q.marks} marks):
+${q.stem}
+${q.extract ? `\nCase study — ${q.extract.title}:\n${q.extract.text}` : ''}
+Mark scheme:
+${scheme}
+
+Student's answer:
+${answer.slice(0, 6000)}
+
+Mark it now.`;
+
+  const outcome = await askAI({
+    system,
+    user,
+    maxTokens: 900,
+    temperature: 0.2,
+    timeoutMs: 22_000,
+  });
+  if (outcome) {
+    const parsed = extractJson<{
+      points?: { i?: number; awarded?: boolean; why?: string }[];
+      comment?: string;
+    }>(outcome.text);
+    if (parsed && Array.isArray(parsed.points)) {
+      const verdict = new Map<number, { awarded: boolean; why: string }>();
+      parsed.points.forEach((p, idx) => {
+        const i = Number.isInteger(p.i) ? (p.i as number) - 1 : idx;
+        if (i >= 0 && i < q.points.length) {
+          verdict.set(i, { awarded: p.awarded === true, why: (p.why ?? '').toString().slice(0, 220) });
+        }
+      });
+      if (verdict.size > 0) {
+        const points: WrittenMarkPoint[] = q.points.map((p, i) => {
+          const v = verdict.get(i);
+          return { ...p, awarded: v?.awarded ?? false, why: v?.why ?? '' };
+        });
+        const awarded = Math.min(q.marks, points.reduce((s, p) => s + (p.awarded ? p.marks : 0), 0));
+        const comment = (parsed.comment ?? '').toString().trim().slice(0, 600);
+        return {
+          awarded,
+          comment:
+            comment ||
+            (awarded === q.marks
+              ? 'Full marks — every mark scheme point made.'
+              : 'Marked against the mark scheme — see the breakdown below.'),
+          points,
+          by: outcome.provider,
+        };
+      }
+    }
+  }
+  return heuristicMark(q, answer);
+}
+
 // ---------- Student feedback ----------
 export interface FeedbackInput {
   studentName: string;

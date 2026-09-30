@@ -9,6 +9,37 @@ import type { Attempt, Assignment, Question, QuestionType, Student, StudentClass
 
 type CustomInput = Partial<Question> & { type: QuestionType };
 
+/** Written questions: a stem plus a mark scheme of 1–8 points (1–3 marks
+ *  each, 12 marks max). The AI examiner marks students' answers against it. */
+function validateWritten(raw: CustomInput, isPreview: boolean): Question | null {
+  const topic = typeof raw.topic === 'string' && TOPICS.some((t) => t.id === raw.topic) ? raw.topic : null;
+  const stem = (raw.stem ?? '').toString().trim();
+  const explain = (raw.explain ?? '').toString().trim();
+  if (!topic || stem.length < (isPreview ? 12 : 15) || explain.length < 10) return null;
+
+  const rawPoints = Array.isArray((raw as { points?: unknown }).points) ? ((raw as { points: unknown[] }).points) : [];
+  if (rawPoints.length < 1 || rawPoints.length > 8) return null;
+  const points: { text: string; marks: number }[] = [];
+  let total = 0;
+  for (const p of rawPoints) {
+    const obj = p as { text?: unknown; marks?: unknown };
+    const text = (obj?.text ?? '').toString().trim();
+    const marks = Math.round(Number(obj?.marks));
+    if (text.length < 5 || !Number.isInteger(marks) || marks < 1 || marks > 3) return null;
+    points.push({ text: text.slice(0, 400), marks });
+    total += marks;
+  }
+  if (total < 1 || total > 12) return null;
+
+  const extract =
+    raw.extract && typeof raw.extract === 'object'
+      ? { title: (raw.extract.title ?? 'Case study').toString().slice(0, 80), text: (raw.extract.text ?? '').toString().trim().slice(0, 900) }
+      : undefined;
+  if (extract && extract.text.length < 20) return null;
+
+  return { id: '', type: 'written', topic, difficulty: 3, marks: total, stem: stem.slice(0, 900), extract, explain, points };
+}
+
 /** Validate a question that comes from the teacher-reviewed AI preview.
  *  These were already validated once by /api/teacher/generate — this is a
  *  defensive re-check so a tampered client can't smuggle malformed data in. */
@@ -53,10 +84,15 @@ function validatePreview(raw: CustomInput): Question | null {
       dp: Number.isInteger(raw.dp) ? (raw.dp as number) : undefined,
     };
   }
+  if (raw.type === 'written') {
+    return validateWritten(raw, true);
+  }
   return null;
 }
 
 function validateCustom(raw: CustomInput): Question | null {
+  // written questions have their own shape and mark rules (up to 12 marks)
+  if (raw.type === 'written') return validateWritten(raw, false);
   const topic = typeof raw.topic === 'string' && TOPICS.some((t) => t.id === raw.topic) ? raw.topic : null;
   const stem = (raw.stem ?? '').toString().trim();
   const explain = (raw.explain ?? '').toString().trim();
@@ -155,6 +191,8 @@ interface CreateBody {
   quizId?: string;
   aiParams?: { topics: string[]; count: number; types: QuestionType[]; difficulty: number | 'mixed'; caseStudies: boolean };
   customQuestions?: CustomInput[];
+  /** AI-marked written questions appended on top of any mode's question set. */
+  extraWritten?: CustomInput[];
   /** Questions the teacher already reviewed in the AI preview — skips a second,
    *  slow generation round-trip on the server. Validated below all the same. */
   previewQuestions?: (Partial<Question> & { type: QuestionType })[];
@@ -237,6 +275,14 @@ export async function POST(req: Request) {
   if (questions.length === 0) {
     return NextResponse.json({ error: 'No valid questions could be created.' }, { status: 400 });
   }
+
+  // teacher-added written questions ride on top of any source (library, AI or custom)
+  const extraRaw = Array.isArray(body.extraWritten) ? body.extraWritten : [];
+  if (extraRaw.length > 6) {
+    return NextResponse.json({ error: 'Up to 6 written questions per assignment.' }, { status: 400 });
+  }
+  const extra = extraRaw.map((raw) => validateWritten(raw, false)).filter((q): q is Question => q !== null);
+  if (extra.length > 0) questions = [...questions, ...extra];
 
   const prefix = randomUUID().replace(/-/g, '').slice(0, 8);
   const snapshot: Question[] = questions.map((q, i) => ({ ...q, id: q.id || `c${prefix}-${i}` }));

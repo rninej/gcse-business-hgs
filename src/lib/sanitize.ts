@@ -1,5 +1,5 @@
 // Question view transformers: client-safe (pre-submission) and review (post-submission)
-import type { ClientQuestion, QExtract, Question, QReview } from './types';
+import type { ClientQuestion, PerQRecord, QExtract, Question, QReview } from './types';
 
 export function toClientQuestion(q: Question, n: number): ClientQuestion {
   const base: ClientQuestion = {
@@ -26,7 +26,14 @@ export function toClientQuestions(qs: Question[]): ClientQuestion[] {
   return qs.map((q, i) => toClientQuestion(q, i + 1));
 }
 
-export function toReview(q: Question, n: number, given: string, expected: string, correct: boolean): QReview {
+export function toReview(
+  q: Question,
+  n: number,
+  given: string,
+  expected: string,
+  correct: boolean,
+  rec?: PerQRecord | null
+): QReview {
   const review: QReview = {
     qid: q.id,
     n,
@@ -43,6 +50,22 @@ export function toReview(q: Question, n: number, given: string, expected: string
     marks: q.marks,
     explain: q.explain,
   };
+  if (q.type === 'written') {
+    review.points = q.points;
+    if (rec) {
+      if (rec.awarded !== undefined && rec.awarded !== null) {
+        review.awarded = rec.awarded;
+        review.correct = rec.awarded >= q.marks;
+        review.comment = rec.comment;
+        review.markedBy = rec.markedBy;
+        review.pointResults = rec.pointResults;
+      } else {
+        review.pendingMark = true; // saved but not yet AI-marked
+      }
+    } else {
+      review.pendingMark = true;
+    }
+  }
   return review;
 }
 

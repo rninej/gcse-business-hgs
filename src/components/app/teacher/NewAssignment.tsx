@@ -31,7 +31,7 @@ import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { PageHeader, MarksChip, TypeBadge, ErrorNote } from '@/components/shared';
 import { topicTitle, TOPICS } from '@/lib/topics';
-import type { Question, QuestionType } from '@/lib/types';
+import type { Question, QuestionType, WrittenQuestion } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 /** Friendly badge label for the AI provider (never shows internal names). */
@@ -74,6 +74,8 @@ export function NewAssignment({ presetQuizId }: { presetQuizId?: string }) {
   const [aiProvider, setAiProvider] = useState<string | null>(null);
   // custom
   const [custom, setCustom] = useState<Question[]>([]);
+  // teacher-added written questions — append to any question source
+  const [extraWritten, setExtraWritten] = useState<Question[]>([]);
   // step 3
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,9 +117,10 @@ export function NewAssignment({ presetQuizId }: { presetQuizId?: string }) {
     }
   }, [mode, quizId]);
 
-  const finalQuestions =
-    mode === 'library' ? libraryQuestions : mode === 'ai' ? aiQuestions : custom;
+  const baseQuestions = mode === 'library' ? libraryQuestions : mode === 'ai' ? aiQuestions : custom;
+  const finalQuestions = baseQuestions ? [...baseQuestions, ...extraWritten] : extraWritten.length > 0 ? extraWritten : null;
   const totalMarks = finalQuestions?.reduce((s, q) => s + q.marks, 0) ?? 0;
+  const hasWritten = (finalQuestions ?? []).some((q) => q.type === 'written');
 
   const canStep2 =
     title.trim().length >= 3 && classId !== '' && (!timed || (timeLimit >= 3 && timeLimit <= 180));
@@ -177,6 +180,8 @@ export function NewAssignment({ presetQuizId }: { presetQuizId?: string }) {
         // directly instead of generating a second set (that was the slow part)
         previewQuestions: mode === 'ai' && aiQuestions ? aiQuestions : undefined,
         customQuestions: mode === 'custom' ? custom : undefined,
+        // AI-marked written questions ride on top of any source
+        extraWritten: mode !== 'custom' && extraWritten.length > 0 ? extraWritten : undefined,
       };
       const res = await api.post<{ assignmentId: string; questionCount: number }>(
         '/api/teacher/assignments',
@@ -475,6 +480,11 @@ export function NewAssignment({ presetQuizId }: { presetQuizId?: string }) {
             <CustomBuilder list={custom} setList={setCustom} />
           ) : null}
 
+          {/* AI-marked written questions — available on top of any source */}
+          {mode !== 'custom' ? (
+            <WrittenSection list={extraWritten} setList={setExtraWritten} />
+          ) : null}
+
           <div className="flex justify-between">
             <Button variant="outline" onClick={() => setStep(1)}><ArrowLeft className="h-4 w-4" /> Details</Button>
             <Button disabled={!canStep3} onClick={() => setStep(3)}>
@@ -508,6 +518,11 @@ export function NewAssignment({ presetQuizId }: { presetQuizId?: string }) {
           {mode === 'ai' && aiProvider === 'bank' ? (
             <p className="text-xs text-[var(--warn)] flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" /> AI providers were unreachable — questions were pulled from the human-written bank instead.
+            </p>
+          ) : null}
+          {hasWritten ? (
+            <p className="text-xs text-muted-foreground flex items-center gap-2">
+              <PenLine className="h-4 w-4" /> Written answers are marked by the AI examiner against your mark scheme after students submit.
             </p>
           ) : null}
 
@@ -561,15 +576,30 @@ function QuestionPreviewList({
                 <p className="text-xs italic text-muted-foreground border-l-2 pl-2 my-1.5">[{q.extract.title}] {q.extract.text.slice(0, 120)}…</p>
               ) : null}
               <p>{q.stem}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {q.type === 'mcq'
-                  ? `Correct: ${q.options[q.correct]}`
-                  : q.type === 'numeric'
-                    ? `Answer: ${q.value}${q.unit ?? ''} ± ${q.tol}`
-                    : q.type === 'truefalse'
-                      ? `Answer: ${q.answer ? 'True' : 'False'}`
-                      : `Accept: ${q.accept.join(' / ')}`}
-              </p>
+              {q.type === 'written' ? (
+                <div className="mt-1.5">
+                  <p className="text-xs text-muted-foreground">
+                    {q.marks} {q.marks === 1 ? 'mark' : 'marks'} · AI marked · mark scheme:
+                  </p>
+                  <ol className="list-decimal pl-5 mt-1 space-y-0.5">
+                    {q.points.map((p, pi) => (
+                      <li key={pi} className="text-xs text-muted-foreground">
+                        {p.text} <span className="text-foreground font-medium">({p.marks})</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {q.type === 'mcq'
+                    ? `Correct: ${q.options[q.correct]}`
+                    : q.type === 'numeric'
+                      ? `Answer: ${q.value}${q.unit ?? ''} ± ${q.tol}`
+                      : q.type === 'truefalse'
+                        ? `Answer: ${q.answer ? 'True' : 'False'}`
+                        : `Accept: ${q.accept.join(' / ')}`}
+                </p>
+              )}
             </li>
           ))}
         </ol>
@@ -650,6 +680,9 @@ function CustomBuilder({ list, setList }: { list: Question[]; setList: (q: Quest
 
   return (
     <div className="space-y-4">
+      {type === 'written' ? (
+        <WrittenFields onAdd={(q) => setList([...list, q])} />
+      ) : (
       <div className="rounded-xl border bg-card p-5 space-y-4">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="space-y-1">
@@ -662,6 +695,7 @@ function CustomBuilder({ list, setList }: { list: Question[]; setList: (q: Quest
                 <SelectItem value="fib">Fill the blank</SelectItem>
                 <SelectItem value="numeric">Calculation</SelectItem>
                 <SelectItem value="truefalse">True / false</SelectItem>
+                <SelectItem value="written">Written · AI marked</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -786,10 +820,207 @@ function CustomBuilder({ list, setList }: { list: Question[]; setList: (q: Quest
           </Button>
         </div>
       </div>
+      )}
 
       {list.length > 0 ? (
         <QuestionPreviewList questions={list} onRemove={(id) => setList(list.filter((q) => q.id !== id))} />
       ) : null}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Written (AI-marked) question builder — used on its own in step 2    */
+/* (on top of library/AI quizzes) and inside the custom builder        */
+
+function WrittenFields({ onAdd }: { onAdd: (q: Question) => void }) {
+  const [topic, setTopic] = useState('2.1');
+  const [stem, setStem] = useState('');
+  const [points, setPoints] = useState<{ text: string; marks: number }[]>([{ text: '', marks: 1 }]);
+  const [model, setModel] = useState('');
+  const [extractOn, setExtractOn] = useState(false);
+  const [extractTitle, setExtractTitle] = useState('');
+  const [extractText, setExtractText] = useState('');
+
+  const total = points.reduce((s, p) => s + (Number(p.marks) || 0), 0);
+  const ready =
+    stem.trim().length >= 15 &&
+    model.trim().length >= 10 &&
+    points.length >= 1 &&
+    points.every((p) => p.text.trim().length >= 5) &&
+    total >= 2 &&
+    total <= 12;
+
+  function add() {
+    const extract =
+      extractOn && extractTitle.trim() && extractText.trim().length >= 20
+        ? { title: extractTitle.trim(), text: extractText.trim() }
+        : undefined;
+    onAdd({
+      id: `w${Date.now().toString(36)}`,
+      type: 'written',
+      topic,
+      difficulty: 3,
+      marks: total,
+      stem: stem.trim(),
+      explain: model.trim(),
+      extract,
+      points: points.map((p) => ({ text: p.text.trim(), marks: Math.max(1, Math.min(3, Number(p.marks) || 1)) })),
+    });
+    setStem('');
+    setPoints([{ text: '', marks: 1 }]);
+    setModel('');
+    setExtractText('');
+    setExtractTitle('');
+  }
+
+  return (
+    <div className="rounded-xl border border-primary/25 bg-primary/[0.03] p-5 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-sm font-semibold flex items-center gap-2">
+          <PenLine className="h-4 w-4 text-primary" aria-hidden /> Written question — marked by the AI examiner
+        </div>
+        <Badge variant="outline" className="tabular-nums">{total} {total === 1 ? 'mark' : 'marks'}</Badge>
+      </div>
+
+      <div className="space-y-1">
+        <Label>Topic</Label>
+        <Select value={topic} onValueChange={setTopic}>
+          <SelectTrigger className="w-72"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {TOPICS.map((t) => (
+              <SelectItem key={t.id} value={t.id}>{t.id} · {t.title}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1">
+        <Label htmlFor="w-stem">Question</Label>
+        <Textarea
+          id="w-stem"
+          value={stem}
+          onChange={(e) => setStem(e.target.value)}
+          rows={2}
+          placeholder="e.g. Discuss the likely benefits and drawbacks of this growth strategy for Maya's bakery. Refer to the case study in your answer."
+        />
+        <p className="text-xs text-muted-foreground">Ask for analysis, justification or evaluation — the things a one-word answer can't show.</p>
+      </div>
+
+      <div className="rounded-lg border p-3 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Mark scheme</span>
+          <span className="text-xs text-muted-foreground">each point = 1–3 marks · total {total}/12</span>
+        </div>
+        <div className="space-y-2">
+          {points.map((p, i) => (
+            <div key={i} className="flex flex-wrap gap-2 items-start">
+              <span className="text-xs font-bold text-muted-foreground mt-2.5 w-4 shrink-0 tabular-nums">{i + 1}.</span>
+              <Textarea
+                value={p.text}
+                onChange={(e) => setPoints(points.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)))}
+                rows={1}
+                placeholder={i === 0 ? 'e.g. Identifies a benefit, e.g. higher revenue from more customers (1 mark)' : 'Another marking point…'}
+                className="flex-1 min-w-[220px]"
+              />
+              <Select value={String(p.marks)} onValueChange={(v) => setPoints(points.map((x, j) => (j === i ? { ...x, marks: Number(v) } : x)))}>
+                <SelectTrigger className="w-[74px] shrink-0" aria-label={`Marks for point ${i + 1}`}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 mark</SelectItem>
+                  <SelectItem value="2">2 marks</SelectItem>
+                  <SelectItem value="3">3 marks</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 text-[var(--danger)] shrink-0"
+                aria-label="Remove marking point"
+                disabled={points.length === 1}
+                onClick={() => setPoints(points.filter((_, j) => j !== i))}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-between">
+          <Button variant="outline" size="sm" disabled={points.length >= 8} onClick={() => setPoints([...points, { text: '', marks: 1 }])}>
+            <PlusCircle className="h-3.5 w-3.5" /> Add marking point
+          </Button>
+          <span className="text-xs text-muted-foreground">{points.length}/8 points</span>
+        </div>
+      </div>
+
+      <div className="rounded-lg border p-3 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Case study extract (optional)</span>
+          <Switch checked={extractOn} onCheckedChange={setExtractOn} aria-label="Add case study" />
+        </div>
+        {extractOn ? (
+          <>
+            <Input value={extractTitle} onChange={(e) => setExtractTitle(e.target.value)} placeholder="Case study title (e.g. Maya's Bakery)" />
+            <Textarea value={extractText} onChange={(e) => setExtractText(e.target.value)} rows={3} placeholder="2–4 sentences of business context students answer from…" />
+          </>
+        ) : null}
+      </div>
+
+      <div className="space-y-1">
+        <Label htmlFor="w-model">Model answer (students see this after marking)</Label>
+        <Textarea id="w-model" value={model} onChange={(e) => setModel(e.target.value)} rows={3} placeholder="A short model answer covering every marking point — shown once the AI has marked the response." />
+      </div>
+
+      <Button onClick={add} disabled={!ready} className="w-full sm:w-auto">
+        <PlusCircle className="h-4 w-4" /> Add written question · {total} {total === 1 ? 'mark' : 'marks'}
+      </Button>
+      {!ready ? (
+        <p className="text-xs text-muted-foreground">Needs a question (15+ characters), at least one marking point (5+ characters), a model answer and 2–12 marks in total.</p>
+      ) : null}
+    </div>
+  );
+}
+
+/* Step-2 wrapper: the list of added written questions + the builder */
+function WrittenSection({ list, setList }: { list: Question[]; setList: (q: Question[]) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-xl border border-primary/25">
+      <CollapsibleTrigger className="w-full flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 text-sm font-medium">
+        <span className="flex items-center gap-2">
+          <PenLine className="h-4 w-4 text-primary" aria-hidden /> Add a written question — marked by AI
+          {list.length > 0 ? (
+            <Badge variant="secondary" className="tabular-nums">{list.length} added</Badge>
+          ) : null}
+        </span>
+        <span className="text-xs text-muted-foreground">{open ? 'close' : 'optional'}</span>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="px-5 pb-5 space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Students write a long answer; the AI examiner marks it against your mark scheme and shows exactly which points earned marks.
+        </p>
+        {list.length > 0 ? (
+          <ul className="space-y-2">
+            {list.map((q, i) => {
+              const wq = q as WrittenQuestion;
+              return (
+              <li key={q.id} className="rounded-lg border bg-card p-3 text-sm flex gap-3 items-start">
+                <span className="font-bold text-primary tabular-nums shrink-0">W{i + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium leading-snug">{q.stem}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {q.marks} {q.marks === 1 ? 'mark' : 'marks'} · {wq.points.length} marking {wq.points.length === 1 ? 'point' : 'points'} · {topicTitle(q.topic).split(' ')[0]}
+                  </p>
+                </div>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-[var(--danger)] shrink-0" aria-label="Remove written question" onClick={() => setList(list.filter((x) => x.id !== q.id))}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </li>
+              );
+            })}
+          </ul>
+        ) : null}
+        <WrittenFields onAdd={(q) => setList([...list, q])} />
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

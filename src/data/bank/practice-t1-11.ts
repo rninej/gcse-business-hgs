@@ -160,7 +160,7 @@ const def: QuizDef = {
       difficulty: 3,
       marks: 1,
       stem: 'Which quality of a successful entrepreneur is shown by someone who spots an opening at a farmers’ market and books a stall the same week — without waiting for anyone’s permission?',
-      accept: ['initiative', 'taking initiative', 'initiative taking', 'showing initiative'],
+      accept: ['initiative', 'taking initiative', 'initiative taking', 'showing initiative', 'enterprising'],
       explain:
         'Initiative means spotting an opportunity and acting on it straight away, without being told to. It sits alongside determination, willingness to take advice and the ability to learn from failure as a key entrepreneurial quality.',
     },

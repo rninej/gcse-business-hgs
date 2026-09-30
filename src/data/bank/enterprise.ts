@@ -168,9 +168,9 @@ const enterprise: QuizDef = {
       difficulty: 2,
       marks: 1,
       stem: 'Which quality of a successful entrepreneur is shown by someone who keeps going despite setbacks and rejection?',
-      accept: ['determination', 'persistence', 'perseverance', 'resilience', 'drive', 'determined'],
+      accept: ['determination', 'persistence', 'perseverance', 'resilience', 'drive', 'determined', 'tenacity', 'persistent', 'resilient'],
       explain:
-        'Determination — sticking at the goal despite obstacles — is one of the key entrepreneurial qualities, along with initiative, willingness to take advice and the ability to learn from failure.',
+        'Determination — sticking at the goal despite obstacles, also called persistence or resilience — is one of the key entrepreneurial qualities, along with initiative, willingness to take advice and the ability to learn from failure.',
     },
     {
       id: 'e12',

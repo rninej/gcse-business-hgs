@@ -25,7 +25,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   const r = attempt.result;
   const reviews: QReview[] = attempt.questions.map((q, i) => {
     const rec = r?.perQ?.[q.id];
-    return toReview(q, i + 1, rec?.given ?? '—', rec?.expected ?? '', Boolean(rec?.correct));
+    return toReview(q, i + 1, rec?.given ?? '—', rec?.expected ?? '', Boolean(rec?.correct), rec);
   });
 
   return NextResponse.json({
@@ -47,6 +47,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     riskSignals: r?.riskSignals ?? [],
     aiFeedback: r?.feedback ?? null,
     teacherFeedback: attempt.teacherFeedback ?? null,
+    writtenPending: r?.writtenPending ?? 0,
     reviews,
   });
 }

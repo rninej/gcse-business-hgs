@@ -9,6 +9,26 @@ import type { Attempt, QReview, RiskBand, Student } from '@/lib/types';
 
 type Ctx = { params: Promise<{ sid: string }> };
 
+/** Raw behavioural evidence recorded on one attempt — what the AI probability
+ *  score is actually built from. Read straight off the stored telemetry; the
+ *  score itself was computed at submission time (src/lib/risk.ts). */
+function attemptEvidence(x: Attempt) {
+  const events = x.events ?? [];
+  const times = Object.values(x.perQ ?? {})
+    .map((t) => t?.ms ?? 0)
+    .filter((ms) => ms > 0);
+  const wallMs = x.wallMs ?? 0;
+  return {
+    pasteCount: events.filter((e) => e.e === 'paste').length,
+    copyCount: events.filter((e) => e.e === 'copy' || e.e === 'cut').length,
+    tabSwitches: events.filter((e) => e.e === 'hide').length,
+    blurCount: events.filter((e) => e.e === 'blur').length,
+    avgMsPerQ: times.length ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : null,
+    hiddenPct: wallMs > 0 ? Math.round(((x.hiddenMs ?? 0) / wallMs) * 1000) / 10 : 0,
+    wallSec: Math.round(wallMs / 1000),
+  };
+}
+
 /**
  * GET /api/teacher/students/[sid]/profile
  * Everything about one student: account, stats, progress over time and every
@@ -46,10 +66,11 @@ export async function GET(_req: Request, ctx: Ctx) {
     if (r) {
       reviews = x.questions.map((q, i) => {
         const rec = r.perQ?.[q.id];
-        return toReview(q, i + 1, rec?.given ?? '—', rec?.expected ?? '', Boolean(rec?.correct));
+        return toReview(q, i + 1, rec?.given ?? '—', rec?.expected ?? '', Boolean(rec?.correct), rec);
       });
     }
     return {
+      evidence: r ? attemptEvidence(x) : null,
       id: x.id,
       mode: x.mode as 'assignment' | 'practice',
       title: x.assignmentTitle,
@@ -63,6 +84,7 @@ export async function GET(_req: Request, ctx: Ctx) {
       riskScore: r?.riskScore ?? null,
       riskBand: (r?.riskBand ?? null) as RiskBand | null,
       riskSignals: r?.riskSignals ?? [],
+      writtenPending: r?.writtenPending ?? 0,
       aiFeedback: r?.feedback ?? null,
       teacherFeedback: x.teacherFeedback?.text ?? null,
       teacherFeedbackAt: x.teacherFeedback?.at ?? null,
@@ -88,6 +110,32 @@ export async function GET(_req: Request, ctx: Ctx) {
     overallRisk === null ? null : overallRisk < 20 ? 'low' : overallRisk < 45 ? 'moderate' : overallRisk < 70 ? 'elevated' : 'high';
 
   const streak = streaksFrom(submitted.map((x) => x.result?.submittedAt ?? 0));
+
+  // ---- behavioural evidence behind the overall AI probability -------------
+  // aggregated across every submitted quiz, straight from the stored telemetry
+  const allTimes: number[] = [];
+  const signalTally = new Map<string, number>();
+  for (const x of submitted) {
+    for (const t of Object.values(x.perQ ?? {})) {
+      if ((t?.ms ?? 0) > 0) allTimes.push(t.ms);
+    }
+    for (const s of x.result?.riskSignals ?? []) {
+      signalTally.set(s.label, (signalTally.get(s.label) ?? 0) + 1);
+    }
+  }
+  const evidence = {
+    pasteCount: submitted.reduce((n, x) => n + (x.events ?? []).filter((e) => e.e === 'paste').length, 0),
+    copyCount: submitted.reduce((n, x) => n + (x.events ?? []).filter((e) => e.e === 'copy' || e.e === 'cut').length, 0),
+    tabSwitches: submitted.reduce((n, x) => n + (x.events ?? []).filter((e) => e.e === 'hide').length, 0),
+    totalHiddenMin: Math.round((submitted.reduce((n, x) => n + (x.hiddenMs ?? 0), 0) / 6000)) / 10,
+    avgMsPerQ: allTimes.length ? Math.round(allTimes.reduce((a, b) => a + b, 0) / allTimes.length) : null,
+    fastAnswers: allTimes.filter((ms) => ms < 2500).length,
+    quizzesWithSignals: submitted.filter((x) => (x.result?.riskSignals ?? []).length > 0).length,
+    // most frequent integrity signals first — label → how many quizzes it fired in
+    signalCounts: [...signalTally.entries()]
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)),
+  };
 
   return NextResponse.json({
     student: {
@@ -119,6 +167,7 @@ export async function GET(_req: Request, ctx: Ctx) {
       title: x.assignmentTitle,
       mode: x.mode as 'assignment' | 'practice',
     })),
+    evidence, // aggregated telemetry behind the overall AI probability
     attempts: attempts.reverse(), // newest first for the list
   });
 }

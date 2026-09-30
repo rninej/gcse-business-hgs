@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
@@ -68,6 +69,7 @@ interface RunData {
   serverNow: number;
   questions: ClientQuestion[];
   checked: Record<string, CheckedInfo>;
+  writtenAnswers?: Record<string, string>; // saved written answers (never locked)
 }
 
 interface Snapshot {
@@ -168,6 +170,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [checked, setChecked] = useState<Record<string, CheckedInfo>>({});
   const [checking, setChecking] = useState(false);
+  const [savedWritten, setSavedWritten] = useState<Record<string, boolean>>({});
   const [idx, setIdx] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [submitting, setSubmitting] = useState(false);
@@ -239,6 +242,15 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
     }
     setChecking(true);
     try {
+      // written answers are saved for marking after submission — never locked
+      if (q.type === 'written') {
+        await api.post<{ saved: boolean }>(`/api/student/attempts/${attemptId}/check`, {
+          qid: q.id,
+          answer,
+        });
+        setSavedWritten((prev) => ({ ...prev, [q.id]: true }));
+        return;
+      }
       const res = await api.post<{ correct: boolean; expected: string; explain: string; marks: number }>(
         `/api/student/attempts/${attemptId}/check`,
         { qid: q.id, answer }
@@ -279,6 +291,11 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
         wallMs: store.wallMs(),
         hiddenMs: store.hiddenMs,
       });
+      // written answers are marked by the AI examiner — kick it off without
+      // holding up the trip to the result screen (which polls until finished)
+      if (questions.some((x) => x.type === 'written')) {
+        void api.post(`/api/student/attempts/${attemptId}/mark-written`).catch(() => undefined);
+      }
       go({ name: 'result', attemptId });
     } catch (e) {
       store.resetSubmitted();
@@ -324,12 +341,18 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
         setChecked(serverChecked);
         const merged: Record<string, string> = {};
         for (const [qid, info] of Object.entries(serverChecked)) merged[qid] = info.a;
+        // saved written answers persist server-side and stay editable
+        const serverWritten = d.writtenAnswers ?? {};
+        for (const [qid, val] of Object.entries(serverWritten)) {
+          if (!merged[qid] && val) merged[qid] = val;
+        }
         if (snap?.answers) {
           for (const [qid, val] of Object.entries(snap.answers)) {
             if (!serverChecked[qid]) merged[qid] = val;
           }
         }
         setAnswers(merged);
+        setSavedWritten(Object.fromEntries(Object.keys(serverWritten).filter((k) => serverWritten[k]).map((qid) => [qid, true])));
 
         // resume on the first question that hasn't been confirmed yet
         const snapIdx = Math.min(snap?.idx ?? 0, Math.max(0, d.questions.length - 1));
@@ -466,8 +489,12 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
     remaining !== null
       ? `${Math.floor(remaining / 60000)}:${String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0')}`
       : null;
-  const progress = total ? (checkedCount / total) * 100 : 0;
-  const unanswered = total - checkedCount;
+  const writtenAnswered = questions.filter(
+    (x) => x.type === 'written' && (answers[x.id] ?? '').toString().trim().length > 0
+  ).length;
+  const answeredCount = checkedCount + writtenAnswered;
+  const progress = total ? (answeredCount / total) * 100 : 0;
+  const unanswered = total - answeredCount;
   const givenDisplay = (s: string) =>
     q.type === 'mcq' && q.options ? q.options[Number(s)] ?? s : q.type === 'truefalse' ? (s === 'true' ? 'True' : 'False') : s;
 
@@ -520,7 +547,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
           </div>
           <div className="mt-2.5 flex items-center gap-3">
             <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-              {checkedCount}/{total} answered
+              {answeredCount}/{total} answered
             </span>
             <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
               <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progress}%` }} />
@@ -695,20 +722,60 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                   <p className="text-xs text-muted-foreground mt-2">
                     {q.type === 'numeric'
                       ? `£, % and commas are fine — the marker reads the number.${q.dp ? ` Answer to ${q.dp} decimal place${q.dp === 1 ? '' : 's'}.` : ''}`
-                      : 'Capitals and extra spaces don’t matter. Spelling does.'}
+                      : 'Capitals, extra spaces and small spelling slips don’t matter.'}
                   </p>
+                </div>
+              ) : null}
+
+              {q.type === 'written' ? (
+                <div>
+                  <Textarea
+                    value={answers[q.id] ?? ''}
+                    onChange={(e) => {
+                      typeAnswer(q.id, e.target.value);
+                      if (savedWritten[q.id]) setSavedWritten((prev) => ({ ...prev, [q.id]: false }));
+                    }}
+                    rows={q.marks >= 9 ? 12 : 9}
+                    placeholder="Write your answer in full sentences. Develop each point — the examiner awards a mark for every mark-scheme point you make…"
+                    className="text-[15px] leading-relaxed min-h-[220px]"
+                    aria-label={`Written answer — ${q.marks} marks`}
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
+                    <p className="text-xs text-muted-foreground">
+                      {(() => {
+                        const words = (answers[q.id] ?? '').trim().split(/\s+/).filter(Boolean).length;
+                        return `${words} ${words === 1 ? 'word' : 'words'} · ${q.marks} ${q.marks === 1 ? 'mark' : 'marks'}`;
+                      })()}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Saved as you go · the AI examiner marks it when you submit
+                    </p>
+                  </div>
+                  {savedWritten[q.id] ? (
+                    <p className="text-xs text-[var(--success)] flex items-center gap-1.5 mt-2" role="status">
+                      <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Answer saved — you can keep editing until you submit.
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
             </div>
 
-            {/* check button */}
+            {/* check / save button */}
             {!qChecked ? (
               <Button
                 className="w-full mt-5 h-12 text-base"
                 disabled={checking || !(answers[q.id] ?? '').toString().trim()}
                 onClick={() => void checkAnswer()}
               >
-                {checking ? 'Checking…' : 'Check answer'}
+                {checking
+                  ? q.type === 'written'
+                    ? 'Saving…'
+                    : 'Checking…'
+                  : q.type === 'written'
+                    ? savedWritten[q.id]
+                      ? 'Update answer'
+                      : 'Save answer'
+                    : 'Check answer'}
               </Button>
             ) : null}
 
@@ -786,11 +853,12 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
             <div className="flex-1 min-w-0 flex gap-1.5 justify-center overflow-x-auto scroll-slim py-1" aria-label="Question palette">
               {questions.map((x, i) => {
                 const st = checked[x.id];
+                const writtenSaved = x.type === 'written' && (answers[x.id] ?? '').toString().trim().length > 0;
                 return (
                   <button
                     key={x.id}
                     onClick={() => goto(i)}
-                    aria-label={`Go to question ${i + 1}${st ? (st.correct ? ' — correct' : ' — incorrect') : ''}`}
+                    aria-label={`Go to question ${i + 1}${st ? (st.correct ? ' — correct' : ' — incorrect') : writtenSaved ? ' — saved' : ''}`}
                     aria-current={i === idx ? 'true' : undefined}
                     className={cn(
                       'h-8 w-8 shrink-0 rounded-md text-xs font-semibold tabular-nums transition-colors',
@@ -800,7 +868,9 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                           ? st.correct
                             ? 'bg-[var(--success)]/15 text-[var(--success)] hover:bg-[var(--success)]/25'
                             : 'bg-[var(--danger)]/15 text-[var(--danger)] hover:bg-[var(--danger)]/25'
-                          : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
+                          : writtenSaved
+                            ? 'bg-primary/15 text-primary hover:bg-primary/25'
+                            : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
                     )}
                   >
                     {i + 1}
@@ -833,7 +903,12 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                         ) : (
                           <p className="mb-2">Every question has been answered.</p>
                         )}
-                        <p>You’ll see your score, feedback and a full review straight away.</p>
+                        <p>
+                          You’ll see your score, feedback and a full review straight away
+                          {questions.some((x) => x.type === 'written')
+                            ? '. Written answers are marked by the AI examiner — marks appear a minute or two later.'
+                            : '.'}
+                        </p>
                       </div>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
@@ -851,7 +926,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
       </div>
 
       <p className="sr-only" aria-live="polite">
-        Question {idx + 1} of {total}. {checkedCount} answered.
+        Question {idx + 1} of {total}. {answeredCount} answered.
       </p>
     </div>
   );

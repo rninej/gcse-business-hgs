@@ -107,6 +107,7 @@ async function finalizeOne(a: Attempt, now: number): Promise<Attempt> {
     riskBand: risk.band,
     riskSignals: risk.signals,
     submittedAt: now,
+    writtenPending: marked.writtenPending,
   };
 
   await merge('attempts', a.id, {

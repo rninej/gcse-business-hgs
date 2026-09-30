@@ -6,6 +6,7 @@ import type { SessionInfo } from '@/lib/types';
 import type { View } from '@/lib/store';
 import { AppShell } from '@/components/app/AppShell';
 import { AuthView } from '@/components/app/AuthView';
+import { SiteBackdrop } from '@/components/app/SiteBackdrop';
 
 import { TeacherHome } from '@/components/app/teacher/TeacherHome';
 import { ClassesView } from '@/components/app/teacher/ClassesView';
@@ -55,9 +56,9 @@ export function HomeApp({ initialSession }: { initialSession: SessionInfo | null
       : { name: 'auth' }
     : storeView;
 
-  if (!session) return <AuthView />;
-
-  return (
+  const content = !session ? (
+    <AuthView />
+  ) : (
     <AppShell active={view.name}>
       {view.name === 't-home' ? <TeacherHome /> : null}
       {view.name === 't-classes' ? <ClassesView /> : null}
@@ -73,5 +74,15 @@ export function HomeApp({ initialSession }: { initialSession: SessionInfo | null
       {view.name === 'quiz' ? <QuizRunner key={view.attemptId} attemptId={view.attemptId} /> : null}
       {view.name === 'result' ? <ResultScreen key={view.attemptId} attemptId={view.attemptId} /> : null}
     </AppShell>
+  );
+
+  // SiteBackdrop sits at the single root so it shows on EVERY page (login
+  // screen included) and stays mounted across auth → app transitions — one
+  // random photo per visit, painted at -z-20, below the quiz backdrop (-z-10).
+  return (
+    <>
+      <SiteBackdrop />
+      {content}
+    </>
   );
 }

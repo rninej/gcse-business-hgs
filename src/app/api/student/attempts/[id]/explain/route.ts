@@ -21,6 +21,8 @@ function answerOf(q: Question): string {
       return `${q.value}${q.unit ?? ''}`;
     case 'truefalse':
       return q.answer ? 'True' : 'False';
+    case 'written':
+      return 'marked against the mark scheme';
   }
 }
 

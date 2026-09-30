@@ -3,7 +3,7 @@
 
 export type Role = 'teacher' | 'student';
 
-export type QuestionType = 'mcq' | 'term' | 'fib' | 'numeric' | 'truefalse';
+export type QuestionType = 'mcq' | 'term' | 'fib' | 'numeric' | 'truefalse' | 'written';
 
 export type DiagramKey =
   | 'breakeven'
@@ -65,7 +65,19 @@ export interface TFQuestion extends BaseQuestion {
   answer: boolean;
 }
 
-export type Question = MCQQuestion | TextQuestion | NumericQuestion | TFQuestion;
+/** One line of a written-question mark scheme. */
+export interface WrittenPoint {
+  text: string;
+  marks: number;
+}
+
+/** Large written-answer question, marked by AI against the mark scheme. */
+export interface WrittenQuestion extends BaseQuestion {
+  type: 'written';
+  points: WrittenPoint[]; // mark scheme — total marks = sum of point marks
+}
+
+export type Question = MCQQuestion | TextQuestion | NumericQuestion | TFQuestion | WrittenQuestion;
 
 /** Question with the answer stripped — safe to send to the browser */
 export interface ClientQuestion {
@@ -183,6 +195,12 @@ export interface RiskSignal {
 
 export type RiskBand = 'low' | 'moderate' | 'elevated' | 'high';
 
+/** A written answer after AI marking (stored on the attempt's per-question record). */
+export interface WrittenMarkPoint extends WrittenPoint {
+  awarded: boolean;
+  why: string;
+}
+
 export interface QReview {
   qid: string;
   n: number;
@@ -198,13 +216,20 @@ export interface QReview {
   correct: boolean;
   marks: number;
   explain: string;
+  // written questions only
+  points?: WrittenPoint[]; // the mark scheme
+  awarded?: number; // marks the AI awarded
+  comment?: string; // examiner-style comment
+  markedBy?: 'gemini' | 'groq' | 'zai' | 'template';
+  pointResults?: WrittenMarkPoint[];
+  pendingMark?: boolean; // answer saved, AI marking not finished
 }
 
 export interface AttemptResult {
   score: number; // marks earned
   total: number; // marks available
   pct: number;
-  perQ: Record<string, { correct: boolean; given: string; expected: string }>;
+  perQ: Record<string, PerQRecord>;
   topicStats: TopicStat[];
   timeTakenSec: number;
   points: number;
@@ -214,6 +239,19 @@ export interface AttemptResult {
   riskBand: RiskBand;
   riskSignals: RiskSignal[];
   submittedAt: number;
+  writtenPending?: number; // written answers still awaiting AI marking
+}
+
+/** Per-question outcome stored on a submitted attempt's result. */
+export interface PerQRecord {
+  correct: boolean;
+  given: string;
+  expected: string;
+  // written questions (after AI marking)
+  awarded?: number;
+  comment?: string;
+  markedBy?: 'gemini' | 'groq' | 'zai' | 'template';
+  pointResults?: WrittenMarkPoint[];
 }
 
 /** Written feedback a teacher leaves on a student's submitted quiz */

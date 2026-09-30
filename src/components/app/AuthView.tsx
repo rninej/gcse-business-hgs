@@ -16,7 +16,9 @@ import type { SessionInfo } from '@/lib/types';
 
 export function AuthView() {
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--sidebar)]">
+    // no bg here: the body provides it, which lets the site backdrop photo
+    // (fixed, -z-20, mounted in HomeApp) show through behind the content
+    <div className="min-h-screen flex flex-col">
       <header className="border-b bg-background">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 min-h-16 py-2.5 flex items-center justify-between gap-3">
           <BrandLockup />
