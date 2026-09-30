@@ -4,6 +4,7 @@
 // Integrity data is never shown here — that lives in the teacher's results view.
 
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -45,6 +46,25 @@ interface ResultData {
   teacherFeedback?: { text: string; at: number; byName: string } | null;
 }
 
+/** Quart-out count-up — the score rolls up and decelerates into its final
+ *  value, the way a real scoreboard settles. Re-targets when the AI examiner
+ *  lands written marks, so the update feels like the score growing. */
+function useCountUp(target: number, duration = 1000) {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / duration);
+      setV(Math.round(target * (1 - Math.pow(1 - p, 4))));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return v;
+}
+
 export function ResultScreen({ attemptId }: { attemptId: string }) {
   const go = useApp((s) => s.go);
   const { toast } = useToast();
@@ -52,6 +72,12 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [redoing, setRedoing] = useState(false);
   const [markingNow, setMarkingNow] = useState(false);
+
+  // count-up hooks must run unconditionally — they read the result lazily and
+  // only start moving once the marks land (target 0 until then)
+  const rEarly = data?.result;
+  const pctAnim = useCountUp(rEarly?.pct ?? 0, 1100);
+  const scoreAnim = useCountUp(rEarly?.score ?? 0, 1150);
 
   const load = () =>
     api
@@ -194,13 +220,18 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
       </div>
 
       {/* headline */}
-      <div className={cn('rounded-2xl border p-6 sm:p-8 mb-5', r.pct >= 80 ? 'bg-[var(--success)]/8' : r.pct >= 55 ? 'bg-primary/8' : 'bg-[var(--warn)]/8')}>
+      <motion.div
+        initial={{ opacity: 0, y: 22, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        className={cn('rounded-2xl border p-6 sm:p-8 mb-5 backdrop-blur-xl backdrop-saturate-150 border-white/50', r.pct >= 80 ? 'bg-[var(--success)]/10' : r.pct >= 55 ? 'bg-primary/10' : 'bg-[var(--warn)]/10')}
+      >
         <div className="flex flex-wrap items-center gap-6 sm:gap-10">
-          <ScoreRing pct={r.pct} label="score" size={128} />
+          <ScoreRing pct={pctAnim} label="score" size={128} />
           <div className="min-w-0">
             <div className="text-sm text-muted-foreground">{data.title}</div>
-            <div className="text-2xl font-bold mt-1">
-              {r.score} out of {r.total} marks
+            <div className="text-2xl font-bold mt-1 tabular-nums">
+              {scoreAnim} out of {r.total} marks
             </div>
             {pendingWritten > 0 ? (
               <p className="text-sm text-[var(--warn)] font-medium mt-1 flex items-center gap-1.5">
@@ -228,10 +259,10 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
             ) : null}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* feedback */}
-      <div className="rounded-xl border bg-card p-5 mb-5">
+      <div className="rounded-xl border border-white/60 bg-card/75 backdrop-blur-xl backdrop-saturate-150 p-5 mb-5">
         <h2 className="flex items-center gap-2 font-semibold mb-3">
           <MessageSquareHeart className="h-5 w-5 text-primary" aria-hidden /> Feedback
         </h2>
@@ -240,7 +271,7 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
 
       {/* note from the teacher */}
       {data.teacherFeedback ? (
-        <div className="rounded-xl border border-primary/35 bg-primary/[0.06] p-5 mb-5">
+        <div className="rounded-xl border border-primary/35 bg-primary/[0.06] backdrop-blur-xl p-5 mb-5">
           <h2 className="flex flex-wrap items-center gap-2 font-semibold mb-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 shrink-0" aria-hidden>
               <MessageSquareHeart className="h-4 w-4 text-primary" />
@@ -257,12 +288,12 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
 
       {/* stats */}
       <div className="grid sm:grid-cols-2 gap-5 mb-5">
-        <div className="rounded-xl border bg-card p-5">
+        <div className="rounded-xl border border-white/60 bg-card/75 backdrop-blur-xl backdrop-saturate-150 p-5">
           <h3 className="font-semibold mb-3 text-sm">By topic</h3>
           <BarList items={topicRows} emptyText="No topic data." />
         </div>
         {weak.length > 0 ? (
-          <div className="rounded-xl border bg-[var(--accent)]/25 p-5 flex flex-col">
+          <div className="rounded-xl border border-white/40 bg-[var(--accent)]/25 backdrop-blur-xl p-5 flex flex-col">
             <h3 className="font-semibold mb-2 text-sm">Next steps</h3>
             <ul className="text-sm space-y-2 list-disc pl-5 mb-4">
               {weak.map((w) => (
@@ -277,7 +308,7 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
             </Button>
           </div>
         ) : (
-          <div className="rounded-xl border bg-[var(--success)]/10 p-5">
+          <div className="rounded-xl border border-white/40 bg-[var(--success)]/10 backdrop-blur-xl p-5">
             <h3 className="font-semibold mb-2 text-sm">Next steps</h3>
             <p className="text-sm">
               No weak topics this time — keep your streak going with the next quiz in the sequence.
@@ -288,10 +319,10 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
 
       {/* review */}
       <h2 className="font-semibold mb-3">Your answers</h2>
-      <ol className="space-y-3">
+      <ol className="space-y-3 stagger">
         {data.reviews.map((rev) =>
           rev.type === 'written' ? (
-            <li key={rev.qid} className="rounded-xl border border-primary/30 bg-primary/[0.03] p-4 sm:p-5">
+            <li key={rev.qid} className="rounded-xl border border-primary/30 bg-primary/[0.04] backdrop-blur-xl p-4 sm:p-5">
               <div className="flex items-center gap-2 flex-wrap mb-2">
                 <PenLine className="h-5 w-5 text-primary" aria-hidden />
                 <span className="font-semibold">Q{rev.n}</span>
@@ -322,7 +353,7 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
 
               <p className="text-[15px] font-medium leading-relaxed mb-3">{rev.stem}</p>
 
-              <div className="rounded-lg bg-card border px-3 py-2.5 mb-3">
+              <div className="rounded-lg bg-card/70 backdrop-blur-xl border border-white/40 px-3 py-2.5 mb-3">
                 <span className="text-xs text-muted-foreground block mb-1">Your answer</span>
                 <p className="text-sm leading-relaxed whitespace-pre-wrap">{rev.given && rev.given !== '—' ? rev.given : '— left blank —'}</p>
               </div>
@@ -380,7 +411,7 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
           ) : (
           <li
             key={rev.qid}
-            className={cn('rounded-xl border p-4 sm:p-5', rev.correct ? 'border-[var(--success)]/40 bg-[var(--success)]/5' : 'border-[var(--danger)]/40 bg-[var(--danger)]/5')}
+            className={cn('rounded-xl border p-4 sm:p-5 backdrop-blur-xl', rev.correct ? 'border-[var(--success)]/40 bg-[var(--success)]/8' : 'border-[var(--danger)]/40 bg-[var(--danger)]/6')}
           >
             <div className="flex items-center gap-2 flex-wrap mb-2">
               {rev.correct ? (
@@ -398,7 +429,7 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
             </div>
 
             {rev.extract ? (
-              <details className="mb-3 rounded-lg bg-card border px-3 py-2">
+              <details className="mb-3 rounded-lg bg-card/70 backdrop-blur-xl border border-white/40 px-3 py-2">
                 <summary className="text-xs font-medium cursor-pointer flex items-center gap-1.5">
                   <BookOpenText className="h-3.5 w-3.5" aria-hidden /> Case study · {rev.extract.title}
                 </summary>
@@ -442,14 +473,14 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
             ) : null}
 
             <div className="grid sm:grid-cols-2 gap-2 text-sm mb-3">
-              <div className="rounded-lg bg-card border px-3 py-2">
+              <div className="rounded-lg bg-card/70 backdrop-blur-xl border border-white/40 px-3 py-2">
                 <span className="text-xs text-muted-foreground block">Your answer</span>
                 <span className={cn('font-medium', rev.correct && 'text-[var(--success)]')}>
                   {rev.given && rev.given !== '—' ? displayGiven(rev, rev.given) : '—'}
                 </span>
               </div>
               {!rev.correct ? (
-                <div className="rounded-lg bg-card border px-3 py-2">
+                <div className="rounded-lg bg-card/70 backdrop-blur-xl border border-white/40 px-3 py-2">
                   <span className="text-xs text-muted-foreground block">Correct answer</span>
                   <span className="font-medium text-[var(--success)]">{rev.expected}</span>
                 </div>

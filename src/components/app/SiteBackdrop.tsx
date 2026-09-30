@@ -60,16 +60,18 @@ export function SiteBackdrop() {
 
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-20 overflow-hidden">
-      {/* the scene — very subtle: blur + low opacity keep text perfectly
-          readable, scale hides the blur edges */}
+      {/* the scene — strong enough that frosted-glass surfaces have something
+          to refract; blur keeps text perfectly readable and the 42s drift
+          (a slow Ken Burns pan) makes the whole site feel alive without
+          ever drawing attention to itself. Scale hides the blur edges. */}
       <img
         src={src}
         alt=""
         onError={() => setOk(false)}
-        className="h-full w-full object-cover opacity-[0.28] blur-[3px] scale-[1.06]"
+        className="h-full w-full object-cover opacity-[0.5] blur-[2px] anim-drift will-change-transform"
       />
       {/* soft wash keeps the whole thing airy and light */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-background/5 to-background/30" />
+      <div className="absolute inset-0 bg-gradient-to-b from-background/15 via-background/0 to-background/25" />
     </div>
   );
 }

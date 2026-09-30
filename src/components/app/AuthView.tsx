@@ -19,7 +19,7 @@ export function AuthView() {
     // no bg here: the body provides it, which lets the site backdrop photo
     // (fixed, -z-20, mounted in HomeApp) show through behind the content
     <div className="min-h-screen flex flex-col">
-      <header className="border-b bg-background">
+      <header className="border-b border-white/40 bg-background/60 backdrop-blur-xl backdrop-saturate-150">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 min-h-16 py-2.5 flex items-center justify-between gap-3">
           <BrandLockup />
           <span className="text-xs text-muted-foreground hidden sm:block">Edexcel GCSE (9–1) Business · spec 1BS0</span>
@@ -28,8 +28,8 @@ export function AuthView() {
 
       {/* mobile: sign in first — no scrolling needed; desktop: pitch left, card right */}
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-8 lg:py-16 grid lg:grid-cols-[1.1fr_1fr] gap-8 lg:gap-12 lg:items-center">
-        {/* What it looks like in the classroom */}
-        <section className="order-2 lg:order-1">
+        {/* What it looks like in the classroom — children rise in sequence */}
+        <section className="order-2 lg:order-1 stagger">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight leading-tight">
             GCSE Business homework that marks itself.
           </h1>
@@ -38,8 +38,8 @@ export function AuthView() {
             instant marking — you get the marks.
           </p>
 
-          <div className="mt-8 max-w-lg rounded-lg border bg-card shadow-sm">
-            <div className="px-4 py-2.5 border-b bg-[var(--accent)]/30 rounded-t-lg">
+          <div className="mt-8 max-w-lg rounded-xl border border-white/60 bg-card/55 backdrop-blur-xl backdrop-saturate-150 card-lift shadow-[inset_0_1px_0_0_rgb(255_255_255/0.65),0_8px_32px_-8px_rgb(13_92_70/0.14)]">
+            <div className="px-4 py-2.5 border-b border-white/40 rounded-t-xl bg-[var(--accent)]/30">
               <p className="text-xs font-semibold text-[var(--accent-foreground)] uppercase tracking-wide">
                 Case study · Biscuiteers
               </p>
@@ -93,12 +93,12 @@ export function AuthView() {
         </section>
 
         {/* Auth card — first thing you see on a phone */}
-        <section className="order-1 lg:order-2 w-full max-w-md mx-auto">
+        <section className="order-1 lg:order-2 w-full max-w-md mx-auto anim-rise">
           <AuthCard />
         </section>
       </main>
 
-      <footer className="mt-auto border-t bg-background">
+      <footer className="mt-auto border-t border-white/40 bg-background/60 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 text-xs text-muted-foreground flex flex-wrap justify-between gap-2">
           <span>© {new Date().getFullYear()} gcsebusiness</span>
           <span>Students: your teacher creates your account and hands out your login.</span>
@@ -162,7 +162,7 @@ function AuthCard() {
   }
 
   return (
-    <Card className="shadow-sm border">
+    <Card className="shadow-[inset_0_1px_0_0_rgb(255_255_255/0.65),0_16px_48px_-16px_rgb(13_92_70/0.22)]">
       <CardContent className="p-6 sm:p-8">
         <Tabs value={tab} onValueChange={(v) => { setTab(v as typeof tab); setError(null); }}>
           <TabsList className="grid grid-cols-3 w-full mb-5">

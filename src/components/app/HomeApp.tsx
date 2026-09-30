@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useApp } from '@/lib/store';
 import type { SessionInfo } from '@/lib/types';
 import type { View } from '@/lib/store';
 import { AppShell } from '@/components/app/AppShell';
 import { AuthView } from '@/components/app/AuthView';
 import { SiteBackdrop } from '@/components/app/SiteBackdrop';
+import { PwaProvider } from '@/components/app/PwaProvider';
+import { InstallPrompt } from '@/components/app/InstallPrompt';
 
 import { TeacherHome } from '@/components/app/teacher/TeacherHome';
 import { ClassesView } from '@/components/app/teacher/ClassesView';
@@ -79,10 +82,24 @@ export function HomeApp({ initialSession }: { initialSession: SessionInfo | null
   // SiteBackdrop sits at the single root so it shows on EVERY page (login
   // screen included) and stays mounted across auth → app transitions — one
   // random photo per visit, painted at -z-20, below the quiz backdrop (-z-10).
+  // The auth card and the app shell cross-fade through one AnimatePresence,
+  // so signing in feels like the dashboard emerges from the login screen.
   return (
     <>
+      <PwaProvider />
       <SiteBackdrop />
-      {content}
+      <InstallPrompt />
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={session ? 'app' : 'auth'}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10, transition: { duration: 0.18, ease: 'easeIn' } }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {content}
+        </motion.div>
+      </AnimatePresence>
     </>
   );
 }

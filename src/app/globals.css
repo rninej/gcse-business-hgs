@@ -141,6 +141,19 @@
   }
 }
 
+/* Frosted-glass token — ANY surface painted with bg-card becomes glass.
+   Sits in the utilities layer AFTER Tailwind's own rules, so it overrides
+   the opaque token everywhere (dashboards, lists, panels) while staying
+   swappable: a view that passes bg-transparent or an explicit bg-card/70
+   keeps its own token and drops out of this rule. */
+@layer utilities {
+  .bg-card {
+    background-color: color-mix(in oklab, var(--card) 62%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(1.5);
+    backdrop-filter: blur(16px) saturate(1.5);
+  }
+}
+
 /* slim scrollbars for long lists */
 .scroll-slim {
   scrollbar-width: thin;
@@ -161,11 +174,127 @@
   background: transparent;
 }
 
+/* ============================================================
+   Frosted-glass design system
+   The site-wide photo backdrop (SiteBackdrop) sits behind every
+   page; these utilities turn surfaces into frosted glass over it.
+   Layered shadows + a 1px inner light make the glass feel thick.
+   ============================================================ */
+.glass {
+  background: color-mix(in oklab, var(--card) 74%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.65);
+  backdrop-filter: blur(20px) saturate(1.65);
+  border: 1px solid color-mix(in oklab, #fff 65%, transparent);
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in oklab, #fff 70%, transparent),
+    0 8px 32px -8px oklch(0.3 0.05 163 / 0.14),
+    0 2px 8px -2px oklch(0.3 0.05 163 / 0.08);
+}
+.glass-strong {
+  /* nav chrome — needs to stay readable over any photo */
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  -webkit-backdrop-filter: blur(26px) saturate(1.8);
+  backdrop-filter: blur(26px) saturate(1.8);
+  border: 1px solid color-mix(in oklab, #fff 55%, transparent);
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in oklab, #fff 60%, transparent),
+    0 12px 40px -12px oklch(0.3 0.05 163 / 0.18);
+}
+.glass-soft {
+  background: color-mix(in oklab, var(--card) 55%, transparent);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  backdrop-filter: blur(12px) saturate(1.4);
+  border: 1px solid color-mix(in oklab, #fff 40%, transparent);
+}
+
+/* ============================================================
+   Motion system — deep, quiet, expensive-feeling
+   ============================================================ */
+:root {
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes drift {
+  from { transform: scale(1.08) translate(0%, 0%); }
+  to { transform: scale(1.16) translate(-1.6%, -1.1%); }
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.anim-rise { animation: rise 0.55s var(--ease-out-quint) both; }
+.anim-pop { animation: pop 0.45s var(--ease-spring) both; }
+.anim-drift { animation: drift 42s ease-in-out infinite alternate; }
+.anim-pulse-soft { animation: pulse-soft 2.4s ease-in-out infinite; }
+
+/* stagger helpers — children rise one after another */
+.stagger > * { animation: rise 0.55s var(--ease-out-quint) both; }
+.stagger > *:nth-child(1) { animation-delay: 0.03s; }
+.stagger > *:nth-child(2) { animation-delay: 0.09s; }
+.stagger > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger > *:nth-child(4) { animation-delay: 0.21s; }
+.stagger > *:nth-child(5) { animation-delay: 0.27s; }
+.stagger > *:nth-child(6) { animation-delay: 0.33s; }
+.stagger > *:nth-child(7) { animation-delay: 0.39s; }
+.stagger > *:nth-child(8) { animation-delay: 0.45s; }
+.stagger > *:nth-child(n+9) { animation-delay: 0.5s; }
+
+/* card lift — hover only where a real pointer exists */
+@media (hover: hover) {
+  .card-lift {
+    transition: transform 0.35s var(--ease-out-quint), box-shadow 0.35s var(--ease-out-quint);
+  }
+  .card-lift:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, #fff 70%, transparent),
+      0 18px 44px -12px oklch(0.3 0.05 163 / 0.22),
+      0 4px 12px -4px oklch(0.3 0.05 163 / 0.1);
+  }
+  .card-lift:active { transform: translateY(-1px); transition-duration: 0.12s; }
+}
+
+/* focus/press feedback on interactive elements */
+.press {
+  transition: transform 0.16s var(--ease-spring), box-shadow 0.2s ease;
+}
+.press:active { transform: scale(0.97); }
+
+/* respect users who prefer calm */
+@media (prefers-reduced-motion: reduce) {
+  .anim-rise, .anim-pop, .anim-drift, .anim-pulse-soft,
+  .stagger > *, .card-lift, .press {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 @media print {
   .no-print {
     display: none !important;
   }
   body {
     background: white !important;
+  }
+  .glass, .glass-strong, .glass-soft {
+    background: white !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    border-color: #ddd !important;
   }
 }

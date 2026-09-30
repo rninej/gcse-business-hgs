@@ -18,6 +18,15 @@ export const metadata: Metadata = {
   description:
     "Quizzes, homework and instant marking for Edexcel GCSE (9-1) Business. Built for teachers and students.",
   keywords: ["GCSE Business", "Edexcel", "gcsebusiness", "quizzes", "homework", "revision"],
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "gcsebusiness",
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {

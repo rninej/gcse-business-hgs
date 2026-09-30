@@ -1,10 +1,13 @@
 'use client';
 
 // Application shell: desktop sidebar + mobile bottom nav + sticky footer.
+// Frosted-glass chrome over the site backdrop photo, with a sliding active
+// pill (framer-motion layoutId) and per-view transitions (AnimatePresence).
 // Light-mode only. Warms the API cache on mount so clicking around the app
 // is instant, and pings the AI health endpoint so model availability stays
 // fresh in the background on every visit.
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BrandLockup } from './Brand';
@@ -18,6 +21,44 @@ interface NavItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   view: View;
+}
+
+/* One stable key per view instance — view params (class, assignment,
+   attempt) re-roll the key so re-entering the same kind of view with new
+   data still plays the transition. */
+function viewKey(v: View): string {
+  switch (v.name) {
+    case 'quiz':
+    case 'result':
+      return `${v.name}:${v.attemptId ?? ''}`;
+    case 't-class':
+      return `t-class:${v.classId ?? ''}`;
+    case 't-results':
+      return `t-results:${v.assignmentId ?? ''}`;
+    case 't-new':
+      return `t-new:${v.presetQuizId ?? ''}`;
+    default:
+      return v.name;
+  }
+}
+
+/** Wraps the active view in a keyed motion frame — every navigation gets
+ *  a deep, quiet rise; the outgoing view dips out first (mode="wait"). */
+function ViewFrame({ children }: { children: ReactNode }) {
+  const view = useApp((s) => s.view);
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={viewKey(view)}
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10, transition: { duration: 0.18, ease: 'easeIn' } }}
+        transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
 }
 
 export function AppShell({ children, active }: { children: React.ReactNode; active: View['name'] }) {
@@ -37,7 +78,7 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
       api.get(p).catch(() => undefined);
     }
     fetch('/api/ai/health').catch(() => undefined);
-     
+
   }, [session?.uid]);
 
   const nav: NavItem[] = isTeacher
@@ -67,35 +108,44 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
     // no bg-background here: the body provides it, which lets the quiz
     // backdrop photo (fixed, -z-10) show through behind the content
     <div className="min-h-screen flex flex-col">
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col border-r bg-[var(--sidebar)] z-40">
-        <div className="px-5 pt-5 pb-4 border-b border-[var(--sidebar-border)]">
+      {/* Desktop sidebar — frosted glass over the backdrop photo */}
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col z-40 border-r border-white/50 bg-[var(--sidebar)]/70 backdrop-blur-2xl backdrop-saturate-150 shadow-[inset_1px_0_0_0_rgb(255_255_255/0.5),8px_0_32px_-16px_rgb(13_92_70/0.18)]">
+        <div className="px-5 pt-5 pb-4 border-b border-white/40">
           <BrandLockup />
         </div>
-        <nav className="flex-1 px-3 py-3 space-y-0.5" aria-label="Main">
+        <nav className="flex-1 px-3 py-3 space-y-1" aria-label="Main">
           {nav.map((item) => {
             const on = isActive(item.view);
             return (
-              <button
+              <motion.button
                 key={item.label}
                 onClick={() => useApp.getState().go(item.view)}
+                whileTap={{ scale: 0.97 }}
                 aria-current={on ? 'page' : undefined}
                 className={cn(
-                  'w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-left',
+                  'relative w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-left transition-colors',
                   on
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:bg-[var(--sidebar-accent)] hover:text-foreground'
+                    ? 'text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-[var(--sidebar-accent)]/70'
                 )}
               >
-                <item.icon className={cn('h-[17px] w-[17px]')} />
-                {item.label}
-              </button>
+                {on ? (
+                  <motion.span
+                    layoutId="sidebar-pill"
+                    transition={{ type: 'spring', stiffness: 500, damping: 38 }}
+                    className="absolute inset-0 rounded-lg bg-primary shadow-[0_6px_20px_-6px_rgb(13_92_70/0.55),inset_0_1px_0_0_rgb(255_255_255/0.25)]"
+                    aria-hidden
+                  />
+                ) : null}
+                <item.icon className={cn('relative z-10 h-[17px] w-[17px]')} />
+                <span className="relative z-10">{item.label}</span>
+              </motion.button>
             );
           })}
         </nav>
-        <div className="p-4 border-t border-[var(--sidebar-border)] space-y-3">
+        <div className="p-4 border-t border-white/40 space-y-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-bold shrink-0" aria-hidden>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-bold shrink-0 ring-1 ring-white/50" aria-hidden>
               {(session?.name ?? '?').slice(0, 1).toUpperCase()}
             </div>
             <div className="min-w-0">
@@ -112,8 +162,8 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
         </div>
       </aside>
 
-      {/* Mobile top bar */}
-      <header className="md:hidden sticky top-0 z-40 bg-background/95 backdrop-blur border-b">
+      {/* Mobile top bar — glass */}
+      <header className="md:hidden sticky top-0 z-40 border-b border-white/40 bg-background/65 backdrop-blur-2xl backdrop-saturate-150">
         <div className="flex items-center justify-between px-4 h-14">
           <BrandLockup compact />
           <div className="flex items-center gap-1">
@@ -127,8 +177,10 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
 
       {/* Main */}
       <div className="flex-1 flex flex-col md:pl-60">
-        <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-28 md:pb-10">{children}</main>
-        <footer className="mt-auto border-t bg-[var(--sidebar)] pb-20 md:pb-0">
+        <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-28 md:pb-10">
+          <ViewFrame>{children}</ViewFrame>
+        </main>
+        <footer className="mt-auto border-t border-white/40 bg-[var(--sidebar)]/60 backdrop-blur-xl pb-20 md:pb-0">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>© {new Date().getFullYear()} gcsebusiness — for Edexcel GCSE (9–1) Business</span>
             <span className="flex items-center gap-1.5">
@@ -138,9 +190,9 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
         </footer>
       </div>
 
-      {/* Mobile bottom nav */}
+      {/* Mobile bottom nav — glass with a sliding active dot */}
       <nav
-        className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t bg-background/95 backdrop-blur"
+        className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/40 bg-background/70 backdrop-blur-2xl backdrop-saturate-150"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         aria-label="Main"
       >
@@ -148,18 +200,27 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
           {nav.map((item) => {
             const on = isActive(item.view);
             return (
-              <button
+              <motion.button
                 key={item.label}
                 onClick={() => useApp.getState().go(item.view)}
+                whileTap={{ scale: 0.92 }}
                 className={cn(
-                  'flex-1 flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium min-h-[44px]',
+                  'relative flex-1 flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium min-h-[44px] transition-colors',
                   on ? 'text-primary' : 'text-muted-foreground'
                 )}
                 aria-current={on ? 'page' : undefined}
               >
                 <item.icon className="h-5 w-5" />
                 {item.label}
-              </button>
+                {on ? (
+                  <motion.span
+                    layoutId="tab-dot"
+                    transition={{ type: 'spring', stiffness: 550, damping: 40 }}
+                    className="absolute bottom-1 h-1 w-6 rounded-full bg-primary shadow-[0_2px_8px_rgb(13_92_70/0.6)]"
+                    aria-hidden
+                  />
+                ) : null}
+              </motion.button>
             );
           })}
         </div>

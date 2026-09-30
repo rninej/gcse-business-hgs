@@ -12,6 +12,7 @@
 // shown only to teachers.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
   ChevronLeft,
@@ -172,6 +173,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
   const [checking, setChecking] = useState(false);
   const [savedWritten, setSavedWritten] = useState<Record<string, boolean>>({});
   const [idx, setIdx] = useState(0);
+  const [dir, setDir] = useState(1);
   const [now, setNow] = useState(() => Date.now());
   const [submitting, setSubmitting] = useState(false);
   const [submitFailed, setSubmitFailed] = useState(false);
@@ -217,6 +219,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
     if (q.type === 'term' || q.type === 'fib' || q.type === 'numeric') {
       store.leaveText(q.id, answers[q.id] ?? '');
     }
+    setDir(newIdx >= idx ? 1 : -1);
     setIdx(Math.max(0, Math.min(newIdx, total - 1)));
     if (cardRef.current) cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -477,8 +480,8 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
   if (!data || !q) {
     return (
       <div className="max-w-3xl mx-auto space-y-4" aria-busy>
-        <div className="h-8 w-2/3 rounded-md bg-secondary" />
-        <div className="h-40 rounded-lg bg-secondary" />
+        <div className="h-8 w-2/3 rounded-md bg-secondary animate-pulse" />
+        <div className="h-40 rounded-xl bg-secondary animate-pulse" />
       </div>
     );
   }
@@ -504,7 +507,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
       <QuizBackdrop attemptId={attemptId} />
       {/* header */}
       <div className="sticky top-14 md:top-0 z-30 -mx-4 sm:mx-0 px-4 sm:px-0 mb-4 md:mb-5">
-        <div className="rounded-lg border bg-card/95 backdrop-blur px-4 py-3 shadow-sm">
+        <div className="rounded-xl border border-white/50 bg-card/75 backdrop-blur-2xl backdrop-saturate-150 px-4 py-3 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.6),0_12px_36px_-12px_rgb(13_92_70/0.2)]">
           <div className="flex items-center gap-3 flex-wrap">
             <Badge variant={data.mode === 'practice' ? 'secondary' : 'default'} className="shrink-0">
               {data.mode === 'practice' ? 'Practice' : 'Assignment'}
@@ -562,7 +565,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
       {/* extract first on mobile (read the case, then answer); left on desktop */}
       <div className={cn('grid gap-4 md:gap-5', q.extract ? 'lg:grid-cols-[1fr_1.2fr]' : '')}>
         {q.extract ? (
-          <aside className="lg:sticky lg:top-24 self-start min-w-0 rounded-lg border bg-[var(--accent)]/20 p-4 sm:p-5">
+          <aside className="lg:sticky lg:top-24 self-start min-w-0 rounded-xl border border-white/40 bg-[var(--accent)]/20 backdrop-blur-xl backdrop-saturate-150 p-4 sm:p-5">
             <div className="flex items-center gap-2 text-xs font-semibold text-[var(--accent-foreground)] uppercase tracking-wide mb-2">
               <BookOpenText className="h-4 w-4 shrink-0" aria-hidden /> Case study · {q.extract.title}
             </div>
@@ -578,9 +581,24 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
           </aside>
         ) : null}
 
-        {/* question card */}
+        {/* question card — slides sideways between questions */}
         <section className={cn('min-w-0', !q.extract && 'mx-auto w-full max-w-2xl')}>
-          <div ref={cardRef} className="rounded-lg border bg-card p-4 sm:p-6 md:p-7 scroll-mt-32 md:scroll-mt-24">
+          <div ref={cardRef} className="relative scroll-mt-32 md:scroll-mt-24">
+            <AnimatePresence initial={false} custom={dir} mode="popLayout">
+              <motion.div
+                key={q.id}
+                custom={dir}
+                variants={{
+                  enter: (d: number) => ({ opacity: 0, x: 36 * d, scale: 0.985 }),
+                  center: { opacity: 1, x: 0, scale: 1 },
+                  exit: (d: number) => ({ opacity: 0, x: -26 * d, scale: 0.985, transition: { duration: 0.2, ease: 'easeIn' } }),
+                }}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+              >
+            <div className="rounded-xl border border-white/60 bg-card/70 backdrop-blur-xl backdrop-saturate-150 p-4 sm:p-6 md:p-7 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.65),0_16px_48px_-16px_rgb(13_92_70/0.22)]">
             <div className="flex items-center gap-2 flex-wrap mb-3 md:mb-4">
               <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold text-sm tabular-nums" aria-hidden>
                 {idx + 1}
@@ -784,7 +802,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
               <div
                 ref={outcomeRef}
                 className={cn(
-                  'mt-5 rounded-lg border p-4',
+                  'mt-5 rounded-lg border p-4 anim-pop',
                   qChecked.correct
                     ? 'border-[var(--success)]/40 bg-[var(--success)]/10'
                     : 'border-[var(--danger)]/40 bg-[var(--danger)]/5'
@@ -842,6 +860,9 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                 </div>
               </div>
             ) : null}
+            </div>
+              </motion.div>
+            </AnimatePresence>
           </div>
 
           {/* nav */}
@@ -861,7 +882,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                     aria-label={`Go to question ${i + 1}${st ? (st.correct ? ' — correct' : ' — incorrect') : writtenSaved ? ' — saved' : ''}`}
                     aria-current={i === idx ? 'true' : undefined}
                     className={cn(
-                      'h-8 w-8 shrink-0 rounded-md text-xs font-semibold tabular-nums transition-colors',
+                      'h-8 w-8 shrink-0 rounded-md text-xs font-semibold tabular-nums transition-[color,transform] active:scale-90',
                       i === idx
                         ? 'bg-primary text-primary-foreground ring-2 ring-primary/30'
                         : st
