@@ -136,6 +136,18 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  /* brand-tinted text selection — a small detail that reads designed */
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 24%, transparent);
+  }
+
+  /* keyboard focus: a crisp, offset brand ring that never touches the
+     element's own border — visible on glass, cards and photos alike */
+  :focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--ring) 85%, transparent);
+    outline-offset: 2px;
+  }
   /* Ambient aurora backdrop — soft emerald/amber/teal light pools painted on
      the body itself (no image, no element). Every frosted-glass surface
      refracts these gradients, so the glass reads everywhere; during quizzes
@@ -255,11 +267,21 @@
   from { transform: translateX(-100%); }
   to { transform: translateX(100%); }
 }
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-7deg) scale(1); }
+  50% { transform: rotate(7deg) scale(1.06); }
+}
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
 
 .anim-rise { animation: rise 0.55s var(--ease-out-quint) both; }
 .anim-pop { animation: pop 0.45s var(--ease-spring) both; }
 .anim-drift { animation: drift 42s ease-in-out infinite alternate; }
 .anim-pulse-soft { animation: pulse-soft 2.4s ease-in-out infinite; }
+.anim-wiggle { animation: wiggle 2.6s var(--ease-spring) infinite; transform-origin: 50% 85%; }
+.anim-float { animation: float-y 4.2s ease-in-out infinite; }
 
 /* keyboard hint chip — used by the quiz quick-keys hint row */
 .kbd {
@@ -313,6 +335,15 @@
 }
 .press:active { transform: scale(0.97); }
 
+/* every button dips a touch while pressed (real pointers only) — cards that
+   lift on hover keep their own richer press behaviour */
+@media (hover: hover) {
+  button:not(.card-lift):not(:disabled):active,
+  [role="button"]:not(.card-lift):not(:disabled):active {
+    transform: scale(0.97);
+  }
+}
+
 /* heatmap squares — a tiny grow + help cursor on hover (real pointers only) */
 .heat-cell { transition: transform 0.18s var(--ease-spring); }
 @media (hover: hover) {
@@ -324,7 +355,7 @@
 
 /* respect users who prefer calm */
 @media (prefers-reduced-motion: reduce) {
-  .anim-rise, .anim-pop, .anim-drift, .anim-pulse-soft,
+  .anim-rise, .anim-pop, .anim-drift, .anim-pulse-soft, .anim-wiggle, .anim-float,
   .stagger > *, .card-lift, .press, .heat-cell {
     animation: none !important;
     transition: none !important;

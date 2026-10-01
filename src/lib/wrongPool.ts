@@ -24,7 +24,8 @@ export function collectWrongPool(attempts: Attempt[]): WrongPoolEntry[] {
   const pool = new Map<string, WrongPoolEntry>();
 
   for (const at of sorted) {
-    if (at.status !== 'submitted' || !at.result) continue;
+    // questions can be missing on partial/legacy records — nothing to learn from those
+    if (at.status !== 'submitted' || !at.result || !Array.isArray(at.questions)) continue;
     for (const q of at.questions) {
       const rec = at.result.perQ?.[q.id];
       if (!rec) continue; // unanswered — covered by "not quite" below? no: unanswered scores 0 but has no record
@@ -56,4 +57,60 @@ export function collectWrongPool(attempts: Attempt[]): WrongPoolEntry[] {
  */
 export function rankWrongPool(pool: WrongPoolEntry[]): WrongPoolEntry[] {
   return [...pool].sort((a, b) => b.timesWrong - a.timesWrong || a.lastWrongAt - b.lastWrongAt);
+}
+
+/* ------------------------------------------------------------------ */
+/* Class-wide wrong pool — powers the teacher's "mistake fixer":      */
+/* questions this class's students keep getting wrong, ranked by how  */
+/* many DIFFERENT students are currently stuck on them.              */
+/* ------------------------------------------------------------------ */
+
+export interface ClassWrongStats {
+  q: Question;
+  /** how many distinct students are currently stuck on this question */
+  studentsWrong: number;
+  /** total wrong answers across those students (severity) */
+  timesWrong: number;
+  /** most recent wrong answer (oldest problems surface first on ties) */
+  lastWrongAt: number;
+}
+
+/**
+ * Combines every student's individual wrong pool (see collectWrongPool)
+ * into class-level stats. A question counts as "still wrong" per student
+ * only while its most recent outcome for THAT student is wrong — exactly
+ * the material each of them would be revisiting on their own dashboard.
+ */
+export function collectClassWrongPool(perStudentAttempts: Attempt[][]): ClassWrongStats[] {
+  const combined = new Map<string, ClassWrongStats>();
+
+  for (const attempts of perStudentAttempts) {
+    for (const e of collectWrongPool(attempts)) {
+      const agg = combined.get(e.q.id);
+      if (agg) {
+        agg.studentsWrong += 1;
+        agg.timesWrong += e.timesWrong;
+        agg.lastWrongAt = Math.max(agg.lastWrongAt, e.lastWrongAt);
+      } else {
+        combined.set(e.q.id, {
+          q: { ...e.q },
+          studentsWrong: 1,
+          timesWrong: e.timesWrong,
+          lastWrongAt: e.lastWrongAt,
+        });
+      }
+    }
+  }
+
+  return [...combined.values()];
+}
+
+/** Most-students-stuck first, then most total misses, then oldest wrongs. */
+export function rankClassWrongPool(pool: ClassWrongStats[]): ClassWrongStats[] {
+  return [...pool].sort(
+    (a, b) =>
+      b.studentsWrong - a.studentsWrong ||
+      b.timesWrong - a.timesWrong ||
+      a.lastWrongAt - b.lastWrongAt
+  );
 }

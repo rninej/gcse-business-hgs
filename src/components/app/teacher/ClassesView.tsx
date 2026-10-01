@@ -200,6 +200,15 @@ function ClassDetail({ classId }: { classId: string }) {
   const [quizzesBy, setQuizzesBy] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
 
+  // class-wide wrong pool — powers the "mistake fixer" card
+  const [pool, setPool] = useState<{
+    questions: number;
+    studentsAffected: number;
+    top: { id: string; stem: string; studentsWrong: number; timesWrong: number }[];
+  }>({ questions: 0, studentsAffected: 0, top: [] });
+  const [fixOpen, setFixOpen] = useState(false);
+  const [fixing, setFixing] = useState(false);
+
   const [names, setNames] = useState('');
   const [pwMode, setPwMode] = useState<'auto' | 'manual'>('auto');
   const [sharedPw, setSharedPw] = useState('');
@@ -235,12 +244,18 @@ function ClassDetail({ classId }: { classId: string }) {
         students: StudentRow[];
         activity?: number[];
         quizzesBy?: Record<string, number>;
+        wrongPool?: {
+          questions: number;
+          studentsAffected: number;
+          top: { id: string; stem: string; studentsWrong: number; timesWrong: number }[];
+        };
       }>(`/api/teacher/classes/${classId}`)
       .then((d) => {
         setCls(d.class);
         setStudents(d.students);
         setActivity(d.activity ?? []);
         setQuizzesBy(d.quizzesBy ?? {});
+        setPool(d.wrongPool ?? { questions: 0, studentsAffected: 0, top: [] });
       })
       .catch((e) => setError((e as Error).message));
   }, [classId]);
@@ -315,6 +330,27 @@ function ClassDetail({ classId }: { classId: string }) {
       toast({ title: 'Could not reset password', description: (e as Error).message, variant: 'destructive' });
     } finally {
       setEditSaving(false);
+    }
+  }
+
+  // build + set one untimed assignment from the questions this class's
+  // students are collectively stuck on (worst offenders first)
+  async function setMistakeFixer() {
+    setFixing(true);
+    try {
+      const res = await api.post<{ assignmentId: string; questionCount: number; poolSize: number }>(
+        `/api/teacher/classes/${classId}/smart-practice`
+      );
+      toast({
+        title: 'Mistake-fixing quiz set',
+        description: `${res.questionCount} question${res.questionCount === 1 ? '' : 's'} from the class's ${res.poolSize} common slips — visible to the class now.`,
+      });
+      setFixOpen(false);
+      go({ name: 't-assignments' });
+    } catch (e) {
+      toast({ title: 'Could not build the quiz', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setFixing(false);
     }
   }
 
@@ -826,6 +862,63 @@ function ClassDetail({ classId }: { classId: string }) {
           }
         />
       ) : null}
+
+      {/* mistake fixer — one untimed quiz built from what this class is
+          collectively stuck on (questions tripping the most students first) */}
+      {pool.questions > 0 ? (
+        <section
+          className="relative mt-6 rounded-xl border border-primary/25 bg-gradient-to-br from-primary/10 via-card/80 to-[var(--warn)]/10 p-4 sm:p-6 overflow-hidden backdrop-blur-xl shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)]"
+          aria-label="Class mistake fixer"
+        >
+          <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/15 to-transparent animate-[shine_1.6s_0.5s_ease-out_1]" aria-hidden />
+          <div className="flex flex-wrap items-start gap-4">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary" aria-hidden>
+              <Wand2 className="h-6 w-6" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-sm sm:text-base tabular-nums">
+                {pool.questions} question{pool.questions === 1 ? '' : 's'} still tripping this class
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {pool.studentsAffected} student{pool.studentsAffected === 1 ? '' : 's'} currently stuck on something — build one auto-marked revision quiz from the worst offenders.
+              </p>
+              {pool.top.length > 0 ? (
+                <ul className="mt-3 space-y-1.5">
+                  {pool.top.map((t) => (
+                    <li key={t.id} className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Badge variant="secondary" className="text-[10px] h-4 px-1.5 tabular-nums shrink-0">
+                        {t.studentsWrong} student{t.studentsWrong === 1 ? '' : 's'}
+                      </Badge>
+                      <span className="truncate">{t.stem}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+            <Button className="shadow-[0_8px_24px_-8px_var(--primary)]" onClick={() => setFixOpen(true)}>
+              <Wand2 className="h-4 w-4" /> Set mistake-fixing quiz
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
+      {/* confirm — the quiz is published to the whole class immediately */}
+      <AlertDialog open={fixOpen} onOpenChange={setFixOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Set a mistake-fixing quiz?</AlertDialogTitle>
+            <AlertDialogDescription>
+              One untimed quiz, no due date, built from the {pool.questions} question{pool.questions === 1 ? '' : 's'} this class is stuck on (up to the 20 worst). It appears on every student&rsquo;s dashboard immediately and marks itself as usual.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Not now</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void setMistakeFixer()} disabled={fixing}>
+              <Wand2 className="h-4 w-4" /> {fixing ? 'Building…' : 'Set it for the class'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* student profile dialog */}
       <StudentProfileDialog studentId={profileId} open={profileOpen} onOpenChange={setProfileOpen} />

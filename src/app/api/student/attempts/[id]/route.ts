@@ -24,7 +24,8 @@ export async function GET(_req: Request, ctx: Ctx) {
 
   if (attempt.status === 'submitted') {
     const r = attempt.result;
-    const reviews = attempt.questions.map((q, i) => {
+    // questions is always set on real attempts, but guard partial/legacy records
+    const reviews = (attempt.questions ?? []).map((q, i) => {
       const rec = r?.perQ?.[q.id];
       return toReview(q, i + 1, rec?.given ?? '—', rec?.expected ?? '', Boolean(rec?.correct), rec);
     });
@@ -53,7 +54,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   // written answers persist server-side as they are saved — they are never
   // locked, so resume restores them on any device
   const writtenAnswers: Record<string, string> = {};
-  for (const q of attempt.questions) {
+  for (const q of attempt.questions ?? []) {
     if (q.type === 'written' && attempt.answers?.[q.id]) writtenAnswers[q.id] = attempt.answers[q.id];
   }
   return NextResponse.json({
@@ -68,7 +69,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     timeLimitMin: attempt.timeLimitMin,
     remainingMs,
     serverNow: now,
-    questions: toClientQuestions(attempt.questions),
+    questions: toClientQuestions(attempt.questions ?? []),
     // outcomes for questions already confirmed — safe to reveal, and it lets
     // the runner resume exactly where the student left off, on any device
     checked: attempt.checked ?? {},

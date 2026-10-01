@@ -12,6 +12,8 @@ import { useEffect, useRef } from 'react';
 
 const COLORS = ['#0d5c46', '#12805f', '#e8a13a', '#d97706', '#0f766e', '#f5f0e6', '#65a30d'];
 
+type Shape = 'paper' | 'circle' | 'tri' | 'ribbon';
+
 interface Piece {
   x: number;
   y: number;
@@ -23,10 +25,23 @@ interface Piece {
   vrot: number;
   color: string;
   born: number;
+  shape: Shape;
+  /** phase offset for the ribbon wave / circle pulse */
+  phase: number;
 }
 
 const DURATION_MS = 3400;
 const PIECES_PER_SIDE = 55;
+
+/** Weighted shape mix — mostly paper rectangles (the classic look), plus
+ *  circles, triangles and long ribbons so the shower reads richer. */
+function pickShape(): Shape {
+  const r = Math.random();
+  if (r < 0.55) return 'paper';
+  if (r < 0.75) return 'circle';
+  if (r < 0.9) return 'tri';
+  return 'ribbon';
+}
 
 export function Confetti({ trigger }: { trigger: string | null }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -64,17 +79,20 @@ export function Confetti({ trigger }: { trigger: string | null }) {
       const speed = 620 + Math.random() * 380; // px/s upward-ish
       const angle = (fromLeft ? -70 : -110) + (Math.random() * 26 - 13); // degrees
       const rad = (angle * Math.PI) / 180;
+      const shape = pickShape();
       pieces.push({
         x,
         y: H * 0.72,
         vx: Math.cos(rad) * speed,
         vy: Math.sin(rad) * speed,
-        w: 5 + Math.random() * 6,
-        h: 8 + Math.random() * 9,
+        w: shape === 'ribbon' ? 3 + Math.random() * 2 : 5 + Math.random() * 6,
+        h: shape === 'ribbon' ? 16 + Math.random() * 14 : shape === 'circle' ? 4 + Math.random() * 4 : 8 + Math.random() * 9,
         rot: Math.random() * Math.PI * 2,
         vrot: (Math.random() - 0.5) * 10,
         color: COLORS[Math.floor(Math.random() * COLORS.length)],
         born: now,
+        shape,
+        phase: Math.random() * Math.PI * 2,
       });
     };
 
@@ -114,9 +132,35 @@ export function Confetti({ trigger }: { trigger: string | null }) {
         ctx.rotate(p.rot);
         ctx.globalAlpha = Math.max(0, fade);
         ctx.fillStyle = p.color;
-        // paper look: slightly rounded rectangle, "flips" via width oscillation
-        const flip = 0.55 + 0.45 * Math.abs(Math.sin(p.rot * 1.7));
-        if (typeof ctx.roundRect === 'function') {
+        // flip = apparent width oscillation as the piece tumbles
+        const flip = 0.55 + 0.45 * Math.abs(Math.sin(p.rot * 1.7 + p.phase));
+        if (p.shape === 'circle') {
+          // dots: slight squash while tumbling so they feel 3D too
+          const r = Math.max(1, p.h / 2);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, r * flip, r, 0, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (p.shape === 'tri') {
+          // little pennant triangles
+          const s = p.h * 0.8;
+          ctx.beginPath();
+          ctx.moveTo(0, -s / 2);
+          ctx.lineTo(s * flip, s / 2);
+          ctx.lineTo(-s * flip, s / 2);
+          ctx.closePath();
+          ctx.fill();
+        } else if (p.shape === 'ribbon') {
+          // long streamers: a wavy strip, curving as it falls
+          const wave = Math.sin((t / 220) + p.phase) * p.h * 0.22;
+          ctx.beginPath();
+          ctx.moveTo(0, -p.h / 2);
+          ctx.quadraticCurveTo(wave, 0, 0, p.h / 2);
+          ctx.lineTo(p.w, p.h / 2);
+          ctx.quadraticCurveTo(wave + p.w, 0, p.w, -p.h / 2);
+          ctx.closePath();
+          ctx.fill();
+        } else if (typeof ctx.roundRect === 'function') {
+          // paper look: slightly rounded rectangle
           ctx.beginPath();
           ctx.roundRect(-p.w * flip, -p.h / 2, p.w * 2 * flip, p.h, 1.5);
           ctx.fill();

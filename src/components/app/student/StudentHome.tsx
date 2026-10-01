@@ -60,6 +60,8 @@ interface StreakInfo {
 interface Overview {
   stats: { quizzesDone: number; avgPct: number | null; points: number; bestPct: number | null };
   streak: StreakInfo;
+  /** true when a quiz was submitted inside today's UTC day — the streak is safe */
+  quizToday?: boolean;
   /** true the first time a brand-new account lands here */
   firstLogin?: boolean;
   /** submitted-at timestamps of every completed quiz — feeds the heatmap */
@@ -187,8 +189,8 @@ export function StudentHome() {
         actions={
           <div className="flex items-center gap-2">
             {streak && streak.current >= 2 ? (
-              <Badge className="bg-[var(--warn)]/15 text-[var(--warn)] border-[var(--warn)]/30 gap-1.5 text-sm px-3 py-1.5 hover:bg-[var(--warn)]/15">
-                <Flame className="h-4 w-4" aria-hidden /> {streak.current}-day streak
+              <Badge className="bg-[var(--warn)]/15 text-[var(--warn-foreground)] border-[var(--warn)]/30 gap-1.5 text-sm px-3 py-1.5 hover:bg-[var(--warn)]/15">
+                <Flame className="h-4 w-4 text-[var(--warn)]" aria-hidden /> {streak.current}-day streak
               </Badge>
             ) : null}
             {overview.stats.points > 0 ? (
@@ -265,6 +267,42 @@ export function StudentHome() {
           })}
         </div>
       )}
+
+      {/* streak at risk — the current run ends at midnight unless a quiz is
+          finished today (any quiz counts, practice included) */}
+      {streak && streak.current >= 2 && !overview.quizToday ? (
+        <motion.section
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className="rounded-xl border border-[var(--warn)]/35 bg-gradient-to-br from-[var(--warn)]/12 via-card/80 to-[var(--warn)]/8 p-4 sm:p-5 mb-6 backdrop-blur-xl shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)]"
+          aria-label="Streak at risk"
+        >
+          <div className="flex flex-wrap items-center gap-4">
+            <span
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--warn)]/18 text-[var(--warn)] anim-wiggle"
+              aria-hidden
+            >
+              <Flame className="h-6 w-6" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-sm sm:text-base tabular-nums">
+                Your {streak.current}-day streak ends today
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Finish any quiz before midnight to keep it alive — a practice quiz counts too.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              className="bg-[var(--warn)] text-[var(--warn-foreground)] hover:bg-[var(--warn)]/90"
+              onClick={() => go({ name: 's-practice' })}
+            >
+              <Flame className="h-3.5 w-3.5" /> Keep it going
+            </Button>
+          </div>
+        </motion.section>
+      ) : null}
 
       {/* smart-practice nudge — the wrong-answer pool across every quiz.
           Only appears once there is a meaningful amount to revisit (the

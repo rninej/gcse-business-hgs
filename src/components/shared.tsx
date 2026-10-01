@@ -80,7 +80,7 @@ export function EmptyState({
 }) {
   return (
     <div className="rounded-xl border border-dashed p-10 text-center flex flex-col items-center gap-3">
-      <div className="rounded-full bg-secondary p-3">
+      <div className="rounded-full bg-secondary p-3 anim-float shadow-[inset_0_1px_0_0_rgb(255_255_255/0.6)]">
         <Icon className="h-6 w-6 text-primary" aria-hidden />
       </div>
       <div className="font-medium">{title}</div>

@@ -48,3 +48,10 @@ export function streaksFrom(submittedAtMs: number[]): StreakInfo {
 
   return { current, best, activeDays: days.length };
 }
+
+/** True when any submitted-at falls inside today's UTC day (the same boundary
+ *  the streak maths uses) — i.e. the current streak is already safe today. */
+export function hasQuizToday(submittedAtMs: number[]): boolean {
+  const today = dayKey(Date.now());
+  return submittedAtMs.some((ms) => dayKey(ms) === today);
+}
