@@ -188,6 +188,8 @@ export interface StudentNotification {
   readAt: number | null;
   /** deep link — the Quizzes view opens with this assignment highlighted */
   assignmentId?: string;
+  /** deep link — feedback notifications jump straight to that result screen */
+  attemptId?: string;
   /** who sent it (teacher uid) — used to de-dupe repeated nudges */
   fromId?: string;
 }

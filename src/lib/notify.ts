@@ -11,6 +11,7 @@ export interface NewNote {
   title: string;
   body: string;
   assignmentId?: string;
+  attemptId?: string;
   fromId?: string;
 }
 
@@ -30,6 +31,7 @@ export async function notifyStudents(studentIds: string[], note: NewNote): Promi
         createdAt: Date.now(),
         readAt: null,
         ...(note.assignmentId ? { assignmentId: note.assignmentId } : {}),
+        ...(note.attemptId ? { attemptId: note.attemptId } : {}),
         ...(note.fromId ? { fromId: note.fromId } : {}),
       };
       await put('notifications', record.id, record);
@@ -48,17 +50,20 @@ export async function notificationsFor(studentId: string): Promise<StudentNotifi
 }
 
 /** Students who were already nudged about this assignment by this teacher
- *  within the cooldown window — used to stop repeat-spamming. */
+ *  within the cooldown window — mapped to WHEN they were nudged, so the
+ *  response can say "last nudged 2h ago". Used to stop repeat-spamming. */
 export async function recentlyReminded(
   assignmentId: string,
   fromId: string,
   cooldownMs: number
-): Promise<Set<string>> {
+): Promise<Map<string, number>> {
   const all = values(await colCached<StudentNotification>('notifications'));
   const cutoff = Date.now() - cooldownMs;
-  return new Set(
-    all
-      .filter((n) => n.kind === 'remind' && n.assignmentId === assignmentId && n.fromId === fromId && n.createdAt >= cutoff)
-      .map((n) => n.studentId)
-  );
+  const map = new Map<string, number>();
+  for (const n of all) {
+    if (n.kind !== 'remind' || n.assignmentId !== assignmentId || n.fromId !== fromId) continue;
+    if (n.createdAt < cutoff) continue;
+    map.set(n.studentId, Math.max(map.get(n.studentId) ?? 0, n.createdAt));
+  }
+  return map;
 }

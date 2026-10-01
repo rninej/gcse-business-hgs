@@ -36,6 +36,7 @@ const KIND_ICON: Record<string, { icon: typeof Bell; tone: string }> = {
 
 export function StudentBell({ variant = 'icon' }: { variant?: 'icon' | 'row' }) {
   const go = useApp((s) => s.go);
+  const setBellUnread = useApp((s) => s.setBellUnread);
   const [feed, setFeed] = useState<Feed | null>(null);
   const [open, setOpen] = useState(false);
   const markTimer = useRef<number | null>(null);
@@ -43,9 +44,12 @@ export function StudentBell({ variant = 'icon' }: { variant?: 'icon' | 'row' }) 
   const load = useCallback(() => {
     api
       .get<Feed>('/api/student/notifications')
-      .then(setFeed)
+      .then((f) => {
+        setFeed(f);
+        setBellUnread(f.unread); // feeds the mobile Home-tab badge too
+      })
       .catch(() => undefined); // the bell must never break the page
-  }, []);
+  }, [setBellUnread]);
 
   useEffect(load, [load]);
 
@@ -64,13 +68,16 @@ export function StudentBell({ variant = 'icon' }: { variant?: 'icon' | 'row' }) 
     markTimer.current = window.setTimeout(() => {
       api
         .post('/api/student/notifications', {})
-        .then(() => setFeed((f) => (f ? { ...f, unread: 0 } : f)))
+        .then(() => {
+          setFeed((f) => (f ? { ...f, unread: 0 } : f));
+          setBellUnread(0);
+        })
         .catch(() => undefined);
     }, 1200);
     return () => {
       if (markTimer.current) window.clearTimeout(markTimer.current);
     };
-  }, [open]);
+  }, [open, setBellUnread]);
 
   const unread = feed?.unread ?? 0;
   const notes = feed?.notifications ?? [];
@@ -102,7 +109,10 @@ export function StudentBell({ variant = 'icon' }: { variant?: 'icon' | 'row' }) 
                   type="button"
                   onClick={() => {
                     setOpen(false);
-                    go({ name: 's-practice' });
+                    // feedback notes deep-link straight to that result screen;
+                    // everything else goes to the quiz list
+                    if (n.attemptId) go({ name: 'result', attemptId: n.attemptId });
+                    else go({ name: 's-practice' });
                   }}
                   className={cn(
                     'w-full text-left flex gap-2.5 rounded-lg px-2 py-2 transition-colors hover:bg-secondary/60',

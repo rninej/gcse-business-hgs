@@ -58,12 +58,19 @@ export async function POST(req: Request) {
   const alreadyNudged = await recentlyReminded(a.id, session.uid, REMIND_COOLDOWN_MS);
   const toNudge = missing.filter((s) => !alreadyNudged.has(s.id));
 
+  // human "how long ago" for the cooldown message — rounds to the hour
+  const ago = (ms: number) => {
+    const h = Math.max(1, Math.round((Date.now() - ms) / 3_600_000));
+    return `${h} hour${h === 1 ? '' : 's'} ago`;
+  };
+
   if (toNudge.length === 0) {
+    const freshest = Math.max(...[...alreadyNudged.values()]);
     return NextResponse.json({
       ok: true,
       sent: 0,
       skipped: missing.length,
-      message: `Already nudged ${missing.length === 1 ? 'this student' : 'these students'} in the last 6 hours — give it a rest.`,
+      message: `Already nudged ${missing.length === 1 ? 'this student' : 'these students'} — the last nudge went out ${ago(freshest)} (6-hour cooldown).`,
     });
   }
 

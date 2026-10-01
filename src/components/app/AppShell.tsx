@@ -65,6 +65,7 @@ function ViewFrame({ children }: { children: ReactNode }) {
 export function AppShell({ children, active }: { children: React.ReactNode; active: View['name'] }) {
   const session = useApp((s) => s.session);
   const logout = useApp((s) => s.logout);
+  const bellUnread = useApp((s) => s.bellUnread);
   const isTeacher = session?.role === 'teacher';
 
   // prefetch the views the user is most likely to open next (results are
@@ -202,6 +203,7 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
         <div className="flex">
           {nav.map((item) => {
             const on = isActive(item.view);
+            const showBadge = !isTeacher && item.view.name === 's-home' && bellUnread > 0;
             return (
               <motion.button
                 key={item.label}
@@ -212,8 +214,19 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
                   on ? 'text-primary' : 'text-muted-foreground'
                 )}
                 aria-current={on ? 'page' : undefined}
+                aria-label={showBadge ? `${item.label} — ${bellUnread} new notification${bellUnread === 1 ? '' : 's'}` : undefined}
               >
-                <item.icon className="h-5 w-5" />
+                <span className="relative">
+                  <item.icon className="h-5 w-5" />
+                  {showBadge ? (
+                    <span
+                      className="absolute -top-1 -right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-[3px] text-[8px] font-bold text-primary-foreground tabular-nums"
+                      aria-hidden
+                    >
+                      {bellUnread > 9 ? '9+' : bellUnread}
+                    </span>
+                  ) : null}
+                </span>
                 {item.label}
                 {on ? (
                   <motion.span

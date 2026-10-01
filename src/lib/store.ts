@@ -29,6 +29,10 @@ interface AppState {
   booted: boolean;
   start: (session: SessionInfo) => void;
   setSession: (session: SessionInfo | null) => void;
+  /** unread student-notification count — owned by StudentBell, read by the
+   *  mobile bottom-nav Home tab so the badge survives outside the popover */
+  bellUnread: number;
+  setBellUnread: (n: number) => void;
   go: (view: View) => void;
   logout: () => Promise<void>;
 }
@@ -37,6 +41,8 @@ export const useApp = create<AppState>((set) => ({
   session: null,
   view: { name: 'auth' },
   booted: false,
+  bellUnread: 0,
+  setBellUnread: (n) => set({ bellUnread: n }),
   start: (session) =>
     set({ session, booted: true, view: session.role === 'teacher' ? { name: 't-home' } : { name: 's-home' } }),
   setSession: (session) => set({ session }),
@@ -50,6 +56,6 @@ export const useApp = create<AppState>((set) => ({
     } catch {
       /* ignore */
     }
-    set({ session: null, view: { name: 'auth' } });
+    set({ session: null, view: { name: 'auth' }, bellUnread: 0 });
   },
 }));

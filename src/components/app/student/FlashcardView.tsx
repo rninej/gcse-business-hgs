@@ -2,9 +2,12 @@
 
 // Revise section — flashcard decks for every spec topic. Flip, shuffle and
 // self-mark "knew it / didn't know it"; a session summary shows progress at
-// the end. Pure client-side, instant, works on touch and keyboard.
+// the end. "Knew it" marks persist per deck in localStorage, so the library
+// shows how much of each deck the student has down, and a completion screen
+// offers to re-run just the cards they missed. Pure client-side, instant,
+// works on touch and keyboard.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
   ArrowLeft,
   Check,
@@ -12,6 +15,7 @@ import {
   Lightbulb,
   RotateCcw,
   Shuffle,
+  Target,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,12 +27,85 @@ import { TOPIC_MAP } from '@/lib/topics';
 import type { FlashcardDeck } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
+/* ------------------------------------------------------------------ */
+/* Persisted "knew it" progress — localStorage only, per deck topic.    */
+/* { "1.1": [0, 3, 7], "2.4": [1] } — card indices the student knows. */
+/* ------------------------------------------------------------------ */
+
+const KNOWN_KEY = 'hgs.cards.known';
+
+function readKnown(): Record<string, number[]> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(KNOWN_KEY);
+    const parsed = raw ? (JSON.parse(raw) as Record<string, number[]>) : {};
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeKnown(data: Record<string, number[]>) {
+  try {
+    localStorage.setItem(KNOWN_KEY, JSON.stringify(data));
+  } catch {
+    /* private mode — progress just won't persist */
+  }
+  // always drop the memo and notify — even when no DeckCard is mounted
+  // (e.g. marks made inside the runner), so a later remount reads fresh data
+  knownCache = null;
+  knownListeners.forEach((l) => l());
+}
+
+/* ---- external-store plumbing (useSyncExternalStore) ------------------
+ * getSnapshot must return a cached reference, so the parsed blob lives in a
+ * module cache that is dropped by writeKnown() whenever anything writes.
+ * Components subscribe via knownListeners (direct) + the storage event
+ * (other tabs). */
+
+const EMPTY_KNOWN: Record<string, number[]> = {};
+let knownCache: Record<string, number[]> | null = null;
+const knownListeners = new Set<() => void>();
+
+function subscribeKnown(cb: () => void) {
+  knownListeners.add(cb);
+  window.addEventListener('storage', bumpKnown); // another tab wrote
+  return () => {
+    knownListeners.delete(cb);
+    window.removeEventListener('storage', bumpKnown);
+  };
+}
+
+function bumpKnown() {
+  knownCache = null;
+  knownListeners.forEach((l) => l());
+}
+
+function getKnownSnapshot(): Record<string, number[]> {
+  if (!knownCache) knownCache = readKnown();
+  return knownCache;
+}
+
+function getKnownServerSnapshot(): Record<string, number[]> {
+  return EMPTY_KNOWN;
+}
+
 export function FlashcardView() {
   const go = useApp((s) => s.go);
   const [deck, setDeck] = useState<FlashcardDeck | null>(null);
+  const [onlyUnknown, setOnlyUnknown] = useState(false);
 
   if (deck) {
-    return <DeckRunner deck={deck} onExit={() => setDeck(null)} />;
+    return (
+      <DeckRunner
+        deck={deck}
+        onlyUnknown={onlyUnknown}
+        onExit={() => {
+          setDeck(null);
+          setOnlyUnknown(false);
+        }}
+      />
+    );
   }
 
   const t1 = FLASHCARD_DECKS.filter((d) => TOPIC_MAP[d.topic]?.theme === 1);
@@ -56,21 +133,10 @@ export function FlashcardView() {
           </h2>
           <div className="grid sm:grid-cols-2 gap-4">
             {group.rows.map((d) => (
-              <button
-                key={d.topic}
-                onClick={() => setDeck(d)}
-                className="rounded-xl border bg-card p-5 text-left hover:border-primary/40 hover:shadow-sm transition-all active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-primary/40 outline-none"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="font-semibold">
-                      <span className="text-primary tabular-nums">{d.topic}</span> {d.title}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">{d.blurb}</p>
-                  </div>
-                  <Badge variant="secondary" className="tabular-nums shrink-0">{d.cards.length} cards</Badge>
-                </div>
-              </button>
+              <DeckCard key={d.topic} deck={d} onOpen={(focus) => {
+                setOnlyUnknown(focus);
+                setDeck(d);
+              }} />
             ))}
           </div>
         </section>
@@ -79,10 +145,97 @@ export function FlashcardView() {
   );
 }
 
+/* ---------------- deck card with persisted progress ---------------- */
+
+function DeckCard({ deck, onOpen }: { deck: FlashcardDeck; onOpen: (focusUnknown: boolean) => void }) {
+  const knownData = useSyncExternalStore(subscribeKnown, getKnownSnapshot, getKnownServerSnapshot);
+  const known = useMemo(() => new Set(knownData[deck.topic] ?? []), [knownData, deck.topic]);
+
+  const knownCount = known.size;
+  const total = deck.cards.length;
+  const unknownCount = total - knownCount;
+  const pct = total ? Math.round((knownCount / total) * 100) : 0;
+  const started = knownCount > 0;
+
+  return (
+    <div className="rounded-xl border bg-card p-5 transition-all hover:border-primary/40 hover:shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-semibold">
+            <span className="text-primary tabular-nums">{deck.topic}</span> {deck.title}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{deck.blurb}</p>
+        </div>
+        <Badge variant="secondary" className="tabular-nums shrink-0">{total} cards</Badge>
+      </div>
+
+      {started ? (
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-[11px] mb-1">
+            <span className="text-muted-foreground">
+              You know <span className="font-semibold text-foreground tabular-nums">{knownCount}</span> of {total}
+              <span className="text-muted-foreground"> · {pct}%</span>
+            </span>
+            {pct === 100 ? (
+              <span className="font-medium text-[var(--success)]">sorted!</span>
+            ) : null}
+          </div>
+          <div className="h-2 rounded-full bg-secondary/90 overflow-hidden">
+            <div
+              className={cn('h-full rounded-full transition-all duration-500', pct === 100 ? 'bg-[var(--success)]' : 'bg-primary')}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            {unknownCount > 0 ? (
+              <Button size="sm" className="h-8 text-xs" onClick={() => onOpen(true)}>
+                <Target className="h-3.5 w-3.5" /> Focus on the {unknownCount} left
+              </Button>
+            ) : null}
+            <Button
+              size="sm"
+              variant={unknownCount > 0 ? 'outline' : 'default'}
+              className="h-8 text-xs"
+              onClick={() => onOpen(false)}
+            >
+              <Shuffle className="h-3.5 w-3.5" /> Practise all
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button
+          size="sm"
+          className="h-8 text-xs mt-3"
+          variant="outline"
+          onClick={() => onOpen(false)}
+        >
+          <Shuffle className="h-3.5 w-3.5" /> Start deck
+        </Button>
+      )}
+    </div>
+  );
+}
+
 /* ---------------- deck runner ---------------- */
 
-function DeckRunner({ deck, onExit }: { deck: FlashcardDeck; onExit: () => void }) {
-  const [order, setOrder] = useState<number[]>(() => deck.cards.map((_, i) => i));
+function DeckRunner({
+  deck,
+  onlyUnknown,
+  onExit,
+}: {
+  deck: FlashcardDeck;
+  /** start with only the cards not yet marked "knew it" (persisted) */
+  onlyUnknown: boolean;
+  onExit: () => void;
+}) {
+  const [order, setOrder] = useState<number[]>(() => {
+    const base = deck.cards.map((_, i) => i);
+    if (onlyUnknown) {
+      const known = new Set(readKnown()[deck.topic] ?? []);
+      return base.filter((i) => !known.has(i));
+    }
+    return base;
+  });
   const [pos, setPos] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [known, setKnown] = useState<Set<number>>(new Set());
@@ -90,19 +243,39 @@ function DeckRunner({ deck, onExit }: { deck: FlashcardDeck; onExit: () => void 
   const [hint, setHint] = useState(false);
   const done = pos >= order.length;
 
-  const shuffle = useCallback(() => {
-    const arr = deck.cards.map((_, i) => i);
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    setOrder(arr);
-    setPos(0);
-    setFlipped(false);
-    setKnown(new Set());
-    setUnknown(new Set());
-    setHint(false);
-  }, [deck]);
+  // persist "knew it" marks for this deck — writeKnown also notifies any
+  // mounted deck cards (the library) so their progress bars update live
+  const persist = useCallback(
+    (idx: number, ok: boolean) => {
+      const data = readKnown();
+      const set = new Set(data[deck.topic] ?? []);
+      if (ok) set.add(idx);
+      else set.delete(idx);
+      if (set.size === 0) delete data[deck.topic];
+      else data[deck.topic] = [...set];
+      writeKnown(data);
+    },
+    [deck.topic]
+  );
+
+  const restart = useCallback(
+    (indices: number[]) => {
+      const arr = [...indices];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      setOrder(arr);
+      setPos(0);
+      setFlipped(false);
+      setKnown(new Set());
+      setUnknown(new Set());
+      setHint(false);
+    },
+    []
+  );
+
+  const shuffle = useCallback(() => restart(deck.cards.map((_, i) => i)), [deck, restart]);
 
   const card = deck.cards[order[pos]];
 
@@ -121,11 +294,12 @@ function DeckRunner({ deck, onExit }: { deck: FlashcardDeck; onExit: () => void 
         if (!ok) n.add(idx);
         return n;
       });
+      persist(idx, ok);
       setFlipped(false);
       setHint(false);
       setPos((p) => p + 1);
     },
-    [order, pos]
+    [order, pos, persist]
   );
 
   // keyboard: space/enter flip, arrows self-mark once flipped
@@ -145,7 +319,7 @@ function DeckRunner({ deck, onExit }: { deck: FlashcardDeck; onExit: () => void 
     return () => window.removeEventListener('keydown', onKey);
   }, [flipped, mark, done]);
 
-  const progressPct = Math.round((pos / order.length) * 100);
+  const progressPct = order.length ? Math.round((pos / order.length) * 100) : 100;
 
   return (
     <>
@@ -154,6 +328,11 @@ function DeckRunner({ deck, onExit }: { deck: FlashcardDeck; onExit: () => void 
           <ArrowLeft className="h-4 w-4" /> All decks
         </Button>
         <div className="flex items-center gap-2">
+          {unknown.size > 0 ? (
+            <Button variant="outline" size="sm" onClick={() => restart([...unknown])}>
+              <Target className="h-3.5 w-3.5" /> Revisit {unknown.size} missed
+            </Button>
+          ) : null}
           <Button variant="outline" size="sm" onClick={shuffle}>
             <Shuffle className="h-3.5 w-3.5" /> Shuffle & restart
           </Button>
@@ -162,6 +341,9 @@ function DeckRunner({ deck, onExit }: { deck: FlashcardDeck; onExit: () => void 
 
       <h1 className="text-2xl font-semibold tracking-tight mb-1">
         <span className="text-primary tabular-nums">{deck.topic}</span> {deck.title}
+        {onlyUnknown ? (
+          <Badge variant="secondary" className="ml-2 align-middle">focus mode</Badge>
+        ) : null}
       </h1>
       <div className="flex items-center gap-3 mb-6">
         <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
@@ -174,7 +356,25 @@ function DeckRunner({ deck, onExit }: { deck: FlashcardDeck; onExit: () => void 
         </span>
       </div>
 
-      {done ? (
+      {order.length === 0 ? (
+        <div className="max-w-xl mx-auto text-center py-10 space-y-4">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-[var(--success)]/15">
+            <Check className="h-8 w-8 text-[var(--success)]" aria-hidden />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">Nothing left to focus on</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              You&apos;ve marked every card in this deck as known — brilliant. Start the full deck to keep it fresh.
+            </p>
+          </div>
+          <div className="flex gap-2 justify-center">
+            <Button onClick={shuffle}>
+              <RotateCcw className="h-4 w-4" /> Practise the full deck
+            </Button>
+            <Button variant="outline" onClick={onExit}>All decks</Button>
+          </div>
+        </div>
+      ) : done ? (
         <div className="max-w-xl mx-auto text-center py-8 space-y-5">
           <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
             <Check className="h-10 w-10 text-primary" aria-hidden />
@@ -201,9 +401,14 @@ function DeckRunner({ deck, onExit }: { deck: FlashcardDeck; onExit: () => void 
               </ul>
             )}
           </div>
-          <div className="flex gap-2 justify-center">
-            <Button onClick={shuffle}>
-              <RotateCcw className="h-4 w-4" /> Go again
+          <div className="flex flex-wrap gap-2 justify-center">
+            {unknown.size > 0 ? (
+              <Button onClick={() => restart([...unknown])}>
+                <Target className="h-4 w-4" /> Revisit the {unknown.size} I missed
+              </Button>
+            ) : null}
+            <Button variant={unknown.size > 0 ? 'outline' : 'default'} onClick={shuffle}>
+              <RotateCcw className="h-4 w-4" /> {unknown.size > 0 ? 'Full deck again' : 'Go again'}
             </Button>
             <Button variant="outline" onClick={onExit}>
               Choose another deck
