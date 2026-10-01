@@ -418,6 +418,9 @@ export interface AttemptSummary {
 export interface TeacherStudentResult {
   studentId: string;
   displayName: string;
+  /** student's chosen avatar (data URL / "emoji:…") — set by the results
+   *  leaderboard routes so the teacher sees the same face students do */
+  avatar?: string | null;
   username: string;
   status: 'not-started' | 'in-progress' | 'submitted' | 'late';
   score?: number;

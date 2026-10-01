@@ -42,7 +42,7 @@ import {
 import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { PageHeader, ThemedSkeleton, ErrorNote, EmptyState, DueChip, PctChip } from '@/components/shared';
+import { PageHeader, ThemedSkeleton, ErrorNote, EmptyState, DueChip, PctChip, Avatar } from '@/components/shared';
 import { BarList, ScoreRing } from '@/components/charts';
 import { ActivityHeatmap } from '@/components/app/ActivityHeatmap';
 import { cn } from '@/lib/utils';
@@ -91,6 +91,7 @@ interface Overview {
 interface LeaderRow {
   studentId: string;
   displayName: string;
+  avatar: string | null;
   weekPoints: number;
   totalPoints: number;
   streak: number;
@@ -132,6 +133,15 @@ export function StudentHome() {
   }, []);
 
   useEffect(load, [load]);
+
+  /* a fresh avatar (saved from the profile dialog anywhere in the app)
+   * should show up on the leaderboard straight away */
+  useEffect(() => {
+    const refresh = () =>
+      api.get<Leaderboard>('/api/student/leaderboard').then(setBoard).catch(() => undefined);
+    window.addEventListener('hgs:avatar', refresh);
+    return () => window.removeEventListener('hgs:avatar', refresh);
+  }, []);
 
   /* Badge unlock toasts — new unlocks since the student's last visit ring in
    * one at a time. On the very first load there is no seen-set yet: record the
@@ -429,15 +439,12 @@ export function StudentHome() {
                   >
                     {i + 1}
                   </span>
-                  <div
-                    className={cn(
-                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold',
-                      r.isMe ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'
-                    )}
-                    aria-hidden
-                  >
-                    {initials(r.displayName)}
-                  </div>
+                  <Avatar
+                    name={r.displayName}
+                    src={r.avatar}
+                    size="sm"
+                    className={r.isMe ? 'ring-2 ring-primary/60' : undefined}
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className={cn('text-sm truncate', r.isMe ? 'font-semibold' : 'font-medium')}>
@@ -472,9 +479,7 @@ export function StudentHome() {
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary text-xs font-bold tabular-nums">
                     {board.myRank}
                   </span>
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold" aria-hidden>
-                    {initials(myRow.displayName)}
-                  </div>
+                  <Avatar name={myRow.displayName} src={myRow.avatar} size="sm" className="ring-2 ring-primary/60" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold truncate">{myRow.displayName}</span>
@@ -669,13 +674,6 @@ function WelcomeDialog({ open, onDone }: { open: boolean; onDone: () => void }) 
       </DialogContent>
     </Dialog>
   );
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  const first = parts[0]?.[0] ?? '';
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : '';
-  return (first + last).toUpperCase() || '?';
 }
 
 /* ------------------------------------------------------------------ */

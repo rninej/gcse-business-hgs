@@ -141,6 +141,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     student: {
       id: student.id,
       displayName: student.displayName,
+      avatar: (await item<{ img?: string }>('avatars', student.id))?.img ?? null,
       username: student.username,
       password: decryptPassword(student.pwEnc),
       createdAt: student.createdAt,

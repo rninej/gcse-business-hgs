@@ -1,62 +1,59 @@
 'use client';
 
-// gcsebusiness brand mark — the official logo: an open book over rising
-// green business bars with a yellow growth arrow, on a blue tile, with the
-// GCSE business wordmark baked into the artwork. Crisp from favicon to hero.
+// gcsebusiness brand mark — an open book over rising emerald business bars
+// with a warm-gold growth arrow, on the app's primary-green tile, with a
+// large GCSE wordmark. Colours are lifted straight from the theme tokens
+// (primary #017953, emerald #10B981, gold #E8A13A) so the mark always
+// matches the UI. Crisp from favicon to hero.
 
 export function BrandMark({ className = 'h-9 w-9' }: { className?: string }) {
   return (
     <svg viewBox="0 0 512 512" className={className} aria-hidden role="img">
-      <rect width="512" height="512" rx="105" fill="#2563EB" />
+      {/* tile — theme primary green */}
+      <rect width="512" height="512" rx="105" fill="#017953" />
+      {/* open book (white pages) — sized to fill the tile now that the
+          wordmark is just four letters */}
       <path
-        d="M48 52 C112 15 188 24 256 70 C324 24 400 15 464 52 V270 C395 238 326 243 256 285 C186 243 117 238 48 270Z"
+        d="M40 67 C106 22 185 33 256 89 C327 33 406 22 472 67 V333 C409 294 329 300 256 351 C183 300 111 294 40 333Z"
         fill="white"
       />
-      <path d="M256 70 V285" stroke="#2563EB" strokeWidth="12" strokeLinecap="round" />
-      <rect x="95" y="185" width="34" height="70" rx="7" fill="#22C55E" />
-      <rect x="150" y="155" width="34" height="100" rx="7" fill="#22C55E" />
-      <rect x="205" y="120" width="34" height="135" rx="7" fill="#22C55E" />
-      <rect x="260" y="90" width="34" height="165" rx="7" fill="#22C55E" />
-      <rect x="315" y="55" width="34" height="200" rx="7" fill="#22C55E" />
+      {/* spine */}
+      <path d="M256 89 V351" stroke="#017953" strokeWidth="13" strokeLinecap="round" />
+      {/* rising business bars — emerald, same hue family as the tile */}
+      <rect x="92" y="215" width="40" height="85" rx="8" fill="#10B981" />
+      <rect x="147" y="178" width="40" height="122" rx="8" fill="#10B981" />
+      <rect x="202" y="136" width="40" height="164" rx="8" fill="#10B981" />
+      <rect x="257" y="100" width="40" height="200" rx="8" fill="#10B981" />
+      <rect x="312" y="57" width="40" height="243" rx="8" fill="#10B981" />
+      {/* growth arrow — the app's warm gold */}
       <path
-        d="M85 165 L155 140 L215 115 L275 85 L380 35"
+        d="M78 205 L147 174 L213 144 L276 107 L390 46"
         fill="none"
-        stroke="#FACC15"
-        strokeWidth="12"
+        stroke="#E8A13A"
+        strokeWidth="13"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M350 35 L380 35 L378 65"
+        d="M354 46 L390 46 L386 83"
         fill="none"
-        stroke="#FACC15"
-        strokeWidth="12"
+        stroke="#E8A13A"
+        strokeWidth="13"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+      {/* wordmark — bigger now there's no second line */}
       <text
         x="256"
-        y="362"
+        y="466"
         textAnchor="middle"
         fontFamily="Arial, Helvetica, sans-serif"
-        fontSize="92"
+        fontSize="122"
         fontWeight="900"
-        letterSpacing="-4"
+        letterSpacing="-5"
         fill="white"
       >
         GCSE
-      </text>
-      <text
-        x="256"
-        y="414"
-        textAnchor="middle"
-        fontFamily="Arial, Helvetica, sans-serif"
-        fontSize="36"
-        fontWeight="600"
-        letterSpacing="2.5"
-        fill="#DBEAFE"
-      >
-        business
       </text>
     </svg>
   );

@@ -15,7 +15,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PageHeader, StatCard, ThemedSkeleton, ErrorNote, DueChip, EmptyState } from '@/components/shared';
+import { PageHeader, StatCard, ThemedSkeleton, ErrorNote, DueChip, EmptyState, Avatar } from '@/components/shared';
+import { calendarDaysUntil } from '@/lib/dates';
 import { BarList } from '@/components/charts';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
@@ -254,10 +255,11 @@ function NeedsAttentionCard({ rows }: { rows: AttentionRow[] }) {
     }
   }
 
+  // calendar days so this card always agrees with the DueChip in Recent
+  // assignments — same helper, same answer (see lib/dates.ts)
   const dueLabel = (dueAt: number) => {
-    const diff = dueAt - Date.now();
-    const days = Math.round(diff / 86400000);
-    if (diff < 0) return { text: `overdue by ${Math.abs(days) === 0 ? 'less than a day' : `${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'}`}`, tone: 'danger' as const };
+    const days = calendarDaysUntil(dueAt);
+    if (days < 0) return { text: `overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'}`, tone: 'danger' as const };
     if (days === 0) return { text: 'due today', tone: 'danger' as const };
     if (days === 1) return { text: 'due tomorrow', tone: 'warn' as const };
     return { text: `due in ${days} days`, tone: 'default' as const };
@@ -469,6 +471,7 @@ function CommonSlipsCard({ slips, pools }: { slips: CommonSlip[]; pools: FixPool
 interface LeaderRow {
   studentId: string;
   displayName: string;
+  avatar: string | null;
   username: string;
   weekPoints: number;
   totalPoints: number;
@@ -573,6 +576,7 @@ function ClassLeaderboard() {
                   >
                     {i < 3 ? <Medal className="h-4 w-4" aria-hidden /> : i + 1}
                   </span>
+                  <Avatar name={r.displayName} src={r.avatar} size="sm" />
                   <span className="font-medium text-sm truncate flex-1 min-w-0">{r.displayName}</span>
                   {r.streak > 1 ? (
                     <span className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground tabular-nums" title={`${r.streak}-day streak`}>

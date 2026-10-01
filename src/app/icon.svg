@@ -1,63 +1,13 @@
-<svg width="512" height="512" viewBox="0 0 512 512"
-     xmlns="http://www.w3.org/2000/svg">
-
-  <!-- Background -->
-  <rect width="512" height="512" rx="105" fill="#2563EB"/>
-
-  <!-- Large open book -->
-  <path d="M48 52
-           C112 15 188 24 256 70
-           C324 24 400 15 464 52
-           V270
-           C395 238 326 243 256 285
-           C186 243 117 238 48 270Z"
-        fill="white"/>
-
-  <!-- Centre fold -->
-  <path d="M256 70 V285"
-        stroke="#2563EB"
-        stroke-width="12"
-        stroke-linecap="round"/>
-
-  <!-- Business bars -->
-  <rect x="95" y="185" width="34" height="70" rx="7" fill="#22C55E"/>
-  <rect x="150" y="155" width="34" height="100" rx="7" fill="#22C55E"/>
-  <rect x="205" y="120" width="34" height="135" rx="7" fill="#22C55E"/>
-  <rect x="260" y="90" width="34" height="165" rx="7" fill="#22C55E"/>
-  <rect x="315" y="55" width="34" height="200" rx="7" fill="#22C55E"/>
-
-  <!-- Growth arrow -->
-  <path d="M85 165 L155 140 L215 115 L275 85 L380 35"
-        fill="none"
-        stroke="#FACC15"
-        stroke-width="12"
-        stroke-linecap="round"
-        stroke-linejoin="round"/>
-
-  <path d="M350 35 L380 35 L378 65"
-        fill="none"
-        stroke="#FACC15"
-        stroke-width="12"
-        stroke-linecap="round"
-        stroke-linejoin="round"/>
-
-  <!-- GCSE -->
-  <text x="256" y="362"
-        text-anchor="middle"
-        font-family="Arial, Helvetica, sans-serif"
-        font-size="92"
-        font-weight="900"
-        letter-spacing="-4"
-        fill="white">GCSE</text>
-
-  <!-- business — exactly centred on the same x-axis -->
-  <text x="256" y="414"
-        text-anchor="middle"
-        dominant-baseline="alphabetic"
-        font-family="Arial, Helvetica, sans-serif"
-        font-size="36"
-        font-weight="600"
-        letter-spacing="2.5"
-        fill="#DBEAFE">business</text>
-
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="105" fill="#017953"/>
+  <path d="M40 67 C106 22 185 33 256 89 C327 33 406 22 472 67 V333 C409 294 329 300 256 351 C183 300 111 294 40 333Z" fill="white"/>
+  <path d="M256 89 V351" stroke="#017953" stroke-width="13" stroke-linecap="round"/>
+  <rect x="92" y="215" width="40" height="85" rx="8" fill="#10B981"/>
+  <rect x="147" y="178" width="40" height="122" rx="8" fill="#10B981"/>
+  <rect x="202" y="136" width="40" height="164" rx="8" fill="#10B981"/>
+  <rect x="257" y="100" width="40" height="200" rx="8" fill="#10B981"/>
+  <rect x="312" y="57" width="40" height="243" rx="8" fill="#10B981"/>
+  <path d="M78 205 L147 174 L213 144 L276 107 L390 46" fill="none" stroke="#E8A13A" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M354 46 L390 46 L386 83" fill="none" stroke="#E8A13A" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="256" y="466" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="122" font-weight="900" letter-spacing="-5" fill="white">GCSE</text>
 </svg>

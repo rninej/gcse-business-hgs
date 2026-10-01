@@ -12,6 +12,7 @@ import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BrandLockup } from './Brand';
 import { PasswordDialog } from './PasswordDialog';
+import { ProfileDialog } from './ProfileDialog';
 import { StudentBell } from './student/StudentBell';
 import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
@@ -70,7 +71,8 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
 
   // prefetch the views the user is most likely to open next (results are
   // per-assignment and only fetched on demand); also ping the AI health
-  // endpoint — a background probe refreshes which models have quota left
+  // endpoint — a background probe refreshes which models have quota left;
+  // and pull the user's own avatar for the sidebar / mobile header
   useEffect(() => {
     if (!session) return;
     const paths = isTeacher
@@ -80,7 +82,10 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
       api.get(p).catch(() => undefined);
     }
     fetch('/api/ai/health').catch(() => undefined);
-
+    api
+      .get<{ avatar: string | null }>('/api/me')
+      .then((d) => useApp.getState().setMyAvatar(d.avatar))
+      .catch(() => undefined);
   }, [session?.uid]);
 
   const nav: NavItem[] = isTeacher
@@ -146,17 +151,8 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
           })}
         </nav>
         <div className="p-4 border-t border-white/40 space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-bold shrink-0 ring-1 ring-white/50" aria-hidden>
-              {(session?.name ?? '?').slice(0, 1).toUpperCase()}
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-medium truncate">{session?.name}</div>
-              <div className="text-xs text-muted-foreground truncate">
-                {isTeacher ? 'Teacher' : `${session?.className ?? 'Class'} · Student`}
-              </div>
-            </div>
-          </div>
+          {/* user block doubles as the profile-picture editor */}
+          <ProfileDialog trigger="row" />
           {!isTeacher ? <StudentBell variant="row" /> : null}
           <PasswordDialog />
           <Button variant="outline" size="sm" className="w-full" onClick={() => logout()}>
@@ -170,6 +166,7 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
         <div className="flex items-center justify-between px-4 h-14">
           <BrandLockup compact />
           <div className="flex items-center gap-1">
+            <ProfileDialog trigger="icon" />
             {!isTeacher ? <StudentBell variant="icon" /> : null}
             <PasswordDialog variant="ghost" />
             <Button variant="ghost" size="icon" onClick={() => logout()} aria-label="Log out">

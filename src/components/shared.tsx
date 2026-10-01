@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import { calendarDaysUntil } from '@/lib/dates';
 import type { QuestionType } from '@/lib/types';
 
 export function PageHeader({
@@ -122,7 +124,8 @@ export function PctChip({ pct }: { pct: number | null | undefined }) {
 
 export function DueChip({ dueAt }: { dueAt: number | null }) {
   if (!dueAt) return <Badge variant="outline" className="text-muted-foreground">No due date</Badge>;
-  const days = Math.ceil((dueAt - Date.now()) / 86400000);
+  // calendar days, not 24-hour buckets — see lib/dates.ts
+  const days = calendarDaysUntil(dueAt);
   if (days < 0) return <Badge className="bg-[var(--danger)] text-white hover:bg-[var(--danger)]">Overdue</Badge>;
   if (days === 0) return <Badge className="bg-[var(--danger)]/90 text-white hover:bg-[var(--danger)]/90">Due today</Badge>;
   if (days === 1) return <Badge className="bg-[var(--warn)] text-white hover:bg-[var(--warn)]">Due tomorrow</Badge>;
@@ -165,6 +168,86 @@ export function ErrorNote({ message }: { message: string }) {
     <div className="rounded-lg border border-[var(--danger)]/30 bg-[var(--danger)]/5 text-sm p-3 text-[var(--danger)]" role="alert">
       {message}
     </div>
+  );
+}
+
+/* ------------------------- avatars ------------------------- */
+
+/** Initials for a display name — "Ava Stone" -> "AS", "jo" -> "JO". */
+export function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+/** Deterministic themed tint for a name — same student, same colour, on
+ *  every screen and every visit. Warm, on-palette, never blue. */
+const AVATAR_TINTS = [
+  'bg-emerald-100 text-emerald-800',
+  'bg-amber-100 text-amber-800',
+  'bg-teal-100 text-teal-800',
+  'bg-lime-100 text-lime-800',
+  'bg-orange-100 text-orange-800',
+  'bg-rose-100 text-rose-800',
+  'bg-yellow-100 text-yellow-800',
+  'bg-stone-200 text-stone-700',
+] as const;
+
+export function avatarTint(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return AVATAR_TINTS[h % AVATAR_TINTS.length];
+}
+
+const AVATAR_SIZES = {
+  xs: { box: 'h-6 w-6', text: 'text-[10px]', emoji: 'text-sm' },
+  sm: { box: 'h-8 w-8', text: 'text-xs', emoji: 'text-base' },
+  md: { box: 'h-9 w-9', text: 'text-sm', emoji: 'text-lg' },
+  lg: { box: 'h-14 w-14', text: 'text-lg', emoji: 'text-2xl' },
+  xl: { box: 'h-24 w-24', text: 'text-3xl', emoji: 'text-5xl' },
+} as const;
+
+/** A user's avatar circle: their uploaded picture (data URL) or emoji pick
+ *  ("emoji:\u{1F98A}") when set, crisp themed initials otherwise. Size with
+ *  the `size` prop; `className` adds extras (e.g. a highlight ring). */
+export function Avatar({
+  name,
+  src,
+  size = 'sm',
+  className,
+}: {
+  name: string;
+  src?: string | null;
+  size?: keyof typeof AVATAR_SIZES;
+  className?: string;
+}) {
+  const s = AVATAR_SIZES[size];
+  const emoji = src?.startsWith('emoji:') ? [...src.slice(6)][0] ?? null : null;
+  return (
+    <span
+      className={cn(
+        'relative inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full ring-1 ring-black/5',
+        s.box,
+        className
+      )}
+      aria-hidden
+    >
+      {src && !emoji ? (
+        // data-URL avatar chosen by this user — next/image adds nothing here
+        <img src={src} alt="" className="h-full w-full object-cover" draggable={false} />
+      ) : (
+        <span
+          className={cn(
+            'flex h-full w-full items-center justify-center font-bold leading-none',
+            avatarTint(name),
+            emoji ? s.emoji : s.text
+          )}
+        >
+          {emoji ?? initialsOf(name)}
+        </span>
+      )}
+    </span>
   );
 }
 

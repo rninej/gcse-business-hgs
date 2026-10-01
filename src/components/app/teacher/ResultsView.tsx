@@ -28,7 +28,7 @@ import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
 import { topicTitle } from '@/lib/topics';
 import { ScoreRing, RiskMeter, BarList } from '@/components/charts';
-import { PageHeader, ThemedSkeleton, ErrorNote, StatusPill, PctChip, EmptyState, TypeBadge } from '@/components/shared';
+import { PageHeader, ThemedSkeleton, ErrorNote, StatusPill, PctChip, EmptyState, TypeBadge, Avatar } from '@/components/shared';
 import { StudentAnswersDialog, StudentProfileDialog } from './StudentProfile';
 import type { AttemptSummary, RiskBand, RiskSignal, TeacherStudentResult } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -315,8 +315,13 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
                       <Fragment key={r.studentId}>
                       <tr className={cn('border-b last:border-0 hover:bg-secondary/30 transition-colors', open.has(r.studentId) && 'bg-secondary/30')}>
                         <td className="px-4 py-3">
-                          <div className="font-medium">{r.displayName}</div>
-                          <div className="text-xs text-muted-foreground font-mono">{r.username}</div>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Avatar name={r.displayName} src={r.avatar} size="sm" />
+                            <div className="min-w-0">
+                              <div className="font-medium truncate">{r.displayName}</div>
+                              <div className="text-xs text-muted-foreground font-mono">{r.username}</div>
+                            </div>
+                          </div>
                         </td>
                         <td className="px-4 py-3"><StatusPill status={r.status} /></td>
                         <td className="px-4 py-3">

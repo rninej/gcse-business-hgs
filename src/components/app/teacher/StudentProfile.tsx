@@ -47,7 +47,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { displayGiven } from '@/lib/sanitize';
 import { ProgressLine, RiskMeter } from '@/components/charts';
-import { PctChip, TypeBadge } from '@/components/shared';
+import { PctChip, TypeBadge, Avatar } from '@/components/shared';
 import type { QReview, RiskBand, RiskSignal } from '@/lib/types';
 
 // ---------------------------------------------------------------- types --
@@ -107,6 +107,7 @@ interface ProfileData {
   student: {
     id: string;
     displayName: string;
+    avatar: string | null;
     username: string;
     password: string | null;
     createdAt: number;
@@ -131,11 +132,6 @@ interface ProfileData {
 }
 
 // --------------------------------------------------------- shared pieces --
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] ?? '' : '')).toUpperCase() || '?';
-}
 
 const BAND_COLOR: Record<RiskBand, string> = {
   low: 'var(--success)',
@@ -734,9 +730,7 @@ export function StudentProfileDialog({
             <>
               {/* identity */}
               <div className="rounded-xl border bg-card p-4 flex flex-wrap items-center gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary" aria-hidden>
-                  {initials(data.student.displayName)}
-                </div>
+                <Avatar name={data.student.displayName} src={data.student.avatar} size="lg" className="shadow-sm ring-2 ring-white" />
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold text-lg leading-tight">{data.student.displayName}</div>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1">

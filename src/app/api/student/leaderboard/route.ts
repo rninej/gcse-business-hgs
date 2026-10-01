@@ -24,10 +24,13 @@ export async function GET() {
   const attempts = values(await colCached<Attempt>('attempts')).filter(
     (a) => a.classId === me.classId && a.status === 'submitted' && a.result
   );
+  // avatars live in their own collection so the students one stays light
+  const avatars = await colCached<{ img?: string }>('avatars');
 
   interface Row {
     studentId: string;
     displayName: string;
+    avatar: string | null;
     weekPoints: number;
     totalPoints: number;
     streak: number;
@@ -45,6 +48,7 @@ export async function GET() {
     return {
       studentId: s.id,
       displayName: s.displayName,
+      avatar: avatars[s.id]?.img ?? null,
       weekPoints,
       totalPoints,
       streak,

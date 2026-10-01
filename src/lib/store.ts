@@ -33,6 +33,11 @@ interface AppState {
    *  mobile bottom-nav Home tab so the badge survives outside the popover */
   bellUnread: number;
   setBellUnread: (n: number) => void;
+  /** the signed-in user's own avatar (data URL / "emoji:…" / null) — fetched
+   *  by AppShell on login, updated by ProfileDialog, shown in the sidebar
+   *  user block and mobile header */
+  myAvatar: string | null;
+  setMyAvatar: (a: string | null) => void;
   go: (view: View) => void;
   logout: () => Promise<void>;
 }
@@ -43,6 +48,8 @@ export const useApp = create<AppState>((set) => ({
   booted: false,
   bellUnread: 0,
   setBellUnread: (n) => set({ bellUnread: n }),
+  myAvatar: null,
+  setMyAvatar: (a) => set({ myAvatar: a }),
   start: (session) =>
     set({ session, booted: true, view: session.role === 'teacher' ? { name: 't-home' } : { name: 's-home' } }),
   setSession: (session) => set({ session }),
@@ -56,6 +63,6 @@ export const useApp = create<AppState>((set) => ({
     } catch {
       /* ignore */
     }
-    set({ session: null, view: { name: 'auth' }, bellUnread: 0 });
+    set({ session: null, view: { name: 'auth' }, bellUnread: 0, myAvatar: null });
   },
 }));

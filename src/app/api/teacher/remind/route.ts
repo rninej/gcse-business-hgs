@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { col, colCached, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
+import { calendarDaysUntil } from '@/lib/dates';
 import { notifyStudents, recentlyReminded } from '@/lib/notify';
 import { assignmentTargetsStudent } from '@/lib/types';
 import type { Assignment, Attempt, Student } from '@/lib/types';
@@ -11,8 +12,9 @@ const REMIND_COOLDOWN_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 function dueLabel(dueAt: number | null): string {
   if (!dueAt) return 'no deadline';
-  const days = Math.round((dueAt - Date.now()) / 86_400_000);
-  if (days < 0) return Math.abs(days) === 0 ? 'due today' : `overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'}`;
+  // calendar days — must match what the teacher saw on the dashboard card
+  const days = calendarDaysUntil(dueAt);
+  if (days < 0) return `overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'}`;
   if (days === 0) return 'due today';
   if (days === 1) return 'due tomorrow';
   return `due in ${days} days`;

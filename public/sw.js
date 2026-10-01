@@ -3,7 +3,7 @@
 // when offline, fall back to the cached shell. Enough to make Chrome on
 // Android treat the site as an installable PWA without ever getting in the
 // way of the app.
-const CACHE = 'hgs-shell-v2'; // v2: new brand logo
+const CACHE = 'hgs-shell-v3'; // v3: theme-green logo (was blue)
 const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
 
 self.addEventListener('install', (event) => {

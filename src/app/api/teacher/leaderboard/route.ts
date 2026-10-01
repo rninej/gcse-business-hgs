@@ -30,6 +30,8 @@ export async function GET(req: Request) {
   const attempts = values(await colCached<Attempt>('attempts')).filter(
     (a) => a.classId === cls.id && a.status === 'submitted' && a.result && a.mode !== 'selftest'
   );
+  // avatars live in their own collection so the students one stays light
+  const avatars = await colCached<{ img?: string }>('avatars');
 
   const rows = students.map((s) => {
     const mine = attempts.filter((a) => a.studentId === s.id);
@@ -41,6 +43,7 @@ export async function GET(req: Request) {
     return {
       studentId: s.id,
       displayName: s.displayName,
+      avatar: avatars[s.id]?.img ?? null,
       username: s.username,
       weekPoints,
       totalPoints,

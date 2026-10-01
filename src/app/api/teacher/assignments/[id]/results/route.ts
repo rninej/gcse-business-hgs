@@ -19,6 +19,8 @@ export async function GET(_req: Request, ctx: Ctx) {
   }
 
   const allStudents = values(await colCached<Student>('students')).filter((s) => assignmentTargetsStudent(a, s));
+  // avatars live in their own collection so the students one stays light
+  const avatars = await colCached<{ img?: string }>('avatars');
   // finalize timed attempts whose clock ran out (students who never reopened);
   // teacher self-tests are excluded — they never count as class statistics
   const allAttempts = await finalizeExpired(
@@ -39,7 +41,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     .map((s) => {
       const mine = byStudent.get(s.id) ?? [];
       if (mine.length === 0) {
-        return { studentId: s.id, displayName: s.displayName, username: s.username, status: 'not-started' as const };
+        return { studentId: s.id, displayName: s.displayName, avatar: avatars[s.id]?.img ?? null, username: s.username, status: 'not-started' as const };
       }
       const history = mine
         .filter((x) => x.status === 'submitted' && x.result)
@@ -58,6 +60,7 @@ export async function GET(_req: Request, ctx: Ctx) {
         return {
           studentId: s.id,
           displayName: s.displayName,
+          avatar: avatars[s.id]?.img ?? null,
           username: s.username,
           status: 'in-progress' as const,
           attemptCount: mine.length,
@@ -69,6 +72,7 @@ export async function GET(_req: Request, ctx: Ctx) {
       return {
         studentId: s.id,
         displayName: s.displayName,
+        avatar: avatars[s.id]?.img ?? null,
         username: s.username,
         status: late ? ('late' as const) : ('submitted' as const),
         score: r?.score,

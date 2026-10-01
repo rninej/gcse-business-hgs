@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { colCached, merge, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
+import { calendarDaysUntil } from '@/lib/dates';
 import { finalizeExpired } from '@/lib/finalize';
 import { notifyStudents } from '@/lib/notify';
 import { assignmentTargetsStudent, type Attempt, type Assignment, type Student } from '@/lib/types';
@@ -87,7 +88,7 @@ export async function GET() {
         ? Math.max(...mine.map((m) => m.result?.pct ?? 0))
         : null,
       result: at?.status === 'submitted' ? at.result : null,
-      daysLeft: a.dueAt ? Math.ceil((a.dueAt - Date.now()) / 86400000) : null,
+      daysLeft: a.dueAt ? calendarDaysUntil(a.dueAt) : null,
     };
   });
 
