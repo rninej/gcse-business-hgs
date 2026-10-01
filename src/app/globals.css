@@ -445,4 +445,38 @@
   main [class*="bg-card/"] {
     border-color: #ddd !important;
   }
+
+  /* ---- heatmap print sheet ---------------------------------------- */
+  /* when the heatmap prints, a full-page clone is portalled to <body>;
+     everything else on the page is suppressed so only the sheet prints */
+  body:has(> .heat-print-overlay) > *:not(.heat-print-overlay) {
+    display: none !important;
+  }
+  .heat-print-overlay {
+    display: block !important;
+    background: white !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* ---- teacher results sheet --------------------------------------- */
+  /* the students table drops its 900px min-width and prints compact */
+  .print-table {
+    min-width: 0 !important;
+    font-size: 10.5px !important;
+  }
+  .print-table th,
+  .print-table td {
+    padding: 5px 8px !important;
+    vertical-align: top;
+  }
+  tr,
+  li,
+  .print-block {
+    break-inside: avoid;
+  }
+  /* freeze mid-flight animations (progress pulses) for the print capture */
+  * {
+    animation: none !important;
+  }
 }

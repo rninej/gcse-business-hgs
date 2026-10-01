@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { col, colCached, put, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { generateQuestions } from '@/lib/questions';
+import { notifyStudents } from '@/lib/notify';
 import { QUIZ_MAP } from '@/data/bank';
 import { TOPICS } from '@/lib/topics';
 import { assignmentTargetsStudent, type Attempt, type Assignment, type Question, type QuestionType, type Student, type StudentClass } from '@/lib/types';
@@ -342,6 +343,21 @@ export async function POST(req: Request) {
       questions: snapshot,
     };
     await put('assignments', updating.id, merged);
+    // a draft going live is the moment students learn about it — ring the bell
+    if (!draft && updating.draft) {
+      const recipients = studentsCol
+        ? values(studentsCol).filter((s) => assignmentTargetsStudent(merged, s)).map((s) => s.id)
+        : [];
+      if (recipients.length > 0) {
+        void notifyStudents(recipients, {
+          kind: 'assignment',
+          title: `New quiz set: “${title}”`,
+          body: `${merged.classTitle} · ${snapshot.length} questions${dueAt ? ` · due ${new Date(dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}`,
+          assignmentId: merged.id,
+          fromId: session.uid,
+        });
+      }
+    }
     return NextResponse.json({ ok: true, assignmentId: updating.id, questionCount: snapshot.length, draft });
   }
 
@@ -364,5 +380,29 @@ export async function POST(req: Request) {
     questions: snapshot,
   };
   await put('assignments', id, assignment);
+  // ring every targeted student's bell the moment a live assignment lands
+  if (!draft) {
+    const classIdSet = new Set(classIds);
+    const recipients = [
+      ...targetedStudents.map((s) => s.id),
+      ...values(studentsCol).filter((s) => s.classId && classIdSet.has(s.classId)).map((s) => s.id),
+    ];
+    const unique = uniqueIdList(recipients);
+    if (unique.length > 0) {
+      void notifyStudents(unique, {
+        kind: 'assignment',
+        title: `New quiz set: “${title}”`,
+        body: `${assignment.classTitle} · ${snapshot.length} questions${dueAt ? ` · due ${new Date(dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}`,
+        assignmentId: id,
+        fromId: session.uid,
+      });
+    }
+  }
   return NextResponse.json({ ok: true, assignmentId: id, questionCount: snapshot.length, draft, generatedBy });
+}
+
+/** de-dupe a list of ids without Set-order surprises */
+function uniqueIdList(ids: string[]): string[] {
+  const seen = new Set<string>();
+  return ids.filter((x) => (seen.has(x) ? false : (seen.add(x), true)));
 }

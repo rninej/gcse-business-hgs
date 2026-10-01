@@ -1,14 +1,16 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { CalendarDays, Flame } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { CalendarDays, Flame, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
 /* Activity heatmap — every completed quiz is a square, weeks back.   */
 /* GitHub-style contribution grid in the frosted-glass theme.          */
 /* Shared by the student dashboard ("Your activity") and the teacher's */
-/* class page ("Class activity") — with a 12 / 26 / 52-week switch.    */
+/* class page ("Class activity") — with a 12 / 26 / 52-week switch     */
+/* and a one-tap print sheet (only the heatmap prints).                */
 /* ------------------------------------------------------------------ */
 
 const RANGE_OPTIONS = [12, 26, 52] as const;
@@ -20,6 +22,13 @@ function gridMinWidth(weeks: number): string {
   if (weeks <= 12) return 'min-w-[520px]';
   if (weeks <= 26) return 'min-w-[820px]';
   return 'min-w-[1180px]';
+}
+
+interface Cell {
+  date: Date;
+  count: number;
+  isToday: boolean;
+  isFuture: boolean;
 }
 
 export function ActivityHeatmap({
@@ -38,6 +47,7 @@ export function ActivityHeatmap({
   footerNote?: React.ReactNode;
 }) {
   const [weeks, setWeeks] = useState<Range>(12);
+  const [printing, setPrinting] = useState(false);
 
   // everything below only recomputes when the data or range changes
   const view = useMemo(() => {
@@ -58,10 +68,10 @@ export function ActivityHeatmap({
     const firstMonday = new Date(mondayThisWeek);
     firstMonday.setDate(mondayThisWeek.getDate() - (weeks - 1) * 7);
 
-    const cols: { date: Date; count: number; isToday: boolean; isFuture: boolean }[][] = [];
+    const cols: Cell[][] = [];
     let inRange = 0;
     for (let w = 0; w < weeks; w++) {
-      const col: { date: Date; count: number; isToday: boolean; isFuture: boolean }[] = [];
+      const col: Cell[] = [];
       for (let d = 0; d < 7; d++) {
         const date = new Date(firstMonday);
         date.setDate(firstMonday.getDate() + w * 7 + d);
@@ -80,7 +90,7 @@ export function ActivityHeatmap({
     return { cols, inRange, activeCells: cols.flat().filter((c) => c.count > 0).length, today };
   }, [activity, weeks]);
 
-  const { cols, inRange, activeCells, today } = view;
+  const { cols, inRange, activeCells } = view;
 
   function level(count: number): string {
     if (count <= 0) return 'bg-secondary/70';
@@ -102,8 +112,122 @@ export function ActivityHeatmap({
     return prev.getMonth() !== col[0].date.getMonth() ? col[0].date.toLocaleDateString('en-GB', { month: 'short' }) : null;
   });
 
+  /* ---- print sheet --------------------------------------------------
+   * A clone of the grid is portalled straight to <body> as a direct child
+   * (.heat-print-overlay, hidden on screen). CSS `body:has(> …)` hides the
+   * whole app during the print job, so only the sheet hits the paper —
+   * print-width squares, no min-widths, no frosted glass. */
+  useEffect(() => {
+    if (!printing) return;
+    const done = () => setPrinting(false);
+    window.addEventListener('afterprint', done, { once: true });
+    const raf = requestAnimationFrame(() =>
+      requestAnimationFrame(() => window.print())
+    );
+    const safety = window.setTimeout(done, 4000);
+    return () => {
+      window.removeEventListener('afterprint', done);
+      cancelAnimationFrame(raf);
+      clearTimeout(safety);
+    };
+  }, [printing]);
+
+  const grid = (print: boolean) => (
+    <div className={print ? '' : gridMinWidth(weeks)}>
+      {/* month marks */}
+      <div className="grid mb-1" style={{ gridTemplateColumns: `${print ? '1.1rem' : '1.35rem'} repeat(${weeks}, 1fr)` }} aria-hidden>
+        {monthMarks.map((m, i) => (
+          <span key={i} className="text-[10px] text-muted-foreground pl-1 leading-none h-3.5">
+            {m ?? ''}
+          </span>
+        ))}
+      </div>
+      <div className={print ? 'flex gap-[2px]' : 'flex gap-1.5'}>
+        {/* weekday labels */}
+        <div className={cn('grid grid-rows-7 text-[9px] text-muted-foreground shrink-0', print ? 'gap-[1px] w-4' : 'gap-[3px] w-4')} aria-hidden>
+          <span className="leading-none h-3.5 flex items-center">Mon</span>
+          <span />
+          <span className="leading-none h-3.5 flex items-center">Wed</span>
+          <span />
+          <span className="leading-none h-3.5 flex items-center">Fri</span>
+          <span />
+          <span />
+        </div>
+        {/* the squares */}
+        <div
+          className={cn('grid flex-1', print ? 'gap-[1px]' : 'gap-[3px]')}
+          style={{ gridTemplateColumns: `repeat(${weeks}, 1fr)` }}
+        >
+          {cols.map((col, wi) => (
+            <div key={wi} className={cn('grid grid-rows-7', print ? 'gap-[1px]' : 'gap-[3px]')}>
+              {col.map((c) => (
+                <div
+                  key={c.date.getTime()}
+                  title={print ? undefined : label(c)}
+                  className={cn(
+                    'rounded-[3px] transition-colors heat-cell',
+                    print ? 'h-[9px] w-full' : 'h-3.5 w-full',
+                    c.isFuture ? 'heat-future bg-transparent' : level(c.count),
+                    !print && c.isToday && 'ring-2 ring-primary/50 ring-offset-1 ring-offset-[var(--card)]'
+                  )}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const printSheet = printing
+    ? createPortal(
+        <div
+          className="heat-print-overlay hidden print:block bg-white text-foreground px-8 py-6"
+          style={{ fontFamily: 'inherit' }}
+        >
+          <div className="flex items-baseline justify-between gap-4 border-b border-black/15 pb-3 mb-4">
+            <div>
+              <div className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">gcsebusiness</div>
+              <h1 className="text-xl font-bold mt-0.5">{title}</h1>
+            </div>
+            <div className="text-[11px] text-muted-foreground text-right">
+              {weeks}-week view · printed {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </div>
+          </div>
+          <p className="text-sm mb-3">
+            <span className="font-semibold tabular-nums">
+              {inRange} quiz{inRange === 1 ? '' : 'zes'}
+            </span>{' '}
+            · {activeCells} active {activeCells === 1 ? 'day' : 'days'} in {weeks} weeks
+            {streak != null && streak >= 2 ? (
+              <span className="ml-2 font-medium text-[var(--warn)]">· {streak}-day streak</span>
+            ) : null}
+          </p>
+          {grid(true)}
+          <div className="flex items-center justify-between gap-2 flex-wrap mt-4 text-[10px] text-muted-foreground">
+            {footerNote ? (
+              <div className="text-[11px] text-muted-foreground">{footerNote}</div>
+            ) : (
+              <span />
+            )}
+            <div className="flex items-center gap-1 ml-auto">
+              <span className="mr-1">Less</span>
+              <span className="h-2.5 w-2.5 rounded-[2px] bg-secondary/70" aria-hidden />
+              <span className="h-2.5 w-2.5 rounded-[2px] bg-primary/25" aria-hidden />
+              <span className="h-2.5 w-2.5 rounded-[2px] bg-primary/45" aria-hidden />
+              <span className="h-2.5 w-2.5 rounded-[2px] bg-primary/65" aria-hidden />
+              <span className="h-2.5 w-2.5 rounded-[2px] bg-primary" aria-hidden />
+              <span className="ml-1">More</span>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )
+    : null;
+
   return (
     <section className={cn('rounded-lg border bg-card p-4 sm:p-5', className)} aria-label={title}>
+      {printSheet}
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-3">
         <h2 className="flex items-center gap-2 font-semibold text-sm">
           <CalendarDays className="h-4 w-4 text-primary" aria-hidden /> {title}
@@ -118,7 +242,7 @@ export function ActivityHeatmap({
             {inRange} quiz{inRange === 1 ? '' : 'zes'} · {activeCells} active {activeCells === 1 ? 'day' : 'days'} in {weeks} weeks
           </span>
           {/* range switch — 12 / 26 / 52 weeks */}
-          <div className="flex items-center rounded-full border bg-secondary/60 p-0.5" role="group" aria-label="Date range">
+          <div className="flex items-center rounded-full border bg-secondary/60 p-0.5 print:hidden" role="group" aria-label="Date range">
             {RANGE_OPTIONS.map((w) => (
               <button
                 key={w}
@@ -136,50 +260,20 @@ export function ActivityHeatmap({
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={() => setPrinting(true)}
+            aria-label={`Print the ${title.toLowerCase()} sheet`}
+            title="Print or save this activity grid as a one-page sheet"
+            className="flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors print:hidden"
+          >
+            <Printer className="h-3.5 w-3.5" aria-hidden />
+          </button>
         </div>
       </div>
 
       <div className="overflow-x-auto scroll-slim pb-1">
-        <div className={gridMinWidth(weeks)}>
-          {/* month marks */}
-          <div className="grid mb-1" style={{ gridTemplateColumns: `1.35rem repeat(${weeks}, 1fr)` }} aria-hidden>
-            {monthMarks.map((m, i) => (
-              <span key={i} className="text-[10px] text-muted-foreground pl-1 leading-none h-3.5">
-                {m ?? ''}
-              </span>
-            ))}
-          </div>
-          <div className="flex gap-1.5">
-            {/* weekday labels */}
-            <div className="grid grid-rows-7 gap-[3px] text-[9px] text-muted-foreground w-4 shrink-0" aria-hidden>
-              <span className="leading-none h-3.5 flex items-center">Mon</span>
-              <span />
-              <span className="leading-none h-3.5 flex items-center">Wed</span>
-              <span />
-              <span className="leading-none h-3.5 flex items-center">Fri</span>
-              <span />
-              <span />
-            </div>
-            {/* the squares */}
-            <div className="grid gap-[3px] flex-1" style={{ gridTemplateColumns: `repeat(${weeks}, 1fr)` }}>
-              {cols.map((col, wi) => (
-                <div key={wi} className="grid grid-rows-7 gap-[3px]">
-                  {col.map((c) => (
-                    <div
-                      key={c.date.getTime()}
-                      title={label(c)}
-                      className={cn(
-                        'h-3.5 w-full rounded-[3px] transition-colors heat-cell',
-                        c.isFuture ? 'heat-future bg-transparent' : level(c.count),
-                        c.isToday && 'ring-2 ring-primary/50 ring-offset-1 ring-offset-[var(--card)]'
-                      )}
-                    />
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        {grid(false)}
       </div>
 
       <div className="flex items-center justify-between gap-2 flex-wrap mt-2">
@@ -188,7 +282,7 @@ export function ActivityHeatmap({
         ) : (
           <span />
         )}
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground ml-auto">
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground ml-auto print:hidden">
           <span className="mr-1">Less</span>
           <span className="h-2.5 w-2.5 rounded-[2px] bg-secondary/70" aria-hidden />
           <span className="h-2.5 w-2.5 rounded-[2px] bg-primary/25" aria-hidden />

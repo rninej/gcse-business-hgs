@@ -171,6 +171,27 @@ export function assignmentTargetsStudent(
   return false;
 }
 
+// ---------- Student notifications ----------
+
+export type NotificationKind = 'assignment' | 'remind' | 'feedback';
+
+/** A small in-app message on a student's bell — created when a teacher sets
+ *  work for them, nudges them about an un-submitted assignment, or leaves
+ *  feedback on one of their answers. */
+export interface StudentNotification {
+  id: string;
+  studentId: string;
+  kind: NotificationKind;
+  title: string;
+  body: string;
+  createdAt: number;
+  readAt: number | null;
+  /** deep link — the Quizzes view opens with this assignment highlighted */
+  assignmentId?: string;
+  /** who sent it (teacher uid) — used to de-dupe repeated nudges */
+  fromId?: string;
+}
+
 // ---------- Attempts ----------
 export type AttemptMode = 'assignment' | 'practice' | 'selftest';
 export type AttemptStatus = 'in-progress' | 'submitted';

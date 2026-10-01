@@ -17,6 +17,7 @@ import {
   ChevronRight,
   CheckCircle2,
   XCircle,
+  Printer,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -187,19 +188,48 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
         title={a.title}
         sub={`${a.classTitle} · ${a.questionCount} questions · ${a.totalMarks} marks · set ${new Date(a.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
         actions={
-          <>
+          <div className="flex flex-wrap items-center gap-2 print:hidden">
             <Button variant="ghost" onClick={() => go({ name: 't-assignments' })}>
               <ArrowLeft className="h-4 w-4" /> Assignments
             </Button>
             <Button variant="outline" onClick={csv}>
               <Download className="h-4 w-4" /> CSV
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => window.print()}
+              title="Print or save a per-student results sheet (PDF)"
+            >
+              <Printer className="h-4 w-4" /> Print
+            </Button>
             <Button variant="outline" onClick={load}>
               <RefreshCw className="h-4 w-4" /> Refresh
             </Button>
-          </>
+          </div>
         }
       />
+
+      {/* print-only report masthead — the printed sheet gets its own header,
+          since the app chrome above is suppressed while printing */}
+      <div className="hidden print:block mb-4 border-b border-black/15 pb-3 print-block">
+        <div className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">gcsebusiness · results sheet</div>
+        <h1 className="text-xl font-bold mt-0.5">{a.title}</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {a.classTitle} · {a.questionCount} questions · {a.totalMarks} marks · set{' '}
+          {new Date(a.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+          {a.dueAt ? ` · due ${new Date(a.dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''} · printed{' '}
+          {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+        </p>
+        <p className="text-sm mt-1.5">
+          Class average <span className="font-semibold tabular-nums">{s.avgPct === null ? '—' : `${Math.round(s.avgPct)}%`}</span> ·{' '}
+          <span className="tabular-nums">{s.submitted}/{s.totalStudents}</span> submitted ·{' '}
+          {flagged.length === 0 ? (
+            <span className="text-[var(--success)] font-medium">no integrity flags</span>
+          ) : (
+            <span className="text-[var(--warn)] font-medium">{flagged.length} submission{flagged.length === 1 ? '' : 's'} flagged for review</span>
+          )}
+        </p>
+      </div>
 
       {/* summary strip */}
       <div className="grid gap-3 mb-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -255,7 +285,7 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
       </div>
 
       <Tabs defaultValue="students">
-        <TabsList>
+        <TabsList className="print:hidden">
           <TabsTrigger value="students">Students</TabsTrigger>
           <TabsTrigger value="integrity">Integrity ({flagged.length})</TabsTrigger>
           <TabsTrigger value="topics">Topics &amp; questions</TabsTrigger>
@@ -268,7 +298,7 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
           ) : (
             <div className="rounded-xl border bg-card overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[900px]">
+                <table className="print-table w-full text-sm min-w-[900px]">
                   <thead>
                     <tr className="border-b bg-secondary/50 text-left text-xs text-muted-foreground">
                       <th className="px-4 py-3 font-medium">Student</th>
@@ -277,7 +307,7 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
                       <th className="px-4 py-3 font-medium">Time</th>
                       <th className="px-4 py-3 font-medium">Tries</th>
                       <th className="px-4 py-3 font-medium w-[18%]">Integrity</th>
-                      <th className="px-4 py-3 font-medium text-right">Answers</th>
+                      <th className="px-4 py-3 font-medium text-right print:hidden">Answers</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -312,15 +342,18 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
                         </td>
                         <td className="px-4 py-3">
                           {(r.attemptCount ?? 0) > 1 ? (
-                            <button
-                              onClick={() => toggle(r.studentId)}
-                              className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-semibold hover:bg-secondary/70 transition-colors"
-                              aria-expanded={open.has(r.studentId)}
-                            >
-                              <History className="h-3.5 w-3.5 text-primary" aria-hidden />
-                              ×{r.attemptCount}
-                              <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', open.has(r.studentId) && 'rotate-90')} aria-hidden />
-                            </button>
+                            <>
+                              <span className="hidden print:inline text-xs text-muted-foreground tabular-nums">×{r.attemptCount}</span>
+                              <button
+                                onClick={() => toggle(r.studentId)}
+                                className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-semibold hover:bg-secondary/70 transition-colors print:hidden"
+                                aria-expanded={open.has(r.studentId)}
+                              >
+                                <History className="h-3.5 w-3.5 text-primary" aria-hidden />
+                                ×{r.attemptCount}
+                                <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', open.has(r.studentId) && 'rotate-90')} aria-hidden />
+                              </button>
+                            </>
                           ) : (
                             <span className="text-xs text-muted-foreground">1</span>
                           )}
@@ -332,7 +365,7 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
                             <RiskMeter score={r.riskScore} band={r.riskBand ?? 'low'} compact />
                           )}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 print:hidden">
                           <div className="flex items-center justify-end gap-1">
                             {(r.history ?? []).length > 0 ? (
                               <Button

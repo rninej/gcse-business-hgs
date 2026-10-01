@@ -22,6 +22,11 @@ export type View =
 interface AppState {
   session: SessionInfo | null;
   view: View;
+  /** true once the store has been seeded for this page load — flips in a
+   * post-hydration effect so the hydration pass itself can render from the
+   * server-passed session prop while uSES still reports the frozen initial
+   * state (see HomeApp). Stays true through logout — only session changes. */
+  booted: boolean;
   start: (session: SessionInfo) => void;
   setSession: (session: SessionInfo | null) => void;
   go: (view: View) => void;
@@ -31,8 +36,9 @@ interface AppState {
 export const useApp = create<AppState>((set) => ({
   session: null,
   view: { name: 'auth' },
+  booted: false,
   start: (session) =>
-    set({ session, view: session.role === 'teacher' ? { name: 't-home' } : { name: 's-home' } }),
+    set({ session, booted: true, view: session.role === 'teacher' ? { name: 't-home' } : { name: 's-home' } }),
   setSession: (session) => set({ session }),
   go: (view) => {
     set({ view });

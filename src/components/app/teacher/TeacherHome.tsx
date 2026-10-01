@@ -226,7 +226,33 @@ export function TeacherHome() {
 
 function NeedsAttentionCard({ rows }: { rows: AttentionRow[] }) {
   const go = useApp((s) => s.go);
+  const { toast } = useToast();
+  const [reminding, setReminding] = useState<string | null>(null);
+  /** row id -> short confirmation, so a sent nudge visibly sticks */
+  const [nudged, setNudged] = useState<Record<string, number>>({});
   if (rows.length === 0) return null;
+
+  async function remind(row: AttentionRow) {
+    setReminding(row.id);
+    try {
+      const r = await api.post<{ ok?: true; sent: number; skipped: number; message?: string }>(
+        '/api/teacher/remind',
+        { assignmentId: row.id }
+      );
+      setNudged((n) => ({ ...n, [row.id]: Date.now() }));
+      toast({
+        title: r.message ?? 'Nudge sent.',
+        description:
+          r.sent > 0
+            ? 'It rings their bell the next time the app is open — no emails needed.'
+            : 'Students nudged in the last 6 hours were left alone.',
+      });
+    } catch (e) {
+      toast({ title: 'Could not send the nudge', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setReminding(null);
+    }
+  }
 
   const dueLabel = (dueAt: number) => {
     const diff = dueAt - Date.now();
@@ -257,37 +283,26 @@ function NeedsAttentionCard({ rows }: { rows: AttentionRow[] }) {
       <ul className="mt-4 divide-y rounded-lg border bg-card/60 overflow-hidden stagger">
         {rows.map((row) => {
           const due = dueLabel(row.dueAt);
+          const sent = nudged[row.id] !== undefined;
           return (
-            <li key={row.id}>
+            <li key={row.id} className="flex items-center gap-2 px-4 py-3 hover:bg-secondary/40 transition-colors">
+              {/* main click target — opens the results view */}
               <button
-                className="w-full text-left px-4 py-3 hover:bg-secondary/50 transition-colors"
+                className="flex-1 min-w-0 text-left"
                 onClick={() => go({ name: 't-results', assignmentId: row.id })}
               >
-                <div className="flex items-center gap-3 flex-wrap">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{row.title}</div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="truncate">{row.classTitle}</span>·<span>{row.questionCount} questions</span>
-                      <span
-                        className={cn(
-                          'font-medium',
-                          due.tone === 'danger' && 'text-[var(--danger)]',
-                          due.tone === 'warn' && 'text-[var(--warn)]'
-                        )}
-                      >
-                        {due.text}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-sm font-semibold tabular-nums">
-                      {row.submittedCount}
-                      <span className="text-muted-foreground font-normal">/{row.total}</span>
-                    </div>
-                    <div className="text-[11px] text-muted-foreground flex items-center gap-1 justify-end">
-                      <CheckCircle2 className="h-3 w-3" /> handed in
-                    </div>
-                  </div>
+                <div className="font-medium text-sm truncate">{row.title}</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span className="truncate">{row.classTitle}</span>·<span>{row.questionCount} questions</span>
+                  <span
+                    className={cn(
+                      'font-medium',
+                      due.tone === 'danger' && 'text-[var(--danger)]',
+                      due.tone === 'warn' && 'text-[var(--warn)]'
+                    )}
+                  >
+                    {due.text}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                   {row.missing.map((m) => (
@@ -305,6 +320,37 @@ function NeedsAttentionCard({ rows }: { rows: AttentionRow[] }) {
                   ) : null}
                 </div>
               </button>
+              {/* status + action grouped tightly on the right */}
+              <div className="shrink-0 flex flex-col items-end gap-2 pl-2 sm:pl-3 border-l border-white/30">
+                <div className="text-right leading-tight">
+                  <div className="text-sm font-semibold tabular-nums">
+                    {row.submittedCount}
+                    <span className="text-muted-foreground font-normal">/{row.total}</span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground flex items-center gap-1 justify-end">
+                    <CheckCircle2 className="h-3 w-3" /> handed in
+                  </div>
+                </div>
+                {sent ? (
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full border border-[var(--success)]/40 bg-[var(--success)]/10 px-2.5 py-1 text-[11px] font-semibold text-[var(--success)]"
+                    title="Their bell rings the next time they open the app"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Nudged
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void remind(row)}
+                    disabled={reminding === row.id}
+                    title="Ring the bell of every student who hasn't handed this in yet"
+                    className="press inline-flex h-8 items-center gap-1.5 rounded-full bg-[var(--warn)] px-3.5 text-xs font-semibold text-[var(--warn-foreground)] shadow-[0_4px_14px_-4px_rgb(146_84_21/0.45)] transition-all hover:brightness-105 hover:shadow-[0_6px_18px_-4px_rgb(146_84_21/0.55)] disabled:opacity-60 disabled:cursor-wait"
+                  >
+                    <BellRing className={cn('h-3.5 w-3.5', reminding === row.id && 'animate-pulse')} aria-hidden />
+                    {reminding === row.id ? 'Sending…' : 'Remind'}
+                  </button>
+                )}
+              </div>
             </li>
           );
         })}

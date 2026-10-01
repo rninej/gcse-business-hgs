@@ -27,13 +27,17 @@ function homeView(s: SessionInfo): View {
   return s.role === 'teacher' ? { name: 't-home' } : { name: 's-home' };
 }
 
-// The zustand store's server snapshot is frozen at store creation, so SSR must
-// render from the server-passed session prop. On the client we adopt the
-// session into the store ONCE, before the first selector read — the same
-// render then paints the same tree the server sent, so hydration matches and
-// logged-in users get their dashboard in the very first paint.
-let clientBootstrapped = false;
-
+// Hydration-safe session bootstrapping. The server reads the session cookie
+// and passes it down, so SSR always paints the right shell (dashboard for
+// signed-in users, login for guests). On the client, zustand's
+// useSyncExternalStore returns the store's INITIAL (frozen, empty) state
+// during the hydration pass — a mid-render setState is invisible to it — so
+// the first client render must also read the server-passed prop for the
+// trees to match. A post-hydration effect then seeds the store from the same
+// prop and flags it booted; the store subscription re-renders us onto store
+// state, which login/logout keep in sync for the rest of the SPA session.
+// No flash of the wrong screen, no hydration error, no React setState in an
+// effect (the flag lives in the external store, not component state).
 export function HomeApp({ initialSession }: { initialSession: SessionInfo | null }) {
   // every visit (signed in or not) refreshes the shared AI model-health
   // snapshot in the background — quota-stricken models rotate out automatically
@@ -41,22 +45,26 @@ export function HomeApp({ initialSession }: { initialSession: SessionInfo | null
     fetch('/api/ai/health').catch(() => undefined);
   }, []);
 
-  if (typeof window !== 'undefined' && !clientBootstrapped) {
-    clientBootstrapped = true;
-    if (initialSession) {
-      useApp.setState({ session: initialSession, view: homeView(initialSession) });
+  // post-hydration: adopt the server-known session into the store (if the
+  // store is still empty) and mark the store booted — from then on the
+  // component renders from the store, never from the prop again
+  useEffect(() => {
+    if (initialSession && !useApp.getState().session) {
+      useApp.setState({ session: initialSession, view: homeView(initialSession), booted: true });
+    } else if (!useApp.getState().booted) {
+      useApp.setState({ booted: true });
     }
-  }
+  }, [initialSession]);
 
   const storeSession = useApp((s) => s.session);
   const storeView = useApp((s) => s.view);
-  const onServer = typeof window === 'undefined';
-  const session = onServer ? initialSession : storeSession;
-  const view: View = onServer
-    ? initialSession
+  const booted = useApp((s) => s.booted);
+  const session = booted ? storeSession : initialSession;
+  const view: View = booted
+    ? storeView
+    : initialSession
       ? homeView(initialSession)
-      : { name: 'auth' }
-    : storeView;
+      : { name: 'auth' };
 
   const content = !session ? (
     <AuthView />

@@ -19,6 +19,7 @@ import {
   PenLine,
   Sparkles,
   Printer,
+  Flag,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -235,6 +236,11 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
     50: 'Fifty days — you\u2019re in rare company now.',
     100: 'One hundred days. Absolute legend.',
   };
+  // next milestone line above a streak (client-side twin of the server list —
+  // streaks.ts itself pulls in firebase, so it can't be imported here)
+  const nextMilestoneOf = (n: number) => [3, 7, 14, 30, 50, 100].find((m) => m > n) ?? null;
+  const nextFromMilestone = milestone ? nextMilestoneOf(milestone) : null;
+  const nextFromStreak = nextMilestoneOf(streak);
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -307,8 +313,12 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
                 </Badge>
               ) : null}
             </div>
-            {streak >= 2 ? (
-              <p className="text-xs text-muted-foreground mt-2">Do a quiz tomorrow to keep your streak alive.</p>
+            {streak >= 2 && !milestone ? (
+              <p className="text-xs text-muted-foreground mt-2">
+                {nextFromStreak
+                  ? `${nextFromStreak - streak} more ${nextFromStreak - streak === 1 ? 'day' : 'days'} to a ${nextFromStreak}-day streak — do a quiz tomorrow to keep it alive.`
+                  : 'Do a quiz tomorrow to keep your streak alive.'}
+              </p>
             ) : null}
           </div>
         </div>
@@ -337,6 +347,18 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
                 <span className="text-sm font-semibold uppercase tracking-wide text-[var(--warn)]">unlocked</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">{milestoneCopy[milestone] ?? 'Keep the flame burning.'}</p>
+              {nextFromMilestone ? (
+                <p className="text-xs mt-2 flex items-center gap-1.5 font-medium text-[var(--warn-foreground)]">
+                  <Flag className="h-3.5 w-3.5 shrink-0 text-[var(--warn)]" aria-hidden />
+                  Next goal: {nextFromMilestone}-day streak — {nextFromMilestone - milestone}{' '}
+                  {nextFromMilestone - milestone === 1 ? 'day' : 'days'} to go
+                </p>
+              ) : (
+                <p className="text-xs mt-2 flex items-center gap-1.5 font-medium text-[var(--warn-foreground)]">
+                  <Flag className="h-3.5 w-3.5 shrink-0 text-[var(--warn)]" aria-hidden />
+                  Top milestone reached — every day now is a new personal best
+                </p>
+              )}
             </div>
           </div>
         </motion.div>

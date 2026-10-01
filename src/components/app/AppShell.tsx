@@ -12,6 +12,7 @@ import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BrandLockup } from './Brand';
 import { PasswordDialog } from './PasswordDialog';
+import { StudentBell } from './student/StudentBell';
 import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
 import type { View } from '@/lib/store';
@@ -155,6 +156,7 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
               </div>
             </div>
           </div>
+          {!isTeacher ? <StudentBell variant="row" /> : null}
           <PasswordDialog />
           <Button variant="outline" size="sm" className="w-full" onClick={() => logout()}>
             <LogOut className="h-4 w-4" /> Log out
@@ -167,6 +169,7 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
         <div className="flex items-center justify-between px-4 h-14">
           <BrandLockup compact />
           <div className="flex items-center gap-1">
+            {!isTeacher ? <StudentBell variant="icon" /> : null}
             <PasswordDialog variant="ghost" />
             <Button variant="ghost" size="icon" onClick={() => logout()} aria-label="Log out">
               <LogOut className="h-5 w-5" />
