@@ -29,6 +29,7 @@ import { ScoreRing, BarList, Diagram } from '@/components/charts';
 import { ErrorNote, PctChip } from '@/components/shared';
 import { ExplainMeButton } from '@/components/quiz/ExplainMeButton';
 import { QuizBackdrop } from '@/components/quiz/QuizBackdrop';
+import { Confetti } from '@/components/quiz/Confetti';
 import { useToast } from '@/hooks/use-toast';
 import type { AttemptResult, QReview, TopicStat } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -227,6 +228,9 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
   return (
     <div className="max-w-3xl mx-auto">
       <QuizBackdrop attemptId={attemptId} />
+      {/* 80%+ — a proper celebration. Fires once on arrival, and once more
+          if the AI examiner's marks push the score across the line. */}
+      <Confetti trigger={r.pct >= 80 ? `${attemptId}:yes` : null} />
       <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
         <Button variant="ghost" onClick={home}>
           <ArrowLeft className="h-4 w-4" /> {isSelfTest ? 'Teacher home' : 'Home'}

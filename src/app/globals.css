@@ -251,11 +251,34 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.55; }
 }
+@keyframes shine {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
 
 .anim-rise { animation: rise 0.55s var(--ease-out-quint) both; }
 .anim-pop { animation: pop 0.45s var(--ease-spring) both; }
 .anim-drift { animation: drift 42s ease-in-out infinite alternate; }
 .anim-pulse-soft { animation: pulse-soft 2.4s ease-in-out infinite; }
+
+/* keyboard hint chip — used by the quiz quick-keys hint row */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.3rem;
+  border-radius: 0.3rem;
+  border: 1px solid color-mix(in srgb, var(--foreground) 18%, transparent);
+  border-bottom-width: 2px;
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.4);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1;
+}
 
 /* stagger helpers — children rise one after another */
 .stagger > * { animation: rise 0.55s var(--ease-out-quint) both; }
@@ -290,10 +313,19 @@
 }
 .press:active { transform: scale(0.97); }
 
+/* heatmap squares — a tiny grow + help cursor on hover (real pointers only) */
+.heat-cell { transition: transform 0.18s var(--ease-spring); }
+@media (hover: hover) {
+  .heat-cell:not(.heat-future):hover {
+    transform: scale(1.4);
+    cursor: help;
+  }
+}
+
 /* respect users who prefer calm */
 @media (prefers-reduced-motion: reduce) {
   .anim-rise, .anim-pop, .anim-drift, .anim-pulse-soft,
-  .stagger > *, .card-lift, .press {
+  .stagger > *, .card-lift, .press, .heat-cell {
     animation: none !important;
     transition: none !important;
   }

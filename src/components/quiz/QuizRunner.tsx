@@ -481,6 +481,56 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
     return () => clearInterval(t);
   }, [data, submittedView, attemptId]);
 
+  // quick keys — 1–4 pick an option (1/2 for true–false), Enter checks the
+  // answer or moves to the next question, ← → navigate. Never fires while
+  // the student is typing: textarea keys always belong to the answer, and
+  // digits/arrows typed in an answer input stay in the input. Enter inside
+  // the answer input is the one allowed through — "done" means "check it".
+  useEffect(() => {
+    if (!data || submittedView) return;
+    function onKey(e: KeyboardEvent) {
+      if (exitOpen || confirmOpen) return; // dialogs own the keyboard while open
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      const inInput = Boolean(t && t.tagName === 'INPUT');
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (q && !qChecked) {
+          if ((answers[q.id] ?? '').toString().trim() && !checking) void checkAnswer();
+        } else if (qChecked) {
+          if (idx < total - 1) goto(idx + 1);
+          else setConfirmOpen(true);
+        } else if (idx < total - 1) {
+          goto(idx + 1); // blank answer: Enter still moves on
+        }
+        return;
+      }
+      if (inInput) return;
+
+      if (e.key === 'ArrowRight' && idx < total - 1) {
+        e.preventDefault();
+        goto(idx + 1);
+        return;
+      }
+      if (e.key === 'ArrowLeft' && idx > 0) {
+        e.preventDefault();
+        goto(idx - 1);
+        return;
+      }
+      if (q && !qChecked && /^[1-4]$/.test(e.key)) {
+        if (q.type === 'mcq' && q.options) {
+          const i = Number(e.key) - 1;
+          if (i < q.options.length) pickOption(q.id, String(i));
+        } else if (q.type === 'truefalse') {
+          pickOption(q.id, e.key === '1' ? 'true' : 'false');
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [data, submittedView, q, qChecked, answers, idx, total, exitOpen, confirmOpen, checking]);
+
   // auto-submit when the clock runs out
   useEffect(() => {
     if (!data || deadline === null) return;
@@ -997,6 +1047,23 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                 </AlertDialogContent>
               </AlertDialog>
             )}
+          </div>
+
+          {/* quick-keys hint — desktop keyboards only */}
+          <div className="mt-3 hidden md:flex items-center justify-center gap-2.5 text-[11px] text-muted-foreground select-none">
+            <span className="sr-only">Keyboard shortcuts: number keys pick an answer, Enter checks it, arrow keys move between questions.</span>
+            <span aria-hidden className="flex items-center gap-1">
+              <kbd className="kbd">1</kbd>–<kbd className="kbd">4</kbd> pick
+            </span>
+            <span aria-hidden>·</span>
+            <span aria-hidden className="flex items-center gap-1">
+              <kbd className="kbd">Enter</kbd> check &amp; next
+            </span>
+            <span aria-hidden>·</span>
+            <span aria-hidden className="flex items-center gap-1">
+              <kbd className="kbd">←</kbd>
+              <kbd className="kbd">→</kbd> move
+            </span>
           </div>
         </section>
       </div>

@@ -19,6 +19,7 @@ import {
   UserRoundSearch,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -55,6 +56,7 @@ import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { PageHeader, ThemedSkeleton, ErrorNote, EmptyState } from '@/components/shared';
+import { ActivityHeatmap } from '@/components/app/ActivityHeatmap';
 import {
   buildLoginsCsv,
   buildLoginsPdf,
@@ -169,7 +171,7 @@ function ClassList() {
             <button
               key={c.id}
               onClick={() => go({ name: 't-class', classId: c.id })}
-              className="rounded-lg border bg-card p-5 text-left hover:border-primary/60 hover:shadow-md transition-all group"
+              className="rounded-lg border bg-card p-5 text-left hover:border-primary/60 card-lift transition-all group"
             >
               <div className="flex items-start justify-between">
                 <div className="rounded-lg bg-primary/10 p-2.5 group-hover:bg-primary/15 transition-colors">
@@ -194,6 +196,8 @@ function ClassDetail({ classId }: { classId: string }) {
   const { toast } = useToast();
   const [cls, setCls] = useState<{ id: string; name: string } | null>(null);
   const [students, setStudents] = useState<StudentRow[] | null>(null);
+  const [activity, setActivity] = useState<number[]>([]);
+  const [quizzesBy, setQuizzesBy] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
 
   const [names, setNames] = useState('');
@@ -226,10 +230,17 @@ function ClassDetail({ classId }: { classId: string }) {
 
   const load = useCallback(() => {
     api
-      .get<{ class: { id: string; name: string }; students: StudentRow[] }>(`/api/teacher/classes/${classId}`)
+      .get<{
+        class: { id: string; name: string };
+        students: StudentRow[];
+        activity?: number[];
+        quizzesBy?: Record<string, number>;
+      }>(`/api/teacher/classes/${classId}`)
       .then((d) => {
         setCls(d.class);
         setStudents(d.students);
+        setActivity(d.activity ?? []);
+        setQuizzesBy(d.quizzesBy ?? {});
       })
       .catch((e) => setError((e as Error).message));
   }, [classId]);
@@ -684,13 +695,20 @@ function ClassDetail({ classId }: { classId: string }) {
                 {students.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">
-                      <button
-                        className="hover:text-primary hover:underline underline-offset-2 text-left"
-                        onClick={() => openProfile(s.id)}
-                        title={`Open ${s.displayName}'s profile`}
-                      >
-                        {s.displayName}
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          className="hover:text-primary hover:underline underline-offset-2 text-left"
+                          onClick={() => openProfile(s.id)}
+                          title={`Open ${s.displayName}'s profile`}
+                        >
+                          {s.displayName}
+                        </button>
+                        {quizzesBy[s.id] > 0 ? (
+                          <Badge variant="secondary" className="text-[10px] font-normal shrink-0" title={`${quizzesBy[s.id]} quizzes submitted`}>
+                            {quizzesBy[s.id]} done
+                          </Badge>
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <button
@@ -775,6 +793,39 @@ function ClassDetail({ classId }: { classId: string }) {
           </div>
         )}
       </div>
+
+      {/* class activity — every submitted quiz from any student in this class,
+          as a 12-week heatmap (same grid the students see for themselves) */}
+      {students.length > 0 ? (
+        <ActivityHeatmap
+          activity={activity}
+          title="Class activity"
+          className="mt-6"
+          footerNote={
+            activity.length === 0 ? (
+              <span>No quizzes yet — squares appear as students submit work.</span>
+            ) : (
+              (() => {
+                const ranked = students
+                  .map((s) => ({ name: s.displayName, n: quizzesBy[s.id] ?? 0 }))
+                  .filter((x) => x.n > 0)
+                  .sort((a, b) => b.n - a.n);
+                if (ranked.length === 0) return <span>No quizzes yet — squares appear as students submit work.</span>;
+                const top = ranked[0];
+                const tied = ranked.filter((x) => x.n === top.n).map((x) => x.name);
+                return (
+                  <span>
+                    Most active:{' '}
+                    <span className="font-medium text-foreground">
+                      {tied.length > 1 ? `${tied.join(', ')} — ${top.n} quizzes each` : `${top.name} — ${top.n} quiz${top.n === 1 ? '' : 'zes'}`}
+                    </span>
+                  </span>
+                );
+              })()
+            )
+          }
+        />
+      ) : null}
 
       {/* student profile dialog */}
       <StudentProfileDialog studentId={profileId} open={profileOpen} onOpenChange={setProfileOpen} />

@@ -27,7 +27,17 @@ export async function GET(_req: Request, ctx: Ctx) {
       createdAt: s.createdAt,
     }));
 
-  return NextResponse.json({ class: cls, students });
+  // class activity — every submitted quiz by any student in this class:
+  // timestamps feed the heatmap, per-student counts feed the table chips
+  const studentIds = new Set(students.map((s) => s.id));
+  const attempts = values(await colCached<Attempt>('attempts')).filter(
+    (a) => a.studentId && studentIds.has(a.studentId) && a.status === 'submitted' && a.result
+  );
+  const activity = attempts.map((a) => a.result!.submittedAt);
+  const quizzesBy = Object.fromEntries(students.map((s) => [s.id, 0])) as Record<string, number>;
+  for (const a of attempts) quizzesBy[a.studentId] = (quizzesBy[a.studentId] ?? 0) + 1;
+
+  return NextResponse.json({ class: cls, students, activity, quizzesBy });
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {

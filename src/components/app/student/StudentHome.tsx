@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
   ClipboardList,
   PlayCircle,
@@ -11,7 +12,8 @@ import {
   Award,
   Flame,
   Trophy,
-  CalendarDays,
+  Brain,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +32,7 @@ import { api } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader, ThemedSkeleton, ErrorNote, EmptyState, DueChip, PctChip } from '@/components/shared';
 import { BarList, ScoreRing } from '@/components/charts';
+import { ActivityHeatmap } from '@/components/app/ActivityHeatmap';
 import { cn } from '@/lib/utils';
 
 interface AssignmentRow {
@@ -61,6 +64,9 @@ interface Overview {
   firstLogin?: boolean;
   /** submitted-at timestamps of every completed quiz — feeds the heatmap */
   activity?: number[];
+  /** questions whose most recent outcome was wrong, across ALL quizzes —
+   *  powers the smart-practice nudge (null while loading) */
+  wrongPool?: number;
   recent: { id: string; title: string; mode: string; pct: number; score: number; total: number; submittedAt: number }[];
   mastery: { topic: string; title: string; pct: number; attempts: number }[];
 }
@@ -90,6 +96,7 @@ export function StudentHome() {
   const [board, setBoard] = useState<Leaderboard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+  const [poolStarting, setPoolStarting] = useState(false);
 
   const load = useCallback(() => {
     api
@@ -121,6 +128,20 @@ export function StudentHome() {
       const res = await api.post<{ attemptId: string }>(`/api/student/assignments/${a.id}/start`);
       go({ name: 'quiz', attemptId: res.attemptId });
     } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  // one practice quiz built from the wrong-answer pool across EVERY quiz —
+  // questions drop out of the pool once answered right, so it's always the
+  // exact outstanding material
+  async function startSmartPractice() {
+    setPoolStarting(true);
+    try {
+      const res = await api.post<{ attemptId: string; questionCount: number }>('/api/student/retry-pool');
+      go({ name: 'quiz', attemptId: res.attemptId });
+    } catch (e) {
+      setPoolStarting(false);
       setError((e as Error).message);
     }
   }
@@ -196,7 +217,7 @@ export function StudentHome() {
               <div
                 key={a.id}
                 className={cn(
-                  'rounded-lg border bg-card p-4 sm:p-5 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3',
+                  'rounded-lg border bg-card p-4 sm:p-5 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 card-lift',
                   submitted ? 'opacity-90' : a.status === 'in-progress' ? 'border-primary/50' : undefined
                 )}
               >
@@ -244,6 +265,43 @@ export function StudentHome() {
           })}
         </div>
       )}
+
+      {/* smart-practice nudge — the wrong-answer pool across every quiz.
+          Only appears once there is a meaningful amount to revisit (the
+          per-quiz retry buttons cover smaller cases). */}
+      {(overview.wrongPool ?? 0) >= 3 ? (
+        <motion.section
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className="relative rounded-xl border border-primary/25 bg-gradient-to-br from-primary/10 via-card/80 to-[var(--warn)]/10 p-4 sm:p-5 mb-6 overflow-hidden backdrop-blur-xl shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)]"
+          aria-label="Questions to revisit"
+        >
+          {/* soft shine that sweeps across once when the card appears */}
+          <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/15 to-transparent animate-[shine_1.6s_0.5s_ease-out_1]" aria-hidden />
+          <div className="flex flex-wrap items-center gap-4">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary" aria-hidden>
+              <Brain className="h-6 w-6" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-sm sm:text-base tabular-nums">
+                {overview.wrongPool} question{overview.wrongPool === 1 ? '' : 's'} to revisit
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Answers you got wrong stay here until you get them right — a few minutes now beats cramming later.
+              </p>
+            </div>
+            <Button
+              onClick={() => void startSmartPractice()}
+              disabled={poolStarting}
+              className="shadow-[0_8px_24px_-8px_var(--primary)]"
+            >
+              <Zap className={cn('h-4 w-4', poolStarting && 'animate-pulse')} />
+              {poolStarting ? 'Building…' : 'Practise them now'}
+            </Button>
+          </div>
+        </motion.section>
+      ) : null}
 
       {/* weekly class leaderboard */}
       {board ? (
@@ -358,7 +416,7 @@ export function StudentHome() {
       ) : null}
 
       {/* activity heatmap — every completed quiz as a square, 12 weeks back */}
-      <ActivityHeatmap activity={overview.activity ?? []} streak={streak} className="mb-6" />
+      <ActivityHeatmap activity={overview.activity ?? []} streak={streak?.current} title="Your activity" className="mb-6" />
 
       <div className="grid gap-3 mb-6 sm:grid-cols-3">
         <div className="rounded-lg border bg-card p-4 sm:p-5 flex items-center gap-4">
@@ -427,145 +485,6 @@ export function StudentHome() {
         onDone={() => setWelcomeDismissed(true)}
       />
     </>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Activity heatmap — every completed quiz is a square, 12 weeks back. */
-/* GitHub-style contribution grid in the frosted-glass theme.          */
-/* ------------------------------------------------------------------ */
-
-const HEAT_WEEKS = 12;
-
-function ActivityHeatmap({ activity, streak, className }: { activity: number[]; streak: StreakInfo; className?: string }) {
-  // bucket the timestamps into LOCAL days (a 23:00 quiz lands on the right day)
-  const perDay = new Map<string, number>();
-  for (const t of activity) {
-    const d = new Date(t);
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    perDay.set(key, (perDay.get(key) ?? 0) + 1);
-  }
-
-  // build the grid: columns are weeks starting Monday, rows Mon…Sun.
-  // Start 11 weeks back at that week's Monday so the final column is this week.
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const mondayThisWeek = new Date(today);
-  mondayThisWeek.setDate(today.getDate() - ((today.getDay() + 6) % 7)); // Mon=0
-  const firstMonday = new Date(mondayThisWeek);
-  firstMonday.setDate(mondayThisWeek.getDate() - (HEAT_WEEKS - 1) * 7);
-
-  const weeks: { date: Date; count: number; isToday: boolean; isFuture: boolean }[][] = [];
-  for (let w = 0; w < HEAT_WEEKS; w++) {
-    const col: { date: Date; count: number; isToday: boolean; isFuture: boolean }[] = [];
-    for (let d = 0; d < 7; d++) {
-      const date = new Date(firstMonday);
-      date.setDate(firstMonday.getDate() + w * 7 + d);
-      const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-      col.push({
-        date,
-        count: perDay.get(key) ?? 0,
-        isToday: date.getTime() === today.getTime(),
-        isFuture: date.getTime() > today.getTime(),
-      });
-    }
-    weeks.push(col);
-  }
-
-  const totalQuizzes = activity.length;
-  const activeCells = weeks.flat().filter((c) => c.count > 0).length;
-
-  function level(count: number): string {
-    if (count <= 0) return 'bg-secondary/70';
-    if (count === 1) return 'bg-primary/25';
-    if (count === 2) return 'bg-primary/45';
-    if (count === 3) return 'bg-primary/65';
-    return 'bg-primary';
-  }
-
-  function label(c: { date: Date; count: number }): string {
-    const day = c.date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-    return c.count === 0 ? day : `${c.count} quiz${c.count === 1 ? '' : 'zes'} · ${day}`;
-  }
-
-  // month name shown on the first column where the month changes
-  const monthMarks = weeks.map((col, i) => {
-    if (i === 0) return col[0].date.toLocaleDateString('en-GB', { month: 'short' });
-    const prev = weeks[i - 1][0].date;
-    return prev.getMonth() !== col[0].date.getMonth() ? col[0].date.toLocaleDateString('en-GB', { month: 'short' }) : null;
-  });
-
-  return (
-    <section className={cn('rounded-lg border bg-card p-4 sm:p-5', className)} aria-label="Your activity">
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <h2 className="flex items-center gap-2 font-semibold text-sm">
-          <CalendarDays className="h-4 w-4 text-primary" aria-hidden /> Your activity
-        </h2>
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-          {streak.current >= 2 ? (
-            <span className="flex items-center gap-1 text-[var(--warn)] font-medium">
-              <Flame className="h-3.5 w-3.5" aria-hidden /> {streak.current}-day streak
-            </span>
-          ) : null}
-          <span className="tabular-nums">
-            {totalQuizzes} quiz{totalQuizzes === 1 ? '' : 'zes'} · {activeCells} active {activeCells === 1 ? 'day' : 'days'} in {HEAT_WEEKS} weeks
-          </span>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto scroll-slim pb-1">
-        <div className="min-w-[520px]">
-          {/* month marks */}
-          <div className="grid mb-1" style={{ gridTemplateColumns: `1.35rem repeat(${HEAT_WEEKS}, 1fr)` }} aria-hidden>
-            {monthMarks.map((m, i) => (
-              <span key={i} className="text-[10px] text-muted-foreground pl-1 leading-none h-3.5">
-                {m ?? ''}
-              </span>
-            ))}
-          </div>
-          <div className="flex gap-1.5">
-            {/* weekday labels */}
-            <div className="grid grid-rows-7 gap-[3px] text-[9px] text-muted-foreground w-4 shrink-0" aria-hidden>
-              <span className="leading-none h-3.5 flex items-center">Mon</span>
-              <span />
-              <span className="leading-none h-3.5 flex items-center">Wed</span>
-              <span />
-              <span className="leading-none h-3.5 flex items-center">Fri</span>
-              <span />
-              <span />
-            </div>
-            {/* the squares */}
-            <div className="grid gap-[3px] flex-1" style={{ gridTemplateColumns: `repeat(${HEAT_WEEKS}, 1fr)` }}>
-              {weeks.map((col, wi) => (
-                <div key={wi} className="grid grid-rows-7 gap-[3px]">
-                  {col.map((c) => (
-                    <div
-                      key={c.date.getTime()}
-                      title={label(c)}
-                      className={cn(
-                        'h-3.5 w-full rounded-[3px] transition-colors',
-                        c.isFuture ? 'bg-transparent' : level(c.count),
-                        c.isToday && 'ring-2 ring-primary/50 ring-offset-1 ring-offset-[var(--card)]'
-                      )}
-                    />
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-end gap-1 mt-2 text-[10px] text-muted-foreground">
-        <span className="mr-1">Less</span>
-        <span className="h-2.5 w-2.5 rounded-[2px] bg-secondary/70" aria-hidden />
-        <span className="h-2.5 w-2.5 rounded-[2px] bg-primary/25" aria-hidden />
-        <span className="h-2.5 w-2.5 rounded-[2px] bg-primary/45" aria-hidden />
-        <span className="h-2.5 w-2.5 rounded-[2px] bg-primary/65" aria-hidden />
-        <span className="h-2.5 w-2.5 rounded-[2px] bg-primary" aria-hidden />
-        <span className="ml-1">More</span>
-      </div>
-    </section>
   );
 }
 

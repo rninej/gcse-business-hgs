@@ -3,6 +3,7 @@ import { colCached, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { streaksFrom } from '@/lib/streaks';
 import { topicTitle } from '@/lib/topics';
+import { collectWrongPool } from '@/lib/wrongPool';
 import type { Attempt, Student } from '@/lib/types';
 
 export async function GET() {
@@ -45,6 +46,10 @@ export async function GET() {
   // them into LOCAL days so a 23:00 quiz lands on the right day)
   const activity = attempts.map((a) => a.result!.submittedAt);
 
+  // the wrong-answer pool: questions whose most recent outcome is wrong,
+  // across every submitted quiz — powers the smart-practice nudge
+  const wrongPool = collectWrongPool(attempts).length;
+
   return NextResponse.json({
     stats: {
       quizzesDone: attempts.length,
@@ -54,6 +59,7 @@ export async function GET() {
     },
     streak,
     activity,
+    wrongPool,
     // true the very first time a brand-new account lands on its dashboard —
     // StudentHome uses it to offer the optional password-change popup once
     firstLogin: !me.firstLoginDone,
