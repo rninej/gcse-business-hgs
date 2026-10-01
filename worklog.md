@@ -518,4 +518,4 @@ Stage Summary:
 - New APIs: heartbeat, first-login, teacher/students, teacher/leaderboard; extended: assignments POST/GET/PATCH/[id] GET (draft/classIds/studentIds), attempts GET (abandoned-timed finalisation), check (lastSeenAt), overview (firstLogin), password (firstLoginDone).
 - New assets: public/quiz-backdrops/forest-01..06.jpg (replacing the 6 business photos); public/site-backdrops deleted.
 - Known non-blockers: zustand SSR hydration warning on logged-in hard reload (pre-existing, dev-tools "1 Issue" badge in dev only); .next CSS cache staleness workaround (pkill + rm -rf .next) still applies after globals.css edits.
-- Vercel: redeploy to ship. Env vars unchanged. Test accounts unchanged (teacher e2e-lb@test.uk/testpass123; students ava.stone/eagercod44, noah.reid/eagertiger86). Cron 15-min webDevReview job 424289 active.
+- Vercel: redeploy to ship. Env vars unchanged. Test accounts unchanged (teacher e2e-lb@test.uk/testpass123; students ava.stone/eagercod44, noah.reid/eagertiger86). Cron 15-min webDevReview job 427793 active (recreated this round — old 424289 showed stopped).
