@@ -15,10 +15,14 @@ export async function POST(req: Request) {
     types?: QuestionType[];
     difficulty?: number | 'mixed';
     caseStudies?: boolean;
+    brief?: string;
   };
   const topics = (body.topics ?? []).filter((t) => typeof t === 'string');
-  if (topics.length === 0) {
-    return NextResponse.json({ error: 'Select at least one topic.' }, { status: 400 });
+  const brief = typeof body.brief === 'string' ? body.brief.trim().slice(0, 600) : '';
+  // topics are optional when the teacher describes the quiz instead —
+  // the AI then picks them from the whole spec
+  if (topics.length === 0 && !brief) {
+    return NextResponse.json({ error: 'Select at least one topic — or describe the quiz you want.' }, { status: 400 });
   }
 
   const gen = await generateQuestions({
@@ -28,6 +32,7 @@ export async function POST(req: Request) {
     difficulty:
       body.difficulty === 1 || body.difficulty === 2 || body.difficulty === 3 ? body.difficulty : 'mixed',
     caseStudies: Boolean(body.caseStudies),
+    brief: brief || undefined,
   });
 
   return NextResponse.json({

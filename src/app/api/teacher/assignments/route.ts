@@ -206,7 +206,7 @@ interface CreateBody {
   timeLimitMin?: number | null;
   mode?: 'library' | 'ai' | 'custom';
   quizId?: string;
-  aiParams?: { topics: string[]; count: number; types: QuestionType[]; difficulty: number | 'mixed'; caseStudies: boolean };
+  aiParams?: { topics: string[]; brief?: string; count: number; types: QuestionType[]; difficulty: number | 'mixed'; caseStudies: boolean };
   customQuestions?: CustomInput[];
   /** AI-marked written questions appended on top of any mode's question set. */
   extraWritten?: CustomInput[];
@@ -299,11 +299,13 @@ export async function POST(req: Request) {
       generatedBy = 'AI generated';
     } else {
       const p = body.aiParams;
-      if (!p || !Array.isArray(p.topics) || p.topics.length === 0) {
-        return NextResponse.json({ error: 'Select at least one topic.' }, { status: 400 });
+      const brief = typeof p?.brief === 'string' ? p.brief.trim().slice(0, 600) : '';
+      if (!p || (!Array.isArray(p.topics) || p.topics.length === 0) && !brief) {
+        return NextResponse.json({ error: 'Select at least one topic — or describe the quiz you want.' }, { status: 400 });
       }
       const gen = await generateQuestions({
-        topics: p.topics,
+        topics: Array.isArray(p.topics) ? p.topics : [],
+        brief: brief || undefined,
         count: Math.max(5, Math.min(30, Number(p.count) || 10)),
         types: Array.isArray(p.types) ? p.types : [],
         difficulty: (p.difficulty === 1 || p.difficulty === 2 || p.difficulty === 3 ? p.difficulty : 'mixed'),

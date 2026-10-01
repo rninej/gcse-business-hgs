@@ -1,7 +1,63 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-  <rect width="48" height="48" rx="11" fill="#0d5c46"/>
-  <rect x="10.5" y="24" width="6" height="13.5" rx="2" fill="#ffffff" opacity="0.82"/>
-  <rect x="21" y="17" width="6" height="20.5" rx="2" fill="#ffffff"/>
-  <rect x="31.5" y="10" width="6" height="27.5" rx="2" fill="#f0a63c"/>
-  <rect x="10.5" y="40" width="27" height="2" rx="1" fill="#ffffff" opacity="0.35"/>
+<svg width="512" height="512" viewBox="0 0 512 512"
+     xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="105" fill="#2563EB"/>
+
+  <!-- Large open book -->
+  <path d="M48 52
+           C112 15 188 24 256 70
+           C324 24 400 15 464 52
+           V270
+           C395 238 326 243 256 285
+           C186 243 117 238 48 270Z"
+        fill="white"/>
+
+  <!-- Centre fold -->
+  <path d="M256 70 V285"
+        stroke="#2563EB"
+        stroke-width="12"
+        stroke-linecap="round"/>
+
+  <!-- Business bars -->
+  <rect x="95" y="185" width="34" height="70" rx="7" fill="#22C55E"/>
+  <rect x="150" y="155" width="34" height="100" rx="7" fill="#22C55E"/>
+  <rect x="205" y="120" width="34" height="135" rx="7" fill="#22C55E"/>
+  <rect x="260" y="90" width="34" height="165" rx="7" fill="#22C55E"/>
+  <rect x="315" y="55" width="34" height="200" rx="7" fill="#22C55E"/>
+
+  <!-- Growth arrow -->
+  <path d="M85 165 L155 140 L215 115 L275 85 L380 35"
+        fill="none"
+        stroke="#FACC15"
+        stroke-width="12"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <path d="M350 35 L380 35 L378 65"
+        fill="none"
+        stroke="#FACC15"
+        stroke-width="12"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- GCSE -->
+  <text x="256" y="362"
+        text-anchor="middle"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="92"
+        font-weight="900"
+        letter-spacing="-4"
+        fill="white">GCSE</text>
+
+  <!-- business — exactly centred on the same x-axis -->
+  <text x="256" y="414"
+        text-anchor="middle"
+        dominant-baseline="alphabetic"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="36"
+        font-weight="600"
+        letter-spacing="2.5"
+        fill="#DBEAFE">business</text>
+
 </svg>

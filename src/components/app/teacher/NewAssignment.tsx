@@ -103,6 +103,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
   const [quizId, setQuizId] = useState(presetQuizId ?? '');
   // ai
   const [aiTopics, setAiTopics] = useState<string[]>(['2.1']);
+  const [aiBrief, setAiBrief] = useState('');
   const [aiCount, setAiCount] = useState(12);
   const [aiTypes, setAiTypes] = useState<QuestionType[]>([]);
   const [aiDifficulty, setAiDifficulty] = useState<'1' | '2' | '3' | 'mixed'>('mixed');
@@ -257,6 +258,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
         questions: Question[];
       }>('/api/teacher/generate', {
         topics: aiTopics,
+        brief: aiBrief.trim() || undefined,
         count: aiCount,
         types: aiTypes,
         difficulty: aiDifficulty === 'mixed' ? 'mixed' : Number(aiDifficulty),
@@ -288,7 +290,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
         quizId: mode === 'library' ? quizId : undefined,
         aiParams:
           mode === 'ai'
-            ? { topics: aiTopics, count: aiQuestions?.length ?? aiCount, types: aiTypes, difficulty: aiDifficulty === 'mixed' ? 'mixed' : Number(aiDifficulty), caseStudies: aiCases }
+            ? { topics: aiTopics, brief: aiBrief.trim() || undefined, count: aiQuestions?.length ?? aiCount, types: aiTypes, difficulty: aiDifficulty === 'mixed' ? 'mixed' : Number(aiDifficulty), caseStudies: aiCases }
             : undefined,
         // the reviewed (and possibly edited) preview goes with the request —
         // the server uses it directly instead of generating a second set
@@ -513,7 +515,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
           <RadioGroup value={mode} onValueChange={(v) => setMode(v as Mode)} className="grid gap-3 sm:grid-cols-3">
             {[
               { v: 'library' as Mode, icon: BookOpen, t: 'Quiz library', d: 'Hand-written banks, ready to go' },
-              { v: 'ai' as Mode, icon: Sparkles, t: 'Generate', d: 'Fresh questions on your chosen topics' },
+              { v: 'ai' as Mode, icon: Sparkles, t: 'Generate', d: 'Type what you want, or pick topics' },
               { v: 'custom' as Mode, icon: PenLine, t: 'My questions', d: 'Type your own — any style' },
             ].map((o) => (
               <label key={o.v} className={cn('cursor-pointer glass-soft rounded-xl p-4 flex gap-3 items-start transition-all', mode === o.v ? 'glass-selected' : 'hover:border-primary/30')}>
@@ -576,8 +578,25 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
 
           {mode === 'ai' ? (
             <div className="glass rounded-xl p-5 space-y-5">
+              {/* free-text brief — the teacher just types what they want */}
               <div className="space-y-2">
-                <Label>Topics</Label>
+                <Label htmlFor="ai-brief">Describe the quiz you want</Label>
+                <Textarea
+                  id="ai-brief"
+                  value={aiBrief}
+                  onChange={(e) => setAiBrief(e.target.value)}
+                  rows={3}
+                  maxLength={600}
+                  placeholder="e.g. “A quiz about a local bakery's finances — mostly break-even calculations, one case study about cash flow, and a couple of tougher written questions”… or leave blank and use the options below."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Write it like you'd say it — topics, question styles, a business to feature, anything. The AI follows your description.{' '}
+                  <span className="tabular-nums">{aiBrief.length}/600</span>
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{aiBrief.trim() ? 'Topics (optional — the AI picks from your description)' : 'Topics'}</Label>
                 <div className="flex flex-wrap gap-2">
                   {TOPICS.map((t) => {
                     const on = aiTopics.includes(t.id);
@@ -596,7 +615,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
                     );
                   })}
                 </div>
-                {aiTopics.length === 0 ? <p className="text-xs text-[var(--warn)]">Pick at least one topic.</p> : null}
+                {aiTopics.length === 0 && !aiBrief.trim() ? <p className="text-xs text-[var(--warn)]">Pick at least one topic — or describe the quiz above.</p> : null}
               </div>
 
               <div className="grid sm:grid-cols-2 gap-5">
@@ -662,7 +681,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
               </div>
 
               <div className="flex flex-wrap gap-3 items-center">
-                <Button onClick={generate} disabled={aiBusy || aiTopics.length === 0}>
+                <Button onClick={generate} disabled={aiBusy || (aiTopics.length === 0 && !aiBrief.trim())}>
                   {aiBusy ? (
                     <>
                       <RotateCw className="h-4 w-4 animate-spin" /> Writing questions…

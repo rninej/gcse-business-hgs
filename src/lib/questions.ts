@@ -14,6 +14,9 @@ export interface GenParams {
   types: QuestionType[];
   difficulty: 1 | 2 | 3 | 'mixed';
   caseStudies: boolean;
+  /** free-text teacher brief, e.g. "a quiz on a local bakery's break-even,
+   *  mostly calculations, one case study" — steers generation when present */
+  brief?: string;
 }
 
 export interface GenResult {
@@ -211,7 +214,12 @@ export function bankFallback(params: GenParams): Question[] {
 
 export async function generateQuestions(params: GenParams): Promise<GenResult> {
   const count = Math.max(5, Math.min(30, params.count));
-  const topics = params.topics.filter((t) => KNOWLEDGE[t]);
+  let topics = params.topics.filter((t) => KNOWLEDGE[t]);
+  // with a brief but no topics, the teacher leaves topic choice to the AI —
+  // allow every spec topic in that case (validation needs the full set)
+  if (topics.length === 0 && params.brief) {
+    topics = Object.keys(KNOWLEDGE).filter((t) => TOPIC_MAP[t]);
+  }
   if (topics.length === 0) topics.push('1.1', '2.1');
 
   const typeLine = params.types.length ? params.types.join(', ') : 'a natural mix (mostly mcq and term)';
@@ -219,11 +227,16 @@ export async function generateQuestions(params: GenParams): Promise<GenResult> {
 
   const system = `You are a senior Edexcel GCSE (9-1) Business examiner and question writer for a UK school platform. You write in crisp, neutral British English at the reading level of a 14-16 year old. Questions must be exam-accurate: every real-world fact must be true and verifiable; use real UK businesses with correct figures, or realistic fictional small businesses with clean, internally consistent numbers. Never invent statistics about real companies. Never mention AI, robots or that these questions were generated. Avoid Americanisms (lift, shop, autumn, maths, £).`;
 
+  const briefLine = params.brief
+    ? `\nTEACHER'S BRIEF (follow it closely — it overrides the type/difficulty/case-study preferences above when they conflict; the question count and the JSON schema always stand):\n${params.brief.slice(0, 600)}\n`
+    : '';
+
   const user = `Write ${count} GCSE Business questions on: ${topics.map((t) => `${t} ${TOPIC_MAP[t]?.title ?? ''}`).join('; ')}.
 
 QUESTION TYPES wanted: ${typeLine}.
 DIFFICULTY: ${diffLine}.
 CASE STUDY EXTRACTS: ${params.caseStudies ? 'include short case-study extracts above roughly a third of the questions (real businesses or clearly realistic small firms, 2-4 sentences)' : 'mostly standalone questions; at most one short extract'}.
+${briefLine}
 
 Rules:
 - One correct answer only, no trick wording, no "all of the above".
