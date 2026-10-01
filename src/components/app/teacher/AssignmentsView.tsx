@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, ClipboardList, FlaskConical, Pencil, PlusCircle, Rocket, Timer, Trash2 } from 'lucide-react';
+import { ArrowRight, ClipboardList, Clock, FlaskConical, Pencil, PlusCircle, Rocket, Timer, Trash2, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -33,6 +33,8 @@ interface Row {
   questionCount: number;
   source: 'library' | 'ai' | 'custom';
   draft?: boolean;
+  /** future epoch ms → still hidden from students (Scheduled state) */
+  publishAt?: number | null;
   submitted: number;
   totalStudents: number;
 }
@@ -80,11 +82,18 @@ export function AssignmentsView() {
 
   // flip a draft live — students see it from this moment
   const [publishing, setPublishing] = useState<string | null>(null);
-  async function publish(a: Row) {
+  async function publish(a: Row, early = false) {
     setPublishing(a.id);
     try {
-      await api.patch(`/api/teacher/assignments/${a.id}`);
-      toast({ title: `“${a.title}” is live`, description: 'Students can see it on their homepages now.' });
+      const res = await api.patch<{ ok: boolean; notified?: number }>(`/api/teacher/assignments/${a.id}`);
+      const bells =
+        res.notified && res.notified > 0
+          ? ` Bells rang for ${res.notified} student${res.notified === 1 ? '' : 's'}.`
+          : '';
+      toast({
+        title: early ? `“${a.title}” is live early` : `“${a.title}” is live`,
+        description: `${early ? 'It was scheduled for later — it is out now instead.' : 'Students can see it on their homepages now.'}${bells}`,
+      });
       load();
     } catch (e) {
       toast({ title: 'Could not publish', description: (e as Error).message, variant: 'destructive' });
@@ -149,12 +158,17 @@ export function AssignmentsView() {
         <div className="space-y-3">
           {rows.map((a) => {
             const done = a.totalStudents > 0 ? Math.round((a.submitted / a.totalStudents) * 100) : 0;
+            // Scheduled = live-but-hidden until its moment (own state, distinct
+            // from drafts' dashed border and from published rows)
+            const scheduled = !a.draft && typeof a.publishAt === 'number' && a.publishAt > Date.now();
             return (
               <div
                 key={a.id}
                 className={cn(
                   'rounded-xl border bg-card p-4 hover:border-primary/50 transition-colors no-print',
-                  a.draft && 'border-dashed border-[var(--warn)]/50 bg-[var(--warn)]/[0.04]'
+                  a.draft && 'border-dashed border-[var(--warn)]/50 bg-[var(--warn)]/[0.04]',
+                  scheduled &&
+                    'border-[var(--warn)]/40 border-l-4 border-l-[var(--warn)] bg-[var(--warn)]/[0.05]'
                 )}
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-x-3">
@@ -164,6 +178,17 @@ export function AssignmentsView() {
                       {a.draft ? (
                         <Badge className="text-[10px] bg-[var(--warn)] text-[var(--warn-foreground)] gap-1">
                           <Pencil className="h-3 w-3" /> Draft
+                        </Badge>
+                      ) : null}
+                      {scheduled ? (
+                        <Badge className="text-[10px] bg-[var(--warn)] text-[var(--warn-foreground)] gap-1">
+                          <Clock className="h-3 w-3" aria-hidden /> Scheduled ·{' '}
+                          {new Date(a.publishAt as number).toLocaleString('en-GB', {
+                            day: 'numeric',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                         </Badge>
                       ) : null}
                       <Badge variant="secondary" className="text-[10px]">{SOURCE_LABEL[a.source]}</Badge>
@@ -176,7 +201,18 @@ export function AssignmentsView() {
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
                       {recipientsLabel(a)} · {a.questionCount} questions
-                      {a.draft ? ' · not visible to students yet' : a.dueAt ? ` · due ${new Date(a.dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}
+                      {a.draft
+                        ? ' · not visible to students yet'
+                        : scheduled
+                          ? ` · goes live ${new Date(a.publishAt as number).toLocaleString('en-GB', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })} — hidden until then`
+                          : a.dueAt
+                            ? ` · due ${new Date(a.dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
+                            : ''}
                     </div>
                   </button>
 
@@ -217,6 +253,28 @@ export function AssignmentsView() {
                           >
                             <Rocket className="h-3.5 w-3.5" />
                             <span className="hidden lg:inline">{publishing === a.id ? 'Publishing…' : 'Publish'}</span>
+                          </Button>
+                        </>
+                      ) : scheduled ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void selfTest(a)}
+                            disabled={testing === a.id}
+                            title="Try this quiz yourself — a private dry run"
+                          >
+                            <FlaskConical className="h-3.5 w-3.5" />
+                            <span className="hidden lg:inline">{testing === a.id ? 'Starting…' : 'Test it'}</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => void publish(a, true)}
+                            disabled={publishing === a.id}
+                            title="Send it out now instead of waiting for the scheduled moment"
+                          >
+                            <Zap className="h-3.5 w-3.5" />
+                            <span className="hidden lg:inline">{publishing === a.id ? 'Publishing…' : 'Publish now'}</span>
                           </Button>
                         </>
                       ) : (

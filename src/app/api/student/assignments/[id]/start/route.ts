@@ -25,7 +25,13 @@ export async function POST(_req: Request, ctx: Ctx) {
 
   const assignments = await col<Assignment>('assignments');
   const a = assignments[id];
-  if (!a || a.draft || !assignmentTargetsStudent(a, me)) {
+  if (
+    !a ||
+    a.draft ||
+    // scheduled assignments can't be started before their moment passes
+    (typeof a.publishAt === 'number' && a.publishAt > Date.now()) ||
+    !assignmentTargetsStudent(a, me)
+  ) {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
 

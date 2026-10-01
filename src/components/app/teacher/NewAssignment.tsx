@@ -18,6 +18,15 @@ import {
   Pencil,
   Save,
   UserCheck,
+  Library,
+  Dices,
+  Search,
+  SearchX,
+  X,
+  Clock,
+  Zap,
+  CalendarClock,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +38,14 @@ import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
@@ -42,6 +59,21 @@ interface StudentLite { id: string; displayName: string; username: string; class
 interface QuizRow { id: string; title: string; blurb: string; theme: 1 | 2; topics: string[]; questionCount: number; types: QuestionType[] }
 
 type Mode = 'library' | 'ai' | 'custom';
+
+/** the server caps custom assignments at 40 questions — surface it early */
+const CUSTOM_MAX = 40;
+
+/** one row of the bank picker (Question is a union, so intersect it) */
+type BankRow = Question & { quizTitle: string };
+
+const BANK_TYPE_CHIPS: [QuestionType, string][] = [
+  ['mcq', 'Multiple choice'],
+  ['term', 'Type the term'],
+  ['fib', 'Fill the blank'],
+  ['numeric', 'Calculations'],
+  ['truefalse', 'True / false'],
+  ['written', 'Written'],
+];
 
 /** epoch ms → value for <input type="datetime-local"> */
 function toLocalInput(ms: number): string {
@@ -80,6 +112,9 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
   const [aiProvider, setAiProvider] = useState<string | null>(null);
   // custom
   const [custom, setCustom] = useState<Question[]>([]);
+  // ids of the custom questions that came from the bank (vs typed) — drives
+  // the little “Bank” badge in the lists
+  const [bankIds, setBankIds] = useState<Set<string>>(new Set());
   // teacher-added written questions — append to any question source
   const [extraWritten, setExtraWritten] = useState<Question[]>([]);
   // drafts
@@ -87,6 +122,9 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
   // step 3
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // step 3: send now vs schedule
+  const [sendMode, setSendMode] = useState<'now' | 'schedule'>('now');
+  const [publishLocal, setPublishLocal] = useState('');
 
   useEffect(() => {
     api.get<{ classes: ClassRow[] }>('/api/teacher/classes').then((d) => {
@@ -131,6 +169,54 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
     const t = new Date(dueLocal).getTime();
     return Number.isFinite(t) ? t : null;
   }, [dueLocal]);
+
+  // scheduled go-live moment (step 3) — null when sending now
+  const publishAt = useMemo(() => {
+    if (sendMode !== 'schedule' || !publishLocal) return null;
+    const t = new Date(publishLocal).getTime();
+    return Number.isFinite(t) ? t : null;
+  }, [sendMode, publishLocal]);
+  const scheduleReady = sendMode === 'now' || (publishAt !== null && publishAt > Date.now());
+  const scheduleAfterDue = dueAt !== null && publishAt !== null && publishAt > dueAt;
+
+  /** Append bank questions to the SAME list typed questions use — deduped by
+   *  id and clamped to the 40-question cap, with a toast that says exactly
+   *  what happened. */
+  function addBankQuestions(picked: Question[]) {
+    if (picked.length === 0) return;
+    const existing = new Set(custom.map((q) => q.id));
+    const fresh = picked.filter((q) => !existing.has(q.id));
+    const room = Math.max(0, CUSTOM_MAX - custom.length);
+    const added = fresh.slice(0, room);
+    if (added.length === 0) {
+      toast({
+        title: 'Nothing added',
+        description:
+          custom.length >= CUSTOM_MAX
+            ? 'This assignment is full — up to 40 questions.'
+            : 'Those questions are already in the list.',
+      });
+      return;
+    }
+    setCustom([...custom, ...added]);
+    setBankIds((prev) => {
+      const next = new Set(prev);
+      for (const q of added) next.add(q.id);
+      return next;
+    });
+    const skippedDupes = picked.length - fresh.length;
+    const skippedCap = fresh.length - added.length;
+    toast({
+      title: `${added.length} bank question${added.length === 1 ? '' : 's'} added`,
+      description:
+        [
+          skippedDupes > 0 ? `${skippedDupes} already in the list` : '',
+          skippedCap > 0 ? `list is full at ${CUSTOM_MAX}` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ') || `${custom.length + added.length} question${custom.length + added.length === 1 ? '' : 's'} in this assignment so far.`,
+    });
+  }
 
   const [libraryQuestions, setLibraryQuestions] = useState<Question[] | null>(null);
   useEffect(() => {
@@ -189,6 +275,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
     setCreating(true);
     setError(null);
     try {
+      const scheduled = !asDraft && sendMode === 'schedule' && publishAt !== null && publishAt > Date.now();
       const body = {
         classId: classIds[0],
         classIds,
@@ -211,13 +298,23 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
         extraWritten: mode !== 'custom' && extraWritten.length > 0 ? extraWritten : undefined,
         draft: asDraft,
         updateId: updatingDraftId ?? undefined,
+        // scheduled publishing — only when the task actually goes out now
+        publishAt: scheduled ? publishAt : undefined,
       };
-      const res = await api.post<{ assignmentId: string; questionCount: number; draft?: boolean }>(
-        '/api/teacher/assignments',
-        body
-      );
+      const res = await api.post<{
+        assignmentId: string;
+        questionCount: number;
+        draft?: boolean;
+        scheduled?: boolean;
+      }>('/api/teacher/assignments', body);
       if (asDraft) {
         toast({ title: res.draft ? 'Draft saved' : 'Draft updated', description: 'Find it under Assignments — publish it whenever you’re ready.' });
+        go({ name: 't-assignments' });
+      } else if (scheduled && publishAt) {
+        toast({
+          title: 'Task scheduled',
+          description: `Goes live ${new Date(publishAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })} — students see it and hear their bells then.`,
+        });
         go({ name: 't-assignments' });
       } else {
         const who = classIds.length + studentIds.length > 1 ? 'your classes' : 'your class';
@@ -419,7 +516,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
               { v: 'ai' as Mode, icon: Sparkles, t: 'Generate', d: 'Fresh questions on your chosen topics' },
               { v: 'custom' as Mode, icon: PenLine, t: 'My questions', d: 'Type your own — any style' },
             ].map((o) => (
-              <label key={o.v} className={cn('cursor-pointer glass-soft rounded-xl p-4 flex gap-3 items-start transition-colors', mode === o.v ? 'border-primary ring-1 ring-primary/40' : 'hover:border-primary/30')}>
+              <label key={o.v} className={cn('cursor-pointer glass-soft rounded-xl p-4 flex gap-3 items-start transition-all', mode === o.v ? 'glass-selected' : 'hover:border-primary/30')}>
                 <RadioGroupItem value={o.v} id={`mode-${o.v}`} className="mt-1" />
                 <div>
                   <div className="text-sm font-semibold flex items-center gap-2"><o.icon className="h-4 w-4 text-primary" /> {o.t}</div>
@@ -439,12 +536,24 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
                     <button
                       key={q.id}
                       onClick={() => setQuizId(q.id)}
+                      aria-pressed={quizId === q.id}
                       className={cn(
-                        'glass-soft rounded-xl p-4 text-left transition-colors',
-                        quizId === q.id ? 'border-primary ring-1 ring-primary/40' : 'hover:border-primary/30'
+                        'relative glass-soft rounded-xl p-4 text-left transition-all',
+                        quizId === q.id ? 'glass-selected' : 'hover:border-primary/30'
                       )}
                     >
-                      <div className="flex items-center justify-between gap-2">
+                      <span
+                        className={cn(
+                          'absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full transition-all',
+                          quizId === q.id
+                            ? 'bg-primary text-primary-foreground scale-100 shadow-md'
+                            : 'scale-0 opacity-0'
+                        )}
+                        aria-hidden
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                      </span>
+                      <div className="flex items-center justify-between gap-2 pr-8">
                         <span className="font-semibold text-sm">{q.title}</span>
                         <Badge variant="secondary" className="tabular-nums shrink-0">Theme {q.theme}</Badge>
                       </div>
@@ -591,7 +700,13 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
           ) : null}
 
           {mode === 'custom' ? (
-            <CustomBuilder list={custom} setList={setCustom} />
+            <CustomBuilder
+              list={custom}
+              setList={setCustom}
+              bankIds={bankIds}
+              setBankIds={setBankIds}
+              onAddBank={addBankQuestions}
+            />
           ) : null}
 
           {/* AI-marked written questions — available on top of any source */}
@@ -617,12 +732,79 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
               ['Due', dueAt ? new Date(dueAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : 'No deadline'],
               ['Timed', timed ? `${timeLimit} minutes` : 'Untimed'],
               ['Questions', finalQuestions ? `${finalQuestions.length} · ${totalMarks} marks` : '—'],
+              [
+                'Goes live',
+                sendMode === 'schedule' && publishAt
+                  ? new Date(publishAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+                  : 'Straight away',
+              ],
             ].map(([k, v]) => (
               <div key={k as string} className="flex justify-between gap-3 border-b py-1.5 last:border-0">
                 <span className="text-muted-foreground">{k}</span>
                 <span className="font-medium text-right">{v}</span>
               </div>
             ))}
+          </div>
+
+          {/* send now vs schedule */}
+          <div className="glass rounded-xl p-5 space-y-4">
+            <div className="text-sm font-semibold flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" aria-hidden /> When should it go out?
+            </div>
+            <div className="grid grid-cols-2 gap-3" role="group" aria-label="Send timing">
+              {([
+                { v: 'now' as const, icon: Zap, t: 'Send now', d: 'Students see it straight away — bells ring immediately.' },
+                { v: 'schedule' as const, icon: CalendarClock, t: 'Schedule', d: 'Pick a moment — it appears and rings bells then.' },
+              ]).map((o) => {
+                const on = sendMode === o.v;
+                return (
+                  <button
+                    key={o.v}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setSendMode(o.v)}
+                    className={cn(
+                      'glass-soft rounded-xl p-3.5 text-left transition-all hover:border-primary/30',
+                      on && 'glass-selected'
+                    )}
+                  >
+                    <span className="text-sm font-semibold flex items-center gap-2">
+                      <o.icon className="h-4 w-4 text-primary" aria-hidden /> {o.t}
+                    </span>
+                    <span className="block text-xs text-muted-foreground mt-1">{o.d}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {sendMode === 'schedule' ? (
+              <div className="space-y-2">
+                <Label htmlFor="a-publish">Goes live</Label>
+                <Input
+                  id="a-publish"
+                  type="datetime-local"
+                  min={toLocalInput(Date.now())}
+                  value={publishLocal}
+                  onChange={(e) => setPublishLocal(e.target.value)}
+                />
+                {publishAt && publishAt > Date.now() ? (
+                  <p className="text-xs text-muted-foreground">
+                    Hidden from students until{' '}
+                    {new Date(publishAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}.
+                    The schedule applies when it goes out — saving it as a draft keeps it a plain draft.
+                  </p>
+                ) : (
+                  <p className="text-xs text-[var(--warn)] flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5" aria-hidden /> Pick a moment in the future.
+                  </p>
+                )}
+                {scheduleAfterDue ? (
+                  <p className="text-xs text-[var(--warn)] flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5" aria-hidden /> That is after the due date — students
+                    will see it as already due.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           {mode === 'ai' && aiProvider === 'bank' ? (
@@ -636,7 +818,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
             </p>
           ) : null}
 
-          {finalQuestions ? <QuestionPreviewList questions={finalQuestions} readOnly /> : null}
+          {finalQuestions ? <QuestionPreviewList questions={finalQuestions} readOnly bankIds={bankIds} /> : null}
 
           <div className="flex flex-col-reverse sm:flex-row justify-between gap-3">
             <Button variant="outline" onClick={() => setStep(2)}><ArrowLeft className="h-4 w-4" /> Questions</Button>
@@ -649,8 +831,21 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
               >
                 <Save className="h-4 w-4" /> {creating ? 'Saving…' : 'Save as draft'}
               </Button>
-              <Button onClick={() => void assign(false)} disabled={creating}>
-                {creating ? 'Setting…' : <>Set assignment <CheckCircle2 className="h-4 w-4" /></>}
+              <Button
+                onClick={() => void assign(false)}
+                disabled={creating || !scheduleReady}
+              >
+                {creating ? (
+                  sendMode === 'schedule' ? 'Scheduling…' : 'Setting…'
+                ) : sendMode === 'schedule' ? (
+                  <>
+                    Schedule task <CalendarClock className="h-4 w-4" />
+                  </>
+                ) : (
+                  <>
+                    Set assignment <CheckCircle2 className="h-4 w-4" />
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -669,11 +864,14 @@ function QuestionPreviewList({
   onRemove,
   onEdit,
   readOnly,
+  bankIds,
 }: {
   questions: Question[];
   onRemove?: (id: string) => void;
   onEdit?: (id: string, q: Question) => void;
   readOnly?: boolean;
+  /** ids of questions that came from the bank — they get a small Bank badge */
+  bankIds?: Set<string>;
 }) {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -702,6 +900,14 @@ function QuestionPreviewList({
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="text-xs font-bold text-primary tabular-nums">{i + 1}</span>
                   <TypeBadge type={q.type} />
+                  {bankIds?.has(q.id) ? (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] gap-1 text-primary border-primary/30"
+                    >
+                      <Library className="h-3 w-3" aria-hidden /> Bank
+                    </Badge>
+                  ) : null}
                   <MarksChip marks={q.marks} />
                   <span className="text-[10px] text-muted-foreground ml-auto">{q.topic} {topicTitle(q.topic).split(' ')[0]}</span>
                   {!readOnly && onEdit ? (
@@ -930,8 +1136,20 @@ function QuestionEditor({ q, onSave, onCancel }: { q: Question; onSave: (q: Ques
   );
 }
 
-/* custom question builder */
-function CustomBuilder({ list, setList }: { list: Question[]; setList: (q: Question[]) => void }) {
+/* custom question builder: bank picker + typed questions, one shared list */
+function CustomBuilder({
+  list,
+  setList,
+  bankIds,
+  setBankIds,
+  onAddBank,
+}: {
+  list: Question[];
+  setList: (q: Question[]) => void;
+  bankIds: Set<string>;
+  setBankIds: (s: Set<string>) => void;
+  onAddBank: (qs: Question[]) => void;
+}) {
   const [type, setType] = useState<QuestionType>('mcq');
   const [topic, setTopic] = useState('2.1');
   const [stem, setStem] = useState('');
@@ -1002,10 +1220,42 @@ function CustomBuilder({ list, setList }: { list: Question[]; setList: (q: Quest
 
   return (
     <div className="space-y-4">
+      {/* source 1 of 2 — the hand-written question bank */}
+      <div className="glass rounded-xl p-5">
+        <div className="text-sm font-semibold flex items-center gap-2">
+          <Library className="h-4 w-4 text-primary" aria-hidden /> Pick from the gcsebusiness bank
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Hundreds of hand-written questions — filter by topic, type or keyword, tick the ones you
+          want, or grab a lucky dip. They mix with your typed questions below.
+        </p>
+        <div className="flex flex-wrap items-center gap-3 mt-4">
+          <BankPicker existingIds={new Set(list.map((q) => q.id))} onAdd={onAddBank} />
+          {bankIds.size > 0 ? (
+            <Badge variant="secondary" className="gap-1">
+              <Library className="h-3 w-3" aria-hidden /> {bankIds.size} bank{' '}
+              {bankIds.size === 1 ? 'question' : 'questions'} in the list
+            </Badge>
+          ) : null}
+        </div>
+      </div>
+
+      {/* source 2 of 2 — type your own */}
       {type === 'written' ? (
         <WrittenFields onAdd={(q) => setList([...list, q])} />
       ) : (
       <div className="glass rounded-xl p-5 space-y-4">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div>
+            <div className="text-sm font-semibold flex items-center gap-2">
+              <PenLine className="h-4 w-4 text-primary" aria-hidden /> Type your own
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">Any style — they join the bank questions above.</p>
+          </div>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {list.length}/{CUSTOM_MAX} question{list.length === 1 ? '' : 's'}
+          </span>
+        </div>
         <div className="flex flex-wrap gap-3 items-end">
           <div className="space-y-1">
             <Label>Type</Label>
@@ -1147,7 +1397,15 @@ function CustomBuilder({ list, setList }: { list: Question[]; setList: (q: Quest
       {list.length > 0 ? (
         <QuestionPreviewList
           questions={list}
-          onRemove={(id) => setList(list.filter((q) => q.id !== id))}
+          bankIds={bankIds}
+          onRemove={(id) => {
+            setList(list.filter((q) => q.id !== id));
+            if (bankIds.has(id)) {
+              const next = new Set(bankIds);
+              next.delete(id);
+              setBankIds(next);
+            }
+          }}
           onEdit={(id, nq) => setList(list.map((x) => (x.id === id ? nq : x)))}
         />
       ) : null}
@@ -1348,5 +1606,351 @@ function WrittenSection({ list, setList }: { list: Question[]; setList: (q: Ques
         <WrittenFields onAdd={(q) => setList([...list, q])} />
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Bank picker — a dialog of every bank question, filterable by topic, */
+/* type and keyword. Tick rows (they survive filter changes), then add */
+/* them to the same list typed questions use — or press Lucky dip to  */
+/* grab N random questions matching the current filters instantly.     */
+/* ------------------------------------------------------------------ */
+function BankPicker({
+  existingIds,
+  onAdd,
+}: {
+  /** ids already in the custom list (typed + earlier bank picks) */
+  existingIds: Set<string>;
+  /** deliver the picked questions to the shared list */
+  onAdd: (qs: Question[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  // filters (single-select each — '' = all)
+  const [topic, setTopic] = useState('');
+  const [type, setType] = useState('');
+  const [qInput, setQInput] = useState('');
+  const [q, setQ] = useState('');
+  const [reload, setReload] = useState(0);
+  // results are keyed by the filter set they belong to — while the key doesn't
+  // match the current filters the picker is "loading", with no sync setState
+  // in the effect (that's a cascading-render lint error)
+  const [result, setResult] = useState<{ key: string; rows: BankRow[] | null; total: number; err: string | null } | null>(null);
+  // selection survives filter changes — a tick stays ticked
+  const [picked, setPicked] = useState<Map<string, BankRow>>(new Map());
+  // lucky-dip size
+  const [dipN, setDipN] = useState(10);
+
+  const reqKey = `${topic}|${type}|${q}|${reload}`;
+  const current = result && result.key === reqKey ? result : null;
+  const rows = current?.rows ?? null;
+  const total = current?.total ?? 0;
+  const err = current?.err ?? null;
+
+  // debounce the search box so typing doesn't fire a request per keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setQ(qInput.trim()), 250);
+    return () => clearTimeout(t);
+  }, [qInput]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    const params = new URLSearchParams();
+    if (topic) params.set('topic', topic);
+    if (type) params.set('type', type);
+    if (q) params.set('q', q);
+    api
+      .get<{ questions: BankRow[]; total: number }>(`/api/teacher/bank?${params.toString()}`)
+      .then((d) => {
+        if (cancelled) return;
+        setResult({ key: reqKey, rows: d.questions, total: d.total, err: null });
+      })
+      .catch((e) => {
+        if (!cancelled) setResult({ key: reqKey, rows: null, total: 0, err: (e as Error).message });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, reqKey, topic, type, q]);
+
+  const capped = rows !== null && total > rows.length;
+
+  function toggle(row: BankRow) {
+    setPicked((prev) => {
+      const next = new Map(prev);
+      if (next.has(row.id)) next.delete(row.id);
+      else next.set(row.id, row);
+      return next;
+    });
+  }
+
+  function addSelected() {
+    if (picked.size === 0) return;
+    onAdd([...picked.values()]);
+    setPicked(new Map());
+    setOpen(false);
+  }
+
+  /** Educake's "random question selector" — N random questions matching the
+   *  current filters, added instantly. */
+  function luckyDip() {
+    if (!rows || rows.length === 0) return;
+    const pool = [...rows];
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const n = Math.max(1, Math.min(50, Number(dipN) || 10));
+    const chosen: BankRow[] = [];
+    for (const r of pool) {
+      if (chosen.length >= n) break;
+      if (existingIds.has(r.id) || picked.has(r.id)) continue;
+      chosen.push(r);
+    }
+    if (chosen.length === 0) return;
+    onAdd(chosen);
+    setPicked(new Map());
+    setOpen(false);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Search className="h-4 w-4" aria-hidden /> Browse the bank
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-2xl max-h-[calc(100dvh-2rem)] flex flex-col overflow-y-auto scroll-slim">
+        <DialogHeader className="text-left shrink-0">
+          <DialogTitle className="flex items-center gap-2">
+            <Library className="h-4 w-4 text-primary" aria-hidden /> Pick from the gcsebusiness bank
+          </DialogTitle>
+          <DialogDescription>
+            Tick questions to add to this assignment — they mix with your typed ones. Both themes,
+            every question style, case studies included.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* filters */}
+        <div className="glass-soft rounded-lg p-3 space-y-3 shrink-0">
+          <div className="space-y-1.5">
+            <span className="text-xs font-medium">Topic</span>
+            {/* wraps on wide screens; a single swipeable strip on phones so the
+                filters never squeeze the question list out of the dialog */}
+            <div className="flex gap-1.5 overflow-x-auto scroll-slim pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0" role="group" aria-label="Filter by topic">
+              <button
+                type="button"
+                aria-pressed={topic === ''}
+                onClick={() => setTopic('')}
+                className={cn(
+                  'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0',
+                  topic === '' ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
+                )}
+              >
+                All topics
+              </button>
+              {TOPICS.map((t) => {
+                const on = topic === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setTopic(on ? '' : t.id)}
+                    className={cn(
+                      'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0',
+                      on ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
+                    )}
+                  >
+                    {t.id} {t.short}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <span className="text-xs font-medium">Question type</span>
+            <div className="flex gap-1.5 overflow-x-auto scroll-slim pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0" role="group" aria-label="Filter by question type">
+              <button
+                type="button"
+                aria-pressed={type === ''}
+                onClick={() => setType('')}
+                className={cn(
+                  'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0',
+                  type === '' ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
+                )}
+              >
+                All types
+              </button>
+              {BANK_TYPE_CHIPS.map(([v, label]) => {
+                const on = type === v;
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setType(on ? '' : v)}
+                    className={cn(
+                      'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0',
+                      on ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden />
+            <Input
+              value={qInput}
+              onChange={(e) => setQInput(e.target.value)}
+              placeholder="Search questions…"
+              aria-label="Search question stems"
+              className="pl-8 pr-8 h-9"
+            />
+            {qInput ? (
+              <button
+                type="button"
+                onClick={() => setQInput('')}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        {/* count line */}
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground shrink-0">
+          <span aria-live="polite">
+            {rows === null
+              ? 'Loading the bank…'
+              : `Showing ${rows.length} of ${total} question${total === 1 ? '' : 's'}`}
+            {capped ? ' — narrow the filters to see the rest' : ''}
+          </span>
+          {picked.size > 0 ? (
+            <span className="text-primary font-medium shrink-0">{picked.size} ticked</span>
+          ) : null}
+        </div>
+
+        {/* the list — the only scrolling region: it takes whatever space the
+            filters leave behind, so the footer always stays pinned */}
+        {err ? (
+          <div className="space-y-2 shrink-0">
+            <ErrorNote message={err} />
+            <Button variant="outline" size="sm" onClick={() => setReload(reload + 1)}>
+              <RotateCw className="h-3.5 w-3.5" aria-hidden /> Try again
+            </Button>
+          </div>
+        ) : rows === null ? (
+          <div className="space-y-2 overflow-y-auto scroll-slim" aria-busy>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="glass-soft rounded-lg h-[76px] animate-pulse" />
+            ))}
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="rounded-xl border border-dashed p-8 text-center flex flex-col items-center gap-2 shrink-0">
+            <div className="rounded-full bg-secondary p-3 anim-float">
+              <SearchX className="h-6 w-6 text-primary" aria-hidden />
+            </div>
+            <div className="text-sm font-medium">Nothing matches those filters</div>
+            <p className="text-xs text-muted-foreground">
+              Try another topic or type, or clear the search.
+            </p>
+          </div>
+        ) : (
+          <ul className="flex-1 min-h-0 max-h-[28rem] overflow-y-auto scroll-slim space-y-2 pr-0.5">
+            {rows.map((row) => {
+              const on = picked.has(row.id);
+              return (
+                <li key={row.id}>
+                  <button
+                    type="button"
+                    onClick={() => toggle(row)}
+                    aria-pressed={on}
+                    aria-label={`${row.stem.slice(0, 80)} — ${on ? 'selected' : 'not selected'}`}
+                    className={cn(
+                      'w-full text-left glass-soft rounded-lg p-3 flex gap-3 items-start transition-all hover:border-primary/40',
+                      on && 'glass-selected'
+                    )}
+                  >
+                    {/* purely visual checkbox — the row button carries the
+                        state (aria-pressed); a real Checkbox would nest a
+                        button inside a button (invalid HTML) */}
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors',
+                        on
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-input bg-card/60'
+                      )}
+                    >
+                      {on ? <Check className="h-3.5 w-3.5" /> : null}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5 flex-wrap">
+                        <TypeBadge type={row.type} />
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                          {row.topic}
+                        </Badge>
+                        <MarksChip marks={row.marks} />
+                      </span>
+                      <span className="block text-sm mt-1 leading-snug line-clamp-2">{row.stem}</span>
+                      <span className="block text-[10px] text-muted-foreground mt-1 truncate">
+                        from {row.quizTitle}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {/* pinned footer — always visible below the scrolling list */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between pt-3 border-t shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground whitespace-nowrap" id="dip-label">
+              Lucky dip
+            </span>
+            <Input
+              type="number"
+              min={1}
+              max={50}
+              value={dipN}
+              onChange={(e) => setDipN(Math.max(1, Math.min(50, Number(e.target.value) || 10)))}
+              aria-labelledby="dip-label"
+              className="h-8 w-16 tabular-nums"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={luckyDip}
+              disabled={!rows || rows.length === 0}
+              title="Add N random questions matching the current filters"
+            >
+              <Dices className="h-4 w-4" aria-hidden />
+              <span className="hidden sm:inline">Add {dipN} random</span>
+              <span className="sm:hidden">{dipN}</span>
+            </Button>
+          </div>
+          <div className="flex items-center gap-2 sm:justify-end">
+            {picked.size > 0 ? (
+              <Button variant="ghost" size="sm" onClick={() => setPicked(new Map())}>
+                Clear
+              </Button>
+            ) : null}
+            <Button size="sm" onClick={addSelected} disabled={picked.size === 0}>
+              <PlusCircle className="h-4 w-4" aria-hidden /> Add {picked.size}{' '}
+              {picked.size === 1 ? 'question' : 'questions'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

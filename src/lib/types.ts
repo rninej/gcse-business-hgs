@@ -158,6 +158,14 @@ export interface Assignment {
   /** Draft assignments are invisible to students until published. */
   draft?: boolean;
   questions: Question[];
+  /** Scheduled publishing: while publishAt (epoch ms) is in the future the
+   *  assignment is hidden from students. The first student dashboard load
+   *  after the moment passes flips it live and rings every targeted
+   *  student's bell. */
+  publishAt?: number;
+  /** Set once the go-live notifications have been written — the dedupe
+   *  guard so a later poll never rings the same bell twice. */
+  notifiedAt?: number;
 }
 
 /** Does this assignment reach the given student? (their class is targeted,

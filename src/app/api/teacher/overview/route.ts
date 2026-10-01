@@ -111,6 +111,8 @@ export async function GET() {
   }[] = [];
   for (const a of myAssignments) {
     if (a.draft || !a.dueAt) continue;
+    // a scheduled assignment isn't out yet — nothing to chase until it goes live
+    if (typeof a.publishAt === 'number' && a.publishAt > nowMs) continue;
     if (a.dueAt < nowMs - GRACE_PAST || a.dueAt > nowMs + ATTENTION_WINDOW) continue;
     const targets = myStudents.filter((s) => assignmentTargetsStudent(a, s));
     if (targets.length === 0) continue;

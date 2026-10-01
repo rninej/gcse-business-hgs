@@ -13,6 +13,11 @@ export interface NewNote {
   assignmentId?: string;
   attemptId?: string;
   fromId?: string;
+  /** When set, the record id becomes n_{dedupeKey}_{studentId} instead of a
+   *  random one — racing or retried writes land on the SAME record and
+   *  replace it rather than duplicating (used by the scheduled go-live flip,
+   *  where several students' polls can pass in the same moment). */
+  dedupeKey?: string;
 }
 
 /** Create one notification per student — writes fly in parallel (each is an
@@ -23,7 +28,9 @@ export async function notifyStudents(studentIds: string[], note: NewNote): Promi
   const results = await Promise.allSettled(
     studentIds.map(async (studentId) => {
       const record: StudentNotification = {
-        id: `n_${randomUUID().replace(/-/g, '').slice(0, 10)}`,
+        id: note.dedupeKey
+          ? `n_${note.dedupeKey}_${studentId}`
+          : `n_${randomUUID().replace(/-/g, '').slice(0, 10)}`,
         studentId,
         kind: note.kind,
         title: note.title.slice(0, 90),

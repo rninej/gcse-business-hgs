@@ -183,6 +183,9 @@ export async function GET() {
         questionCount: a.questions.length,
         source: a.source,
         draft: Boolean(a.draft),
+        // when this assignment is due to go live (epoch ms) — a future value
+        // marks it as Scheduled in the teacher's list
+        publishAt: a.publishAt ?? null,
         submitted,
         totalStudents: recipients.length,
       };
@@ -214,6 +217,9 @@ interface CreateBody {
   draft?: boolean;
   /** When set: update this existing draft instead of creating a new one. */
   updateId?: string;
+  /** Scheduled publishing (epoch ms) — go live later instead of now.
+   *  Ignored for drafts; must be within the next year. */
+  publishAt?: number;
 }
 
 export async function POST(req: Request) {
@@ -230,6 +236,17 @@ export async function POST(req: Request) {
       ? Math.round(Number(body.timeLimitMin))
       : null;
   const dueAt = body.dueAt && Number(body.dueAt) > Date.now() - 86400000 ? Number(body.dueAt) : null;
+
+  // scheduled publishing: a future go-live moment (drafts ignore it — a
+  // draft is just a draft until it goes out)
+  const rawPublish = Number(body.publishAt);
+  let publishAt: number | null = null;
+  if (Number.isFinite(rawPublish) && rawPublish > Date.now()) {
+    if (rawPublish > Date.now() + 365 * 86400000) {
+      return NextResponse.json({ error: 'Pick a go-live date within the next year.' }, { status: 400 });
+    }
+    publishAt = Math.round(rawPublish);
+  }
 
   const classes = await col<StudentClass>('classes');
   const myClasses = Object.values(classes).filter((c) => c.teacherId === session.uid);
@@ -329,6 +346,11 @@ export async function POST(req: Request) {
 
   if (isUpdate && updating) {
     // publish or re-save an existing draft
+    const goLive: { publishAt?: number; notifiedAt?: number } = draft
+      ? { publishAt: undefined, notifiedAt: undefined } // drafts never carry a schedule
+      : publishAt
+        ? { publishAt, notifiedAt: undefined } // scheduled: the bell rings at the moment, not now
+        : { publishAt: Date.now(), notifiedAt: Date.now() }; // out now
     const merged: Assignment = {
       ...updating,
       title,
@@ -341,10 +363,13 @@ export async function POST(req: Request) {
       studentIds: targetedStudents.map((s) => s.id),
       draft,
       questions: snapshot,
+      ...goLive,
     };
     await put('assignments', updating.id, merged);
-    // a draft going live is the moment students learn about it — ring the bell
-    if (!draft && updating.draft) {
+    // a draft going live NOW is the moment students learn about it — ring the
+    // bell (a scheduled go-live is flipped live by the students' own dashboard
+    // loads, so its bell waits)
+    if (!draft && !publishAt) {
       const recipients = studentsCol
         ? values(studentsCol).filter((s) => assignmentTargetsStudent(merged, s)).map((s) => s.id)
         : [];
@@ -355,6 +380,7 @@ export async function POST(req: Request) {
           body: `${merged.classTitle} · ${snapshot.length} questions${dueAt ? ` · due ${new Date(dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}`,
           assignmentId: merged.id,
           fromId: session.uid,
+          dedupeKey: `live${merged.id}`,
         });
       }
     }
@@ -378,10 +404,15 @@ export async function POST(req: Request) {
     generatedBy,
     draft,
     questions: snapshot,
+    // go-live bookkeeping: a scheduled task holds its bell until the moment
+    // passes (students' dashboard loads flip it live); anything else is out
+    // right now and ringing below
+    ...(publishAt && !draft ? { publishAt } : {}),
+    ...(!draft && !publishAt ? { publishAt: Date.now(), notifiedAt: Date.now() } : {}),
   };
   await put('assignments', id, assignment);
   // ring every targeted student's bell the moment a live assignment lands
-  if (!draft) {
+  if (!draft && !publishAt) {
     const classIdSet = new Set(classIds);
     const recipients = [
       ...targetedStudents.map((s) => s.id),
@@ -395,10 +426,11 @@ export async function POST(req: Request) {
         body: `${assignment.classTitle} · ${snapshot.length} questions${dueAt ? ` · due ${new Date(dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}`,
         assignmentId: id,
         fromId: session.uid,
+        dedupeKey: `live${id}`,
       });
     }
   }
-  return NextResponse.json({ ok: true, assignmentId: id, questionCount: snapshot.length, draft, generatedBy });
+  return NextResponse.json({ ok: true, assignmentId: id, questionCount: snapshot.length, draft, generatedBy, scheduled: Boolean(publishAt && !draft) });
 }
 
 /** de-dupe a list of ids without Set-order surprises */
