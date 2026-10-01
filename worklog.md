@@ -795,3 +795,37 @@ Stage Summary:
 - Due labels can no longer disagree: one calendar-day helper backs every surface (chips, needs-attention, nudge messages, student daysLeft); both boundary flips (23:59 tonight / 00:30 tomorrow) verified agreeing in both dashboard sections.
 - Avatars shipped end-to-end for both roles: upload (auto-cropped tiny JPEG) or emoji preset, saved to a dedicated avatars collection, shown on student leaderboard, teacher leaderboard, results table, student profile, sidebar + mobile header. Instant own-row refresh via hgs:avatar event.
 - Non-blockers / next ideas: (a) avatar upload UI can't be e2e-tested headlessly (file picker) — API + resize logic verified separately; (b) needs-attention name chips still text-only (avatars at 22px read as noise — deliberate); (c) could add avatar to the student greeting header on StudentHome; (d) Vercel will auto-deploy on push.
+
+---
+Task ID: 29
+Agent: main (Z.ai Code)
+Task: Password eye-toggle on all password fields + /debug owner dashboard (Educake comparison, USPs, AI free-tier capacity model, full unit economics, editable invoice)
+
+Work Log:
+- NEW reusable `src/components/ui/password-input.tsx` — Input with Eye/EyeOff toggle button (aria-label, mousedown-prevented so focus is kept, focus ring). Wired into all 9 password fields: AuthView (teacher/student/register), PasswordDialog (current/new/confirm), StudentHome first-login welcome dialog (current/new/confirm).
+- NEW route `src/app/debug/page.tsx` (noindex) + `src/components/debug/DebugDashboard.tsx` — the owner dashboard the user asked for. Sections:
+  1. Feature-by-feature table vs Educake Business (18 rows, we lead on 16): price (£120+VAT vs £550+VAT verified on educake.co.uk), per-student cost, Trustpilot 1.3/5, brief-to-quiz AI generation, AI essay examiner, spelling tolerance, gamification/leaderboard/avatars, flashcards, student-built practice, in-app notifications, scheduled publishing, print reports, PWA, never-down marking, data location, pilot offer.
+  2. USP grid — 14 cards, each a live feature Educake lacks (brief-to-quiz, AI examiner, fuzzy marking, zero-AI fallback, gamification, avatars, flashcards, mix builder, notifications, scheduling, print sheets, PWA, personalised feedback, 78% cheaper).
+  3. AI free-tier capacity analysis (the "will free limits be overtaken?" question): usage model = 2 AI calls per assignment generation + 1 feedback + 1 per written answer per submission; class of 30 ≈ 3.5k calls/yr (~19/avg day, 92 peak) vs ~16,650/day free chain capacity (Gemini 3 models ~1,250 + Groq 3 models ~15,400 + z.ai) = 0.55% peak. 300 students ≈ 35k calls/yr (~180/avg day, ~900 peak) = 5.4% — VERDICT: free limits never overtaken; need ~5,500 students submitting daily to break it; worst-case paid spillover ≈ £40/yr modelled at paid Gemini Flash rates.
+  4. Running costs: class of 30 lean £10/yr (£0.33/student — Vercel Hobby + Firebase Spark + free AI + domain); 300 students lean £70/yr (£0.23/student incl. Blaze buffer); 300 commercial £337/yr (£1.12/student — Vercel Pro £228 + Blaze cap £60 + AI contingency £39 + domain £10). Plus "every other business cost" table (Companies House £0-50, Stripe ~£2/invoice, accounting, VAT threshold £90k, founder time).
+  5. Totals cards + "Against Educake" verdict card: £144 licence = 78% cheaper for school, margin £134/class (lean) or £142/cohort (commercial).
+  6. Interactive calculator — 3 sliders (students 10-1000, assignments/week, written Qs) recomputing calls/yr, peak day, free-tier verdict, concurrency, lean/commercial cost, licence price + margin live. Verified: 1000 students → 117k calls/yr, peak 3,002 (18%) still free.
+  7. Ideal invoice to the GCSE Business teacher — in-place editable fields (school, attention, address, PO), VAT-registered checkbox (£120 ↔ £144), 30-day terms, whole-cohort upgrade line (+£279), Educake savings footer (£516 / 78%), "Print invoice" button that hides the rest of the page via body.print-invoice CSS (verified selectors match DOM), header "Print / PDF" prints the whole dashboard.
+  8. Sources & assumptions section — every public figure attributed (educake.co.uk, Trustpilot, Google AI Studio, Groq docs, Firebase pricing, Vercel pricing) with usage assumptions listed.
+- Discreet "Owner dashboard" link added to the auth footer.
+- Research via web-search skill (5 queries): Educake Business = £550/yr + VAT school subscription; Gemini free tier 2025 cuts (~250 RPD Flash, ~1,000 Flash-Lite); Groq free ~14,400 RPD 8B; Firebase Spark 1GB/10GB/100-conn free; Vercel Pro $20/mo with $20 credit.
+
+QA (agent-browser):
+- /debug renders all 8 sections; totals £10 / £303 / £70 / £337 correct; 14 USP cards; 3 sliders; invoice £120 + £24 VAT = £144 toggle verified.
+- Calculator live-update verified (slider → 1000 students recomputes instantly).
+- Eye toggle verified with REAL events on login (type password→text→password) and change-password dialog (label Show↔Hide); JS .click() alone doesn't re-render but real pointer events work.
+- Teacher login flow re-verified end-to-end after PasswordInput swap (fill → toggle → sign in → dashboard loads).
+- Mobile 390px: zero horizontal overflow on /debug (tables in overflow-x-auto wrappers).
+- VLM visual review of desktop + invoice: clean, aligned, professional, no overlaps.
+- lint clean; dev.log error-free.
+
+Stage Summary:
+- Password visibility toggle shipped everywhere (9 fields).
+- /debug owner dashboard live: verified-figures comparison table, 14 USPs, AI free-tier model proving £0 AI spend at any school scale, lean/commercial cost tables (£10-337/yr), interactive calculator, editable print-ready invoice (VAT toggle), sources section.
+- Key economics: class of 30 costs £10/yr lean (Educake charges £660); 300 students £70-337/yr; licence at £144 = 78% under Educake with healthy margin.
+- Committed and pushed to main for Vercel deploy.

@@ -2,11 +2,13 @@
 
 // Landing + authentication. Teachers register; students receive accounts from their teacher.
 import { useState } from 'react';
+import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
@@ -101,7 +103,10 @@ export function AuthView() {
       <footer className="mt-auto border-t border-white/40 bg-background/60 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 text-xs text-muted-foreground flex flex-wrap justify-between gap-2">
           <span>© {new Date().getFullYear()} gcsebusiness</span>
-          <span>Students: your teacher creates your account and hands out your login.</span>
+          <span className="flex items-center gap-3">
+            <span>Students: your teacher creates your account and hands out your login.</span>
+            <Link href="/debug" className="underline decoration-dotted underline-offset-2 hover:text-foreground transition-colors">Owner dashboard</Link>
+          </span>
         </div>
       </footer>
     </div>
@@ -178,7 +183,7 @@ function AuthCard() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="t-pw">Password</Label>
-              <Input id="t-pw" type="password" autoComplete="current-password" value={tPw} onChange={(e) => setTPw(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit('teacher')} placeholder="••••••••" />
+              <PasswordInput id="t-pw" autoComplete="current-password" value={tPw} onChange={(e) => setTPw(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit('teacher')} placeholder="••••••••" />
             </div>
             <Button className="w-full" disabled={busy || !tId || !tPw} onClick={() => submit('teacher')}>
               {busy ? 'Signing in…' : 'Sign in as teacher'}
@@ -195,7 +200,7 @@ function AuthCard() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="s-pw">Password</Label>
-              <Input id="s-pw" type="password" value={sPw} onChange={(e) => setSPw(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit('student')} placeholder="e.g. braveotter23" />
+              <PasswordInput id="s-pw" autoComplete="current-password" value={sPw} onChange={(e) => setSPw(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit('student')} placeholder="e.g. braveotter23" />
             </div>
             <Button className="w-full" disabled={busy || !sId || !sPw} onClick={() => submit('student')}>
               {busy ? 'Signing in…' : 'Sign in as student'}
@@ -216,7 +221,7 @@ function AuthCard() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="r-pw">Password (6+ characters)</Label>
-              <Input id="r-pw" type="password" value={rPw} onChange={(e) => setRPw(e.target.value)} placeholder="••••••••" />
+              <PasswordInput id="r-pw" autoComplete="new-password" value={rPw} onChange={(e) => setRPw(e.target.value)} placeholder="••••••••" />
             </div>
             <Button className="w-full" disabled={busy || !rName || !rEmail || rPw.length < 6} onClick={() => submit('register')}>
               {busy ? 'Creating…' : 'Create teacher account'}

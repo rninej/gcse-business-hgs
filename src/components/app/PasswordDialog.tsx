@@ -15,8 +15,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
 
@@ -81,9 +81,8 @@ export function PasswordDialog({ variant = 'outline' }: { variant?: 'outline' | 
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor="pw-current">Current password</Label>
-            <Input
+            <PasswordInput
               id="pw-current"
-              type="password"
               autoComplete="current-password"
               value={current}
               onChange={(e) => setCurrent(e.target.value)}
@@ -91,9 +90,8 @@ export function PasswordDialog({ variant = 'outline' }: { variant?: 'outline' | 
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="pw-next">New password</Label>
-            <Input
+            <PasswordInput
               id="pw-next"
-              type="password"
               autoComplete="new-password"
               value={next}
               onChange={(e) => setNext(e.target.value)}
@@ -101,9 +99,8 @@ export function PasswordDialog({ variant = 'outline' }: { variant?: 'outline' | 
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="pw-confirm">Repeat new password</Label>
-            <Input
+            <PasswordInput
               id="pw-confirm"
-              type="password"
               autoComplete="new-password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}

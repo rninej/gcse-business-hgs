@@ -31,6 +31,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import {
   Dialog,
   DialogContent,
@@ -629,9 +630,8 @@ function WelcomeDialog({ open, onDone }: { open: boolean; onDone: () => void }) 
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor="w-current">Current password</Label>
-            <Input
+            <PasswordInput
               id="w-current"
-              type="password"
               autoComplete="current-password"
               value={current}
               onChange={(e) => setCurrent(e.target.value)}
@@ -639,9 +639,8 @@ function WelcomeDialog({ open, onDone }: { open: boolean; onDone: () => void }) 
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="w-next">New password</Label>
-            <Input
+            <PasswordInput
               id="w-next"
-              type="password"
               autoComplete="new-password"
               value={next}
               onChange={(e) => setNext(e.target.value)}
@@ -650,9 +649,8 @@ function WelcomeDialog({ open, onDone }: { open: boolean; onDone: () => void }) 
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="w-confirm">Repeat new password</Label>
-            <Input
+            <PasswordInput
               id="w-confirm"
-              type="password"
               autoComplete="new-password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
