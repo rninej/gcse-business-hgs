@@ -120,6 +120,9 @@ export interface Student {
   pw: string;
   pwEnc?: string; // AES-GCM copy so the teacher can always view the login
   createdAt: number;
+  /** Set once the student has been offered (and dismissed or used) the
+   *  first-login password-change popup. */
+  firstLoginDone?: boolean;
 }
 
 // ---------- Quizzes / assignments ----------
@@ -141,6 +144,10 @@ export interface Assignment {
   teacherId: string;
   classId: string;
   classTitle: string;
+  /** Multi-class posting: every class listed here (plus classId) receives it. */
+  classIds?: string[];
+  /** Specific individuals (on top of / instead of whole classes). */
+  studentIds?: string[];
   title: string;
   description: string;
   dueAt: number | null; // epoch ms
@@ -148,7 +155,20 @@ export interface Assignment {
   createdAt: number;
   source: AssignmentSource;
   generatedBy: string; // provider label for the teacher's eyes only
+  /** Draft assignments are invisible to students until published. */
+  draft?: boolean;
   questions: Question[];
+}
+
+/** Does this assignment reach the given student? (their class is targeted,
+ *  or they were picked as an individual.) */
+export function assignmentTargetsStudent(
+  a: Pick<Assignment, 'classId' | 'classIds' | 'studentIds'>,
+  student: { id: string; classId: string | null }
+): boolean {
+  if (a.studentIds?.includes(student.id)) return true;
+  if (student.classId && (a.classId === student.classId || a.classIds?.includes(student.classId))) return true;
+  return false;
 }
 
 // ---------- Attempts ----------
@@ -275,6 +295,10 @@ export interface Attempt {
   startedAt: number;
   dueAt: number | null;
   timeLimitMin: number | null;
+  /** Heartbeat: last moment the student was actively inside a timed quiz.
+   *  Timed attempts whose heartbeat goes stale are auto-submitted — leaving
+   *  a timed quiz ends it (rejoining is only for untimed quizzes). */
+  lastSeenAt?: number;
   questions: Question[]; // full snapshot — SERVER ONLY, never sent to client pre-submission
   answers: Record<string, string>; // confirmed (checked) answers are persisted here
   checked: Record<string, CheckedState>; // qid -> outcome, filled as the student confirms
@@ -331,11 +355,14 @@ export interface AssignmentRow {
   title: string;
   classId: string;
   classTitle: string;
+  classTitles?: string[]; // every targeted class (multi-class posting)
+  studentCount?: number; // individually-targeted students (on top of classes)
   dueAt: number | null;
   timeLimitMin: number | null;
   createdAt: number;
   questionCount: number;
   source: AssignmentSource;
+  draft?: boolean;
   submitted: number;
   totalStudents: number;
 }

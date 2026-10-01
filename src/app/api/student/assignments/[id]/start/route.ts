@@ -2,14 +2,17 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { col, put, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
-import type { Attempt, Assignment, Student } from '@/lib/types';
+import { shuffleMcqOptions } from '@/lib/questions';
+import { assignmentTargetsStudent, type Attempt, type Assignment, type Student } from '@/lib/types';
 
 type Ctx = { params: Promise<{ id: string }> };
 
 /**
  * Start (or resume) an assignment attempt. Students may redo the whole
  * assignment once they have submitted — every go is a separate attempt and
- * the teacher sees all of them.
+ * the teacher sees all of them. Timed attempts cannot be resumed after the
+ * student leaves (the heartbeat goes stale → auto-submit) — rejoining is a
+ * feature of untimed quizzes only.
  */
 export async function POST(_req: Request, ctx: Ctx) {
   const session = await requireRole('student');
@@ -22,7 +25,7 @@ export async function POST(_req: Request, ctx: Ctx) {
 
   const assignments = await col<Assignment>('assignments');
   const a = assignments[id];
-  if (!a || a.classId !== me.classId) {
+  if (!a || a.draft || !assignmentTargetsStudent(a, me)) {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
 
@@ -43,13 +46,16 @@ export async function POST(_req: Request, ctx: Ctx) {
     studentId: session.uid,
     studentName: me.displayName,
     teacherId: a.teacherId,
-    classId: a.classId,
+    classId: me.classId,
     assignmentId: a.id,
     assignmentTitle: a.title,
     startedAt: Date.now(),
     dueAt: a.dueAt,
     timeLimitMin: a.timeLimitMin,
-    questions: a.questions.map((q) => ({ ...q })),
+    lastSeenAt: Date.now(),
+    // fresh copy with randomised MCQ option order — the correct answer must
+    // not always sit in the same position across attempts and students
+    questions: shuffleMcqOptions(a.questions.map((q) => ({ ...q }))),
     answers: {},
     checked: {},
     perQ: {},

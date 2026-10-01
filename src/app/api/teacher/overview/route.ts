@@ -3,6 +3,7 @@ import { colCached, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { topicTitle } from '@/lib/topics';
 import type { Attempt, Assignment, Student, StudentClass } from '@/lib/types';
+import { assignmentTargetsStudent } from '@/lib/types';
 
 export async function GET() {
   const session = await requireRole('teacher');
@@ -70,7 +71,7 @@ export async function GET() {
           .filter((x) => x.assignmentId === a.id && x.status === 'submitted')
           .map((x) => x.studentId)
       ).size;
-      const total = myStudents.filter((s) => s.classId === a.classId).length;
+      const total = myStudents.filter((s) => assignmentTargetsStudent(a, s)).length;
       return {
         id: a.id,
         title: a.title,

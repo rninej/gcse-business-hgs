@@ -47,6 +47,7 @@ export async function POST(req: Request) {
   await merge('students', me.id, {
     pw: hashPassword(newPassword),
     pwEnc: encryptPassword(newPassword), // teacher can still see the login
+    firstLoginDone: true, // the first-login popup has served its purpose
   });
   return NextResponse.json({ ok: true });
 }

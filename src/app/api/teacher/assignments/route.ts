@@ -5,7 +5,7 @@ import { requireRole } from '@/lib/session';
 import { generateQuestions } from '@/lib/questions';
 import { QUIZ_MAP } from '@/data/bank';
 import { TOPICS } from '@/lib/topics';
-import type { Attempt, Assignment, Question, QuestionType, Student, StudentClass } from '@/lib/types';
+import { assignmentTargetsStudent, type Attempt, type Assignment, type Question, type QuestionType, type Student, type StudentClass } from '@/lib/types';
 
 type CustomInput = Partial<Question> & { type: QuestionType };
 
@@ -152,37 +152,50 @@ export async function GET() {
 
   const assignments = values(await colCached<Assignment>('assignments')).filter((a) => a.teacherId === session.uid);
   const students = values(await colCached<Student>('students')).filter((s) => s.teacherId === session.uid);
+  const classes = values(await colCached<StudentClass>('classes')).filter((c) => c.teacherId === session.uid);
   const attempts = values(await colCached<Attempt>('attempts')).filter((a) => a.teacherId === session.uid);
 
   const rows = assignments
     .sort((a, b) => b.createdAt - a.createdAt)
     .map((a) => {
-      const classStudents = students.filter((s) => s.classId === a.classId);
+      // recipients = every student in a targeted class + picked individuals
+      const recipients = students.filter((s) => assignmentTargetsStudent(a, s));
       // count unique students who have handed in — a redo must not inflate this
       const submitted = new Set(
         attempts
           .filter((x) => x.assignmentId === a.id && x.status === 'submitted')
           .map((x) => x.studentId)
       ).size;
+      const classNames = [a.classId, ...(a.classIds ?? [])]
+        .map((cid) => classes.find((c) => c.id === cid)?.name)
+        .filter((n): n is string => Boolean(n));
       return {
         id: a.id,
         title: a.title,
         classId: a.classId,
         classTitle: a.classTitle,
+        classTitles: Array.from(new Set(classNames)),
+        studentCount: a.studentIds?.length ?? 0,
         dueAt: a.dueAt,
         timeLimitMin: a.timeLimitMin,
         createdAt: a.createdAt,
         questionCount: a.questions.length,
         source: a.source,
+        draft: Boolean(a.draft),
         submitted,
-        totalStudents: classStudents.length,
+        totalStudents: recipients.length,
       };
     });
   return NextResponse.json({ assignments: rows });
 }
 
 interface CreateBody {
+  /** primary class (kept for back-compat) — must be one of the teacher's */
   classId?: string;
+  /** every extra class that receives this assignment too */
+  classIds?: string[];
+  /** specific individuals (on top of / instead of whole classes) */
+  studentIds?: string[];
   title?: string;
   description?: string;
   dueAt?: number | null;
@@ -196,6 +209,10 @@ interface CreateBody {
   /** Questions the teacher already reviewed in the AI preview — skips a second,
    *  slow generation round-trip on the server. Validated below all the same. */
   previewQuestions?: (Partial<Question> & { type: QuestionType })[];
+  /** Save as a draft — invisible to students until published. */
+  draft?: boolean;
+  /** When set: update this existing draft instead of creating a new one. */
+  updateId?: string;
 }
 
 export async function POST(req: Request) {
@@ -214,9 +231,26 @@ export async function POST(req: Request) {
   const dueAt = body.dueAt && Number(body.dueAt) > Date.now() - 86400000 ? Number(body.dueAt) : null;
 
   const classes = await col<StudentClass>('classes');
-  const cls = classes[body.classId ?? ''];
-  if (!cls || cls.teacherId !== session.uid) {
-    return NextResponse.json({ error: 'Choose one of your classes.' }, { status: 400 });
+  const myClasses = Object.values(classes).filter((c) => c.teacherId === session.uid);
+  // resolve every targeted class (primary + extras); all must belong to the teacher
+  const wantedClassIds = Array.from(new Set([body.classId, ...(body.classIds ?? [])].filter(Boolean) as string[]));
+  const targeted = wantedClassIds.map((cid) => myClasses.find((c) => c.id === cid)).filter((c): c is StudentClass => Boolean(c));
+
+  // specific individuals must be the teacher's own students
+  const studentsCol = await col<Student>('students');
+  const wantedStudentIds = Array.from(new Set((body.studentIds ?? []).filter(Boolean)));
+  const targetedStudents = wantedStudentIds
+    .map((sid) => studentsCol[sid])
+    .filter((s): s is Student => Boolean(s) && s.teacherId === session.uid);
+
+  const updating = body.updateId ? (await col<Assignment>('assignments'))[body.updateId] : null;
+  const isUpdate = Boolean(updating && updating.teacherId === session.uid && updating.draft);
+  if (body.updateId && !isUpdate) {
+    return NextResponse.json({ error: 'Draft not found — it may already be live.' }, { status: 404 });
+  }
+
+  if (targeted.length === 0 && targetedStudents.length === 0) {
+    return NextResponse.json({ error: 'Choose at least one class or student.' }, { status: 400 });
   }
 
   const mode = body.mode === 'library' || body.mode === 'ai' || body.mode === 'custom' ? body.mode : null;
@@ -239,9 +273,10 @@ export async function POST(req: Request) {
   } else if (mode === 'ai') {
     // Fast path: the teacher already reviewed these questions in the preview —
     // accept them as-is instead of generating a fresh set server-side.
+    // Draft updates may legitimately carry fewer than 4 questions.
     const preview = Array.isArray(body.previewQuestions) ? body.previewQuestions : [];
     const parsedPreview = preview.map(validatePreview).filter((q): q is Question => q !== null);
-    if (parsedPreview.length >= 4) {
+    if (parsedPreview.length >= (isUpdate ? 1 : 4)) {
       questions = parsedPreview as Question[];
       generatedBy = 'AI generated';
     } else {
@@ -287,12 +322,37 @@ export async function POST(req: Request) {
   const prefix = randomUUID().replace(/-/g, '').slice(0, 8);
   const snapshot: Question[] = questions.map((q, i) => ({ ...q, id: q.id || `c${prefix}-${i}` }));
 
+  const primary = targeted[0];
+  const draft = Boolean(body.draft);
+  const classIds = targeted.map((c) => c.id);
+
+  if (isUpdate && updating) {
+    // publish or re-save an existing draft
+    const merged: Assignment = {
+      ...updating,
+      title,
+      description: (body.description ?? '').toString().slice(0, 300),
+      dueAt,
+      timeLimitMin,
+      classId: primary ? primary.id : updating.classId,
+      classTitle: primary ? primary.name : updating.classTitle,
+      classIds,
+      studentIds: targetedStudents.map((s) => s.id),
+      draft,
+      questions: snapshot,
+    };
+    await put('assignments', updating.id, merged);
+    return NextResponse.json({ ok: true, assignmentId: updating.id, questionCount: snapshot.length, draft });
+  }
+
   const id = `a_${randomUUID().replace(/-/g, '').slice(0, 10)}`;
   const assignment: Assignment = {
     id,
     teacherId: session.uid,
-    classId: cls.id,
-    classTitle: cls.name,
+    classId: primary ? primary.id : '',
+    classTitle: primary ? primary.name : 'Specific students',
+    classIds,
+    studentIds: targetedStudents.map((s) => s.id),
     title,
     description: (body.description ?? '').toString().slice(0, 300),
     dueAt,
@@ -300,8 +360,9 @@ export async function POST(req: Request) {
     createdAt: Date.now(),
     source,
     generatedBy,
+    draft,
     questions: snapshot,
   };
   await put('assignments', id, assignment);
-  return NextResponse.json({ ok: true, assignmentId: id, questionCount: snapshot.length, generatedBy });
+  return NextResponse.json({ ok: true, assignmentId: id, questionCount: snapshot.length, draft, generatedBy });
 }

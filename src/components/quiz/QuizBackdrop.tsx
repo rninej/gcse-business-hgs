@@ -9,8 +9,10 @@
 
 import { useMemo, useState } from 'react';
 
-/** Files in /public/quiz-backdrops — numbered so the seeded pick is stable. */
-const PHOTOS = [1, 2, 3, 4, 5, 6].map((n) => `/quiz-backdrops/${String(n).padStart(2, '0')}.jpg`);
+/** Files in /public/quiz-backdrops — calm forest scenes only (numbered so the
+ *  seeded pick is stable). Woodland photos keep the quiz feeling peaceful and
+ *  focused; they never appear anywhere else in the app. */
+const PHOTOS = [1, 2, 3, 4, 5, 6].map((n) => `/quiz-backdrops/forest-${String(n).padStart(2, '0')}.jpg`);
 
 /** Deterministic pick from an attempt id — same quiz, same backdrop. */
 function pick(seed: string, len: number): number {

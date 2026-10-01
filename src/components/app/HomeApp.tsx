@@ -7,7 +7,6 @@ import type { SessionInfo } from '@/lib/types';
 import type { View } from '@/lib/store';
 import { AppShell } from '@/components/app/AppShell';
 import { AuthView } from '@/components/app/AuthView';
-import { SiteBackdrop } from '@/components/app/SiteBackdrop';
 import { PwaProvider } from '@/components/app/PwaProvider';
 import { InstallPrompt } from '@/components/app/InstallPrompt';
 
@@ -68,7 +67,7 @@ export function HomeApp({ initialSession }: { initialSession: SessionInfo | null
       {view.name === 't-class' ? <ClassesView initialClassId={view.classId} /> : null}
       {view.name === 't-assignments' ? <AssignmentsView /> : null}
       {view.name === 't-results' ? <ResultsView assignmentId={view.assignmentId} /> : null}
-      {view.name === 't-new' ? <NewAssignment presetQuizId={view.presetQuizId} /> : null}
+      {view.name === 't-new' ? <NewAssignment presetQuizId={view.presetQuizId} draftId={view.draftId} /> : null}
       {view.name === 't-library' ? <LibraryView /> : null}
       {view.name === 's-home' ? <StudentHome /> : null}
       {view.name === 's-practice' ? <PracticeView /> : null}
@@ -79,15 +78,14 @@ export function HomeApp({ initialSession }: { initialSession: SessionInfo | null
     </AppShell>
   );
 
-  // SiteBackdrop sits at the single root so it shows on EVERY page (login
-  // screen included) and stays mounted across auth → app transitions — one
-  // random photo per visit, painted at -z-20, below the quiz backdrop (-z-10).
-  // The auth card and the app shell cross-fade through one AnimatePresence,
-  // so signing in feels like the dashboard emerges from the login screen.
+  // The ambient aurora gradients live on the body itself (globals.css), so
+  // no photo layer is needed here — images only appear during quizzes (the
+  // forest backdrops in QuizRunner/ResultScreen). The auth card and the app
+  // shell cross-fade through one AnimatePresence, so signing in feels like
+  // the dashboard emerges from the login screen.
   return (
     <>
       <PwaProvider />
-      <SiteBackdrop />
       <InstallPrompt />
       <AnimatePresence mode="wait" initial={false}>
         <motion.div

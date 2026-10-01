@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, ClipboardList, FlaskConical, PlusCircle, Timer, Trash2 } from 'lucide-react';
+import { ArrowRight, ClipboardList, FlaskConical, Pencil, PlusCircle, Rocket, Timer, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -25,11 +25,14 @@ interface Row {
   id: string;
   title: string;
   classTitle: string;
+  classTitles?: string[];
+  studentCount?: number;
   dueAt: number | null;
   timeLimitMin: number | null;
   createdAt: number;
   questionCount: number;
   source: 'library' | 'ai' | 'custom';
+  draft?: boolean;
   submitted: number;
   totalStudents: number;
 }
@@ -39,6 +42,15 @@ const SOURCE_LABEL: Record<Row['source'], string> = {
   ai: 'AI generated',
   custom: 'Teacher-written',
 };
+
+/** "11B (+1 class · 2 students)" — every class plus individuals, compactly */
+function recipientsLabel(a: Row): string {
+  const parts: string[] = [];
+  const names = a.classTitles?.length ? a.classTitles : [a.classTitle];
+  if (names.filter(Boolean).length) parts.push(names.filter(Boolean).join(' + '));
+  if (a.studentCount && a.studentCount > 0) parts.push(`${a.studentCount} individual${a.studentCount === 1 ? '' : 's'}`);
+  return parts.join(' · ') || '—';
+}
 
 export function AssignmentsView() {
   const go = useApp((s) => s.go);
@@ -63,6 +75,21 @@ export function AssignmentsView() {
       load();
     } catch (e) {
       toast({ title: 'Could not delete', description: (e as Error).message, variant: 'destructive' });
+    }
+  }
+
+  // flip a draft live — students see it from this moment
+  const [publishing, setPublishing] = useState<string | null>(null);
+  async function publish(a: Row) {
+    setPublishing(a.id);
+    try {
+      await api.patch(`/api/teacher/assignments/${a.id}`);
+      toast({ title: `“${a.title}” is live`, description: 'Students can see it on their homepages now.' });
+      load();
+    } catch (e) {
+      toast({ title: 'Could not publish', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setPublishing(null);
     }
   }
 
@@ -125,12 +152,20 @@ export function AssignmentsView() {
             return (
               <div
                 key={a.id}
-                className="rounded-xl border bg-card p-4 hover:border-primary/50 transition-colors no-print"
+                className={cn(
+                  'rounded-xl border bg-card p-4 hover:border-primary/50 transition-colors no-print',
+                  a.draft && 'border-dashed border-[var(--warn)]/50 bg-[var(--warn)]/[0.04]'
+                )}
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-x-3">
                   <button className="min-w-0 text-left" onClick={() => go({ name: 't-results', assignmentId: a.id })}>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold break-words sm:truncate">{a.title}</span>
+                      {a.draft ? (
+                        <Badge className="text-[10px] bg-[var(--warn)] text-[var(--warn-foreground)] gap-1">
+                          <Pencil className="h-3 w-3" /> Draft
+                        </Badge>
+                      ) : null}
                       <Badge variant="secondary" className="text-[10px]">{SOURCE_LABEL[a.source]}</Badge>
                       {a.timeLimitMin ? (
                         <Badge variant="outline" className="text-[10px] gap-1">
@@ -140,8 +175,8 @@ export function AssignmentsView() {
                       <DueChip dueAt={a.dueAt} />
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      {a.classTitle} · {a.questionCount} questions
-                      {a.dueAt ? ` · due ${new Date(a.dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}
+                      {recipientsLabel(a)} · {a.questionCount} questions
+                      {a.draft ? ' · not visible to students yet' : a.dueAt ? ` · due ${new Date(a.dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}
                     </div>
                   </button>
 
@@ -163,19 +198,44 @@ export function AssignmentsView() {
                       <div className="text-[11px] text-muted-foreground mt-1 text-right">{done}% complete</div>
                     </div>
                     <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => void selfTest(a)}
-                        disabled={testing === a.id}
-                        title="Try this quiz yourself — a private dry run"
-                      >
-                        <FlaskConical className="h-3.5 w-3.5" />
-                        <span className="hidden lg:inline">{testing === a.id ? 'Starting…' : 'Test it'}</span>
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => go({ name: 't-results', assignmentId: a.id })}>
-                        Results <ArrowRight className="h-3.5 w-3.5" />
-                      </Button>
+                      {a.draft ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => go({ name: 't-new', draftId: a.id })}
+                            title="Edit this draft"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            <span className="hidden lg:inline">Edit</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => void publish(a)}
+                            disabled={publishing === a.id}
+                            title="Make it visible to students"
+                          >
+                            <Rocket className="h-3.5 w-3.5" />
+                            <span className="hidden lg:inline">{publishing === a.id ? 'Publishing…' : 'Publish'}</span>
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void selfTest(a)}
+                            disabled={testing === a.id}
+                            title="Try this quiz yourself — a private dry run"
+                          >
+                            <FlaskConical className="h-3.5 w-3.5" />
+                            <span className="hidden lg:inline">{testing === a.id ? 'Starting…' : 'Test it'}</span>
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => go({ name: 't-results', assignmentId: a.id })}>
+                            Results <ArrowRight className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="icon" className="text-[var(--danger)]" aria-label={`Delete ${a.title}`}>

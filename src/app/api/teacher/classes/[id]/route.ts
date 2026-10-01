@@ -43,7 +43,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
 
   const students = values(await col<Student>('students')).filter((s) => s.classId === id);
   const attempts = values(await col<Attempt>('attempts')).filter((a) => a.classId === id);
-  const assignments = values(await col<Assignment>('assignments')).filter((a) => a.classId === id);
+  const assignments = values(await col<Assignment>('assignments')).filter((a) => a.classId === id || a.classIds?.includes(id));
 
   await Promise.all([
     del('classes', id),

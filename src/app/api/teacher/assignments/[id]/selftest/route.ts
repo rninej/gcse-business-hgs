@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { col, item, put, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
+import { shuffleMcqOptions } from '@/lib/questions';
 import type { Attempt, Assignment, Teacher } from '@/lib/types';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -45,7 +46,7 @@ export async function POST(_req: Request, ctx: Ctx) {
     startedAt: Date.now(),
     dueAt: null,
     timeLimitMin: null, // no timer for the teacher's own dry run
-    questions: assignment.questions.map((q) => ({ ...q })),
+    questions: shuffleMcqOptions(assignment.questions.map((q) => ({ ...q }))),
     answers: {},
     checked: {},
     perQ: {},

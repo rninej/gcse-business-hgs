@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { colCached, values } from '@/lib/firebase';
 import { loadAccessibleAttempt } from '@/lib/attemptAccess';
+import { isAbandonedTimed, finalizeAttempt } from '@/lib/finalize';
 import { streaksFrom } from '@/lib/streaks';
 import { toClientQuestions, toReview } from '@/lib/sanitize';
 import type { Attempt } from '@/lib/types';
@@ -10,8 +11,14 @@ import type { Attempt } from '@/lib/types';
 export async function GET(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
 
-  const access = await loadAccessibleAttempt(id);
+  let access = await loadAccessibleAttempt(id);
   if (!access) return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
+
+  // a timed quiz whose student left (heartbeat went stale) is ended the
+  // moment anyone looks at it — rejoining is only for untimed quizzes
+  if (isAbandonedTimed(access.attempt)) {
+    access = { ...access, attempt: await finalizeAttempt(access.attempt) };
+  }
   const { attempt } = access;
   const isSelfTest = attempt.mode === 'selftest';
 

@@ -10,7 +10,7 @@ export type View =
   | { name: 't-class'; classId: string }
   | { name: 't-assignments' }
   | { name: 't-results'; assignmentId: string }
-  | { name: 't-new'; presetQuizId?: string }
+  | { name: 't-new'; presetQuizId?: string; draftId?: string }
   | { name: 't-library' }
   | { name: 's-home' }
   | { name: 's-practice' }

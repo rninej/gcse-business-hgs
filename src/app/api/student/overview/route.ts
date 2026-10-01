@@ -49,6 +49,9 @@ export async function GET() {
       bestPct: pcts.length ? Math.max(...pcts) : null,
     },
     streak,
+    // true the very first time a brand-new account lands on its dashboard —
+    // StudentHome uses it to offer the optional password-change popup once
+    firstLogin: !me.firstLoginDone,
     recent: attempts.slice(0, 8).map((a) => ({
       id: a.id,
       title: a.assignmentTitle,

@@ -23,22 +23,35 @@ export interface GenResult {
 }
 
 const SCHEMA_HINT = `Return ONLY a JSON array (no prose, no markdown fences). Each element:
-{"type":"mcq","topic":"<topic id>","difficulty":1|2|3,"marks":1,"stem":"...","extract":{"title":"...","text":"..."} (optional),"diagram":null,"options":["A","B","C","D"] (exactly 4, exactly ONE correct),"correct":0|1|2|3,"explain":"1-2 sentence explanation"}
+{"type":"mcq","topic":"<topic id>","difficulty":1|2|3,"marks":1,"stem":"...","extract":{"title":"...","text":"..."} (optional),"diagram":null,"options":["A","B","C","D"] (exactly 4, exactly ONE correct — put the correct option in a RANDOM position, never always first),"correct":0|1|2|3,"explain":"1-2 sentence explanation"}
 {"type":"term","topic":"...","difficulty":...,"marks":1,"stem":"...","accept":["term","plural or common misspelling-free variant"],"explain":"..."}   // student types a word/term; list 2-4 accepted spellings incl. hyphen/space variants
 {"type":"fib","topic":"...","stem":"sentence with ________ blank asking for ONE word","accept":["word"],"explain":"..."}
 {"type":"truefalse","topic":"...","stem":"statement","answer":true|false,"explain":"..."}
-{"type":"numeric","topic":"...","stem":"... (state rounding required, e.g. 1 decimal place)","value":<number>,"tol":<number>,"unit":"%"|"£"|"loaves"|null,"dp":<number>,"explain":"full working"}`;
+{"type":"numeric","topic":"...","stem":"... (state rounding required, e.g. 1 decimal place)","value":<number>,"tol":<number>,"unit":"%"|"£"|"loaves"|null,"dp":<number>,"explain":"full working"}
+{"type":"written","topic":"...","difficulty":3,"marks":<2-12>,"stem":"exam-style question demanding analysis or evaluation (e.g. Discuss…, Justify…, To what extent…)","extract":{...} (optional but recommended),"points":[{"text":"one marking point: what the student must say","marks":1|2|3}, ... 2-6 points summing to the total marks],"explain":"a model answer in full sentences covering every marking point"}`;
 
 function isQuestionType(v: unknown): v is QuestionType {
-  return v === 'mcq' || v === 'term' || v === 'fib' || v === 'numeric' || v === 'truefalse';
+  return v === 'mcq' || v === 'term' || v === 'fib' || v === 'numeric' || v === 'truefalse' || v === 'written';
+}
+
+/** LLMs love markdown; students see plain text — strip the common markers. */
+function stripMd(s: string): string {
+  return s
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // **bold**
+    .replace(/__([^_]+)__/g, '$1') // __bold__
+    .replace(/(^|\s)\*([^*\n]+)\*(?=\s|$)/g, '$1$2') // *italic* on its own
+    .replace(/`([^`]+)`/g, '$1') // `code`
+    .replace(/^#{1,4}\s+/gm, '') // headings
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 /** Structural validation of one AI-produced question */
 function validateOne(raw: Record<string, unknown>, allowedTopics: Set<string>): Question | null {
   const type = raw.type;
   const topic = typeof raw.topic === 'string' ? raw.topic : '';
-  const stem = typeof raw.stem === 'string' ? raw.stem.trim() : '';
-  const explain = typeof raw.explain === 'string' ? raw.explain.trim() : '';
+  const stem = typeof raw.stem === 'string' ? stripMd(raw.stem.trim()) : '';
+  const explain = typeof raw.explain === 'string' ? stripMd(raw.explain.trim()) : '';
   const difficultyRaw = Number(raw.difficulty);
   const difficulty = (raw.difficulty === 1 || raw.difficulty === 2 || raw.difficulty === 3 ? raw.difficulty : 2) as 1 | 2 | 3;
   const marks = Math.min(3, Math.max(1, Number(raw.marks) || 1));
@@ -48,14 +61,14 @@ function validateOne(raw: Record<string, unknown>, allowedTopics: Set<string>): 
   const extract =
     raw.extract && typeof raw.extract === 'object'
       ? {
-          title: String((raw.extract as Record<string, unknown>).title ?? 'Case study').slice(0, 80),
-          text: String((raw.extract as Record<string, unknown>).text ?? '').trim(),
+          title: stripMd(String((raw.extract as Record<string, unknown>).title ?? 'Case study')).slice(0, 80),
+          text: stripMd(String((raw.extract as Record<string, unknown>).text ?? '').trim()),
         }
       : undefined;
   if (extract && (extract.text.length < 30 || extract.text.length > 900)) return null;
 
   if (type === 'mcq') {
-    const options = Array.isArray(raw.options) ? raw.options.map((o) => String(o).trim()) : [];
+    const options = Array.isArray(raw.options) ? raw.options.map((o) => stripMd(String(o).trim())) : [];
     const correct = Number(raw.correct);
     if (options.length !== 4 || !Number.isInteger(correct) || correct < 0 || correct > 3) return null;
     if (options.some((o) => !o || o.length > 120)) return null;
@@ -63,7 +76,7 @@ function validateOne(raw: Record<string, unknown>, allowedTopics: Set<string>): 
     return { id: '', type: 'mcq', topic, difficulty, marks, stem, extract, explain, options, correct };
   }
   if (type === 'term' || type === 'fib') {
-    const accept = Array.isArray(raw.accept) ? raw.accept.map((a) => String(a).trim()).filter(Boolean) : [];
+    const accept = Array.isArray(raw.accept) ? raw.accept.map((a) => stripMd(String(a).trim())).filter(Boolean) : [];
     if (accept.length < 1 || accept.length > 6) return null;
     if (accept.some((a) => a.length > 40)) return null;
     return { id: '', type, topic, difficulty, marks, stem, extract, explain, accept };
@@ -80,7 +93,51 @@ function validateOne(raw: Record<string, unknown>, allowedTopics: Set<string>): 
     const dp = Number.isInteger(raw.dp) && (raw.dp as number) >= 0 && (raw.dp as number) <= 3 ? (raw.dp as number) : undefined;
     return { id: '', type: 'numeric', topic, difficulty, marks, stem, extract, explain, value, tol, unit, dp };
   }
+  if (type === 'written') {
+    // AI-written extended-response question with its own mark scheme
+    const rawPoints = Array.isArray(raw.points) ? raw.points : [];
+    if (rawPoints.length < 2 || rawPoints.length > 8) return null;
+    const points: { text: string; marks: number }[] = [];
+    let total = 0;
+    for (const p of rawPoints) {
+      const obj = p as Record<string, unknown>;
+      const text = typeof obj.text === 'string' ? stripMd(obj.text.trim()) : '';
+      const pm = Math.round(Number(obj.marks));
+      if (text.length < 5 || !Number.isInteger(pm) || pm < 1 || pm > 3) return null;
+      points.push({ text: text.slice(0, 400), marks: pm });
+      total += pm;
+    }
+    if (total < 2 || total > 12) return null;
+    if (stem.length < 25) return null; // real exam-style command needed
+    return { id: '', type: 'written', topic, difficulty: 3, marks: total, stem, extract, explain, points };
+  }
   return null;
+}
+
+/** Fisher–Yates shuffle that never biases — used for MCQ option order. */
+function shuffledIndices(n: number): number[] {
+  const idx = Array.from({ length: n }, (_, i) => i);
+  for (let i = idx.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [idx[i], idx[j]] = [idx[j], idx[i]];
+  }
+  return idx;
+}
+
+/** Randomise the position of the correct option on every MCQ. LLMs (and
+ *  busy humans writing banks) put the correct answer first far too often —
+  * this guarantees an even spread of A/B/C/D no matter where questions come
+ *  from. Call when an attempt is created or a set is generated. */
+export function shuffleMcqOptions<T extends Question>(questions: T[]): T[] {
+  return questions.map((q) => {
+    if (q.type !== 'mcq') return q;
+    const order = shuffledIndices(q.options.length);
+    return {
+      ...q,
+      options: order.map((i) => q.options[i]),
+      correct: order.indexOf(q.correct),
+    } as T;
+  });
 }
 
 /** Deterministic guard: every numeric question's explanation must contain a number
@@ -212,6 +269,8 @@ ${SCHEMA_HINT}`;
   valid = dedupe(valid);
   valid = await verifyNumeric(valid);
   valid = valid.slice(0, count);
+  // even out the correct-answer positions — the model loves putting it first
+  valid = shuffleMcqOptions(valid);
 
   if (valid.length < Math.max(4, Math.floor(count * 0.5))) {
     return {

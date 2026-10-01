@@ -14,8 +14,19 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 import { PageHeader, ThemedSkeleton, ErrorNote, EmptyState, DueChip, PctChip } from '@/components/shared';
 import { BarList, ScoreRing } from '@/components/charts';
 import { cn } from '@/lib/utils';
@@ -45,6 +56,8 @@ interface StreakInfo {
 interface Overview {
   stats: { quizzesDone: number; avgPct: number | null; points: number; bestPct: number | null };
   streak: StreakInfo;
+  /** true the first time a brand-new account lands here */
+  firstLogin?: boolean;
   recent: { id: string; title: string; mode: string; pct: number; score: number; total: number; submittedAt: number }[];
   mastery: { topic: string; title: string; pct: number; attempts: number }[];
 }
@@ -73,6 +86,7 @@ export function StudentHome() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [board, setBoard] = useState<Leaderboard | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
 
   const load = useCallback(() => {
     api
@@ -169,7 +183,7 @@ export function StudentHome() {
           icon={ClipboardList}
           title="Nothing set yet"
           body="When your teacher sets work it will appear here. Meanwhile, try a practice quiz!"
-          action={<Button size="sm" variant="outline" onClick={() => go({ name: 's-practice' })}>Practice quizzes</Button>}
+          action={<Button size="sm" variant="outline" onClick={() => go({ name: 's-practice' })}>Quizzes</Button>}
         />
       ) : (
         <div className="space-y-3 mb-6">
@@ -400,7 +414,113 @@ export function StudentHome() {
           </ul>
         </>
       ) : null}
+
+      {/* one-time welcome for brand-new accounts — offer a memorable password */}
+      <WelcomeDialog
+        open={Boolean(overview?.firstLogin) && !welcomeDismissed}
+        onDone={() => setWelcomeDismissed(true)}
+      />
     </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* First-login welcome: optionally swap the teacher-issued password   */
+/* for something memorable. Shows exactly once per account.           */
+/* ------------------------------------------------------------------ */
+function WelcomeDialog({ open, onDone }: { open: boolean; onDone: () => void }) {
+  const { toast } = useToast();
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function keep() {
+    try {
+      await api.post('/api/student/first-login');
+    } catch {
+      /* even if this fails the flag is set on the next password change */
+    }
+    onDone();
+  }
+
+  async function change() {
+    setError(null);
+    if (next !== confirm) {
+      setError('The new passwords do not match.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.post('/api/auth/password', { currentPassword: current, newPassword: next });
+      toast({ title: 'Password updated', description: 'Use your new password next time you sign in.' });
+      onDone();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const canChange = current.trim() && next.length >= 6 && next === confirm && !busy;
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) void keep(); }}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Welcome to gcsebusiness</DialogTitle>
+          <DialogDescription>
+            Your account is ready. If you like, swap the password your teacher gave you for one you&rsquo;ll remember — it&rsquo;s optional.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="w-current">Current password</Label>
+            <Input
+              id="w-current"
+              type="password"
+              autoComplete="current-password"
+              value={current}
+              onChange={(e) => setCurrent(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="w-next">New password</Label>
+            <Input
+              id="w-next"
+              type="password"
+              autoComplete="new-password"
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
+              placeholder="At least 6 characters"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="w-confirm">Repeat new password</Label>
+            <Input
+              id="w-confirm"
+              type="password"
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && canChange) void change();
+              }}
+            />
+          </div>
+          {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
+        </div>
+        <DialogFooter className="flex-col sm:flex-col gap-2">
+          <Button onClick={() => void change()} disabled={!canChange}>
+            {busy ? 'Saving…' : 'Save new password'}
+          </Button>
+          <Button variant="ghost" onClick={() => void keep()}>
+            Keep my current password
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

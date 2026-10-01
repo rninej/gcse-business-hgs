@@ -79,6 +79,8 @@ interface Snapshot {
   perQ: Record<string, PerQTelemetry>;
   events: TelemetryEvent[];
   hiddenMs: number;
+  /** Active (in-quiz, visible) time accumulated across earlier sessions. */
+  activeMs?: number;
   startedClientMs: number;
 }
 
@@ -88,6 +90,10 @@ class RunStore {
   hiddenMs = 0;
   hiddenSince: number | null = null;
   startedClientMs = Date.now();
+  /** active time carried over from earlier sessions of this attempt */
+  priorActiveMs = 0;
+  /** hidden (tab-away) time carried over from earlier sessions */
+  priorHiddenMs = 0;
   qEnter = Date.now();
   qAtFocus: Record<string, string> = {};
   submitted = false;
@@ -143,6 +149,18 @@ class RunStore {
     return Date.now() - this.startedClientMs;
   }
 
+  /** Time the student actually spent inside the quiz (tab visible), across
+   *  every session of this attempt. Time away between sessions never counts —
+   *  this is what the timer/result screens report. */
+  activeMs() {
+    return this.priorActiveMs + Math.max(0, this.wallMs() - this.hiddenMs);
+  }
+
+  /** Total tab-hidden time across sessions (integrity signal only). */
+  totalHiddenMs() {
+    return this.priorHiddenMs + this.hiddenMs;
+  }
+
   markSubmitted() {
     this.submitted = true;
   }
@@ -154,8 +172,15 @@ class RunStore {
   restore(snap: Partial<Snapshot>) {
     this.perQ = snap.perQ ?? {};
     this.events = snap.events ?? [];
-    this.hiddenMs = snap.hiddenMs ?? 0;
-    if (snap.startedClientMs) this.startedClientMs = snap.startedClientMs;
+    // carried-over totals: active time from earlier sessions + hidden time.
+    // The session clock itself starts NOW — the old behaviour of restoring
+    // startedClientMs counted time spent away (e.g. a 5-hour gap showed as
+    // "292m 32s"); only in-quiz time counts.
+    this.priorActiveMs = snap.activeMs ?? 0;
+    this.priorHiddenMs = snap.hiddenMs ?? 0;
+    this.hiddenMs = 0;
+    this.hiddenSince = null;
+    this.startedClientMs = Date.now();
     this.qEnter = Date.now();
   }
 }
@@ -203,7 +228,8 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
       idx,
       perQ: store.perQ,
       events: store.events,
-      hiddenMs: store.hiddenMs,
+      hiddenMs: store.totalHiddenMs(),
+      activeMs: store.activeMs(),
       startedClientMs: store.startedClientMs,
     };
     try {
@@ -272,7 +298,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
     }
   }
 
-  async function doSubmit(auto = false) {
+  async function doSubmit(auto = false, dest: 'result' | 'home' = 'result') {
     if (!data || store.submitted || submitting) return;
     store.markSubmitted();
     setSubmitting(true);
@@ -291,15 +317,22 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
         answers,
         perQ: store.perQ,
         events: store.events,
-        wallMs: store.wallMs(),
-        hiddenMs: store.hiddenMs,
+        // only time actually spent inside the quiz (tab visible) counts —
+        // never the gaps between sessions
+        wallMs: store.activeMs(),
+        hiddenMs: store.totalHiddenMs(),
       });
       // written answers are marked by the AI examiner — kick it off without
       // holding up the trip to the result screen (which polls until finished)
       if (questions.some((x) => x.type === 'written')) {
         void api.post(`/api/student/attempts/${attemptId}/mark-written`).catch(() => undefined);
       }
-      go({ name: 'result', attemptId });
+      if (dest === 'home') {
+        toast({ title: 'Quiz submitted', description: 'Your answers so far were handed in.' });
+        go(data.selfTest ? { name: 't-home' } : { name: 's-home' });
+      } else {
+        go({ name: 'result', attemptId });
+      }
     } catch (e) {
       store.resetSubmitted();
       setSubmitting(false);
@@ -434,6 +467,20 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
      
   }, [data, submittedView]);
 
+  // heartbeat for TIMED quizzes: "I'm still here". While beats arrive the
+  // attempt stays open; if they stop (student left), the server ends the
+  // quiz once the grace window passes — leaving a timed quiz submits it,
+  // rejoining is only for untimed quizzes.
+  useEffect(() => {
+    if (!data || submittedView || !data.timeLimitMin) return;
+    const beat = () => {
+      api.post(`/api/student/attempts/${attemptId}/heartbeat`).catch(() => undefined);
+    };
+    beat();
+    const t = setInterval(beat, 20_000);
+    return () => clearInterval(t);
+  }, [data, submittedView, attemptId]);
+
   // auto-submit when the clock runs out
   useEffect(() => {
     if (!data || deadline === null) return;
@@ -534,16 +581,22 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Leave this quiz?</AlertDialogTitle>
+                  <AlertDialogTitle>{data.timeLimitMin ? 'Leave and submit this quiz?' : 'Leave this quiz?'}</AlertDialogTitle>
                   <AlertDialogDescription>
                     {data.timeLimitMin
-                      ? 'Every answer you have checked is saved. The timer keeps running and will submit whatever you have done when it hits zero.'
+                      ? 'This is a timed quiz, so leaving submits the answers you have given so far — you will not be able to come back to it. The clock also keeps running if you stay away.'
                       : 'Every answer you have checked is saved — come back any time and carry on where you left off.'}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Keep working</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => go(data.selfTest ? { name: 't-home' } : { name: 's-home' })}>Leave</AlertDialogAction>
+                  {data.timeLimitMin ? (
+                    <AlertDialogAction onClick={() => void doSubmit(false, 'home')} disabled={submitting}>
+                      {submitting ? 'Submitting…' : 'Leave & submit'}
+                    </AlertDialogAction>
+                  ) : (
+                    <AlertDialogAction onClick={() => go(data.selfTest ? { name: 't-home' } : { name: 's-home' })}>Leave</AlertDialogAction>
+                  )}
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -581,22 +634,24 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
           </aside>
         ) : null}
 
-        {/* question card — slides sideways between questions */}
+        {/* question card — glides between questions: the current card dips
+            out first, then the next one slides in from the side. mode="wait"
+            keeps exactly one card on screen (no overlap flash, no height snap). */}
         <section className={cn('min-w-0', !q.extract && 'mx-auto w-full max-w-2xl')}>
           <div ref={cardRef} className="relative scroll-mt-32 md:scroll-mt-24">
-            <AnimatePresence initial={false} custom={dir} mode="popLayout">
+            <AnimatePresence initial={false} custom={dir} mode="wait">
               <motion.div
                 key={q.id}
                 custom={dir}
                 variants={{
-                  enter: (d: number) => ({ opacity: 0, x: 36 * d, scale: 0.985 }),
-                  center: { opacity: 1, x: 0, scale: 1 },
-                  exit: (d: number) => ({ opacity: 0, x: -26 * d, scale: 0.985, transition: { duration: 0.2, ease: 'easeIn' } }),
+                  enter: (d: number) => ({ opacity: 0, x: 28 * d, y: 12 }),
+                  center: { opacity: 1, x: 0, y: 0 },
+                  exit: (d: number) => ({ opacity: 0, x: -18 * d, y: -8, transition: { duration: 0.15, ease: 'easeIn' } }),
                 }}
                 initial="enter"
                 animate="center"
                 exit="exit"
-                transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
               >
             <div className="rounded-xl border border-white/60 bg-card/70 backdrop-blur-xl backdrop-saturate-150 p-4 sm:p-6 md:p-7 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.65),0_16px_48px_-16px_rgb(13_92_70/0.22)]">
             <div className="flex items-center gap-2 flex-wrap mb-3 md:mb-4">

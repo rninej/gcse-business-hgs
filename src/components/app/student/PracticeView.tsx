@@ -70,14 +70,14 @@ export function PracticeView() {
   if (error)
     return (
       <>
-        <PageHeader title="Practice quizzes" />
+        <PageHeader title="Quizzes" />
         <ErrorNote message={error} />
       </>
     );
   if (!quizzes)
     return (
       <>
-        <PageHeader title="Practice quizzes" />
+        <PageHeader title="Quizzes" />
         <ThemedSkeleton rows={3} />
       </>
     );
@@ -85,7 +85,7 @@ export function PracticeView() {
   return (
     <>
       <PageHeader
-        title="Practice quizzes"
+        title="Quizzes"
         sub="Pick a topic and test yourself — as many times as you like. Your marks update your progress map."
         actions={
           <Button variant="outline" size="sm" onClick={() => go({ name: 's-revise' })}>

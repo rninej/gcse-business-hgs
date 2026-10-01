@@ -1,7 +1,9 @@
 // Server-side finalization of timed attempts whose clock ran out while the
-// student was away. Without this, an expired attempt stays "in-progress"
-// forever (the teacher sees "still working" indefinitely and class stats miss
-// it). Checked answers already live on the attempt, so marking is fully
+// student was away — or whose heartbeat went stale because they left a timed
+// quiz mid-way (leaving a timed quiz ends it; rejoining is only for untimed
+// quizzes). Without this, an abandoned attempt stays "in-progress" forever
+// (the teacher sees "still working" indefinitely and class stats miss it).
+// Checked answers already live on the attempt, so marking is fully
 // deterministic; feedback uses the instant template (no slow AI call inside a
 // read route's hot path).
 
@@ -15,20 +17,49 @@ import type { Attempt, AttemptResult } from './types';
 /** attempts currently being finalized (guards double-sweeps within this process) */
 const inFlight = new Set<string>();
 
+/** How long after the last heartbeat a timed attempt counts as abandoned.
+ *  Generous enough to survive a page refresh or a network blip; short enough
+ *  that leaving a timed quiz and coming back later ends the quiz. */
+export const HEARTBEAT_GRACE_MS = 75_000;
+
+/** A timed, in-progress attempt whose student has gone away. Attempts created
+ *  before heartbeats existed have no lastSeenAt — for those only true expiry
+ *  applies, so nobody is cut off by the deploy itself. */
+export function isAbandonedTimed(a: Attempt, now = Date.now()): boolean {
+  if (a.status !== 'in-progress' || !a.timeLimitMin || a.timeLimitMin <= 0) return false;
+  if (!a.lastSeenAt) return false;
+  return now - a.lastSeenAt > HEARTBEAT_GRACE_MS && now <= a.startedAt + a.timeLimitMin * 60_000;
+}
+
+/** Finalize one in-progress attempt right now (caller has already decided it
+ *  is expired or abandoned). Idempotent per process. */
+export async function finalizeAttempt(a: Attempt, now = Date.now()): Promise<Attempt> {
+  if (a.status !== 'in-progress' || inFlight.has(a.id)) return a;
+  inFlight.add(a.id);
+  try {
+    return await finalizeOne(a, now);
+  } catch {
+    return a; // never let a sweep failure break the route
+  } finally {
+    inFlight.delete(a.id);
+  }
+}
+
 /**
- * Finalize any in-progress attempts whose time limit has elapsed.
- * Returns the (possibly updated) attempts so callers build fresh rows.
+ * Finalize in-progress attempts whose time limit has elapsed or whose
+ * heartbeat went stale. Returns the (possibly updated) attempts so callers
+ * build fresh rows.
  */
 export async function finalizeExpired(attempts: Attempt[]): Promise<Attempt[]> {
   const out: Attempt[] = [];
   const now = Date.now();
 
   for (const a of attempts) {
+    const limitMs = a.timeLimitMin ? a.timeLimitMin * 60_000 : 0;
     const expired =
       a.status === 'in-progress' &&
-      a.timeLimitMin != null &&
-      a.timeLimitMin > 0 &&
-      now > a.startedAt + a.timeLimitMin * 60_000;
+      limitMs > 0 &&
+      (now > a.startedAt + limitMs || isAbandonedTimed(a, now));
 
     if (!expired || inFlight.has(a.id)) {
       out.push(a);

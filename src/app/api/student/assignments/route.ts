@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { colCached, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { finalizeExpired } from '@/lib/finalize';
-import type { Attempt, Assignment, Student } from '@/lib/types';
+import { assignmentTargetsStudent, type Attempt, type Assignment, type Student } from '@/lib/types';
 
 export async function GET() {
   const session = await requireRole('student');
@@ -12,8 +12,9 @@ export async function GET() {
   const me = students[session.uid];
   if (!me) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
 
+  // visible = set to the student's class(es) or to them individually; drafts stay hidden
   const assignments = values(await colCached<Assignment>('assignments'))
-    .filter((a) => a.classId === me.classId)
+    .filter((a) => !a.draft && assignmentTargetsStudent(a, me))
     .sort((a, b) => (a.dueAt ?? Infinity) - (b.dueAt ?? Infinity));
   let attempts = values(await colCached<Attempt>('attempts')).filter((a) => a.studentId === session.uid);
 

@@ -3,13 +3,7 @@ import { col, colCached, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { finalizeExpired } from '@/lib/finalize';
 import { topicTitle } from '@/lib/topics';
-import type {
-  Attempt,
-  Assignment,
-  RiskBand,
-  Student,
-  TeacherStudentResult,
-} from '@/lib/types';
+import { assignmentTargetsStudent, type Attempt, type Assignment, type RiskBand, type Student, type TeacherStudentResult } from '@/lib/types';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -24,7 +18,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
 
-  const allStudents = values(await colCached<Student>('students')).filter((s) => s.classId === a.classId);
+  const allStudents = values(await colCached<Student>('students')).filter((s) => assignmentTargetsStudent(a, s));
   // finalize timed attempts whose clock ran out (students who never reopened);
   // teacher self-tests are excluded — they never count as class statistics
   const allAttempts = await finalizeExpired(

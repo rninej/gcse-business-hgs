@@ -41,7 +41,7 @@ export function FlashcardView() {
         sub="Flip through the key terms for every topic — definitions, formulas and facts from the spec."
         actions={
           <Button variant="outline" size="sm" onClick={() => go({ name: 's-practice' })}>
-            Practice quizzes
+            Quizzes
           </Button>
         }
       />

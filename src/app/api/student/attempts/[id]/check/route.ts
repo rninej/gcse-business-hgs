@@ -31,7 +31,7 @@ export async function POST(req: Request, ctx: Ctx) {
   // the AI examiner marks them after submission
   if (q.type === 'written') {
     const answer = (body.answer ?? '').toString().slice(0, 5000);
-    await merge('attempts', attempt.id, { [`answers/${qid}`]: answer });
+    await merge('attempts', attempt.id, { [`answers/${qid}`]: answer, lastSeenAt: Date.now() });
     return NextResponse.json({ ok: true, saved: true, marks: q.marks });
   }
 
@@ -60,6 +60,7 @@ export async function POST(req: Request, ctx: Ctx) {
       explain: q.explain,
       at: Date.now(),
     },
+    lastSeenAt: Date.now(),
   });
 
   return NextResponse.json({

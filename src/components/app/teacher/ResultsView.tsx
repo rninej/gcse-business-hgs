@@ -251,7 +251,6 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
           <p className="text-xs text-muted-foreground mt-2">
             {a.dueAt ? `Due ${new Date(a.dueAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}` : 'No deadline'}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">{a.generatedBy}</p>
         </div>
       </div>
 

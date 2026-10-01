@@ -36,7 +36,7 @@ function viewKey(v: View): string {
     case 't-results':
       return `t-results:${v.assignmentId ?? ''}`;
     case 't-new':
-      return `t-new:${v.presetQuizId ?? ''}`;
+      return `t-new:${v.presetQuizId ?? ''}:${v.draftId ?? ''}`;
     default:
       return v.name;
   }
@@ -91,8 +91,8 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
       ]
     : [
         { label: 'Home', icon: HomeIcon, view: { name: 's-home' } },
-        { label: 'Practice', icon: GraduationCapIcon, view: { name: 's-practice' } },
-        { label: 'Revise', icon: LayersIcon, view: { name: 's-revise' } },
+        { label: 'Quizzes', icon: GraduationCapIcon, view: { name: 's-practice' } },
+        { label: 'Flashcards', icon: LayersIcon, view: { name: 's-revise' } },
         { label: 'Results', icon: HistoryIcon, view: { name: 's-history' } },
       ];
 
