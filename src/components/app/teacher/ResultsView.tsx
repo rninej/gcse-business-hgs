@@ -462,7 +462,7 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
 
         {/* topics & questions tab */}
         <TabsContent value="topics" className="mt-4 space-y-5">
-          <div className="grid lg:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <div className="rounded-xl border bg-card p-5">
               <h3 className="font-semibold mb-1 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" /> Topic performance</h3>
               <p className="text-xs text-muted-foreground mb-4">Marks won by the class, per spec topic.</p>

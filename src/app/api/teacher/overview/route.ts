@@ -63,7 +63,7 @@ export async function GET() {
   const fixPools: { classId: string; name: string; questions: number; students: number }[] = [];
   const slipAgg = new Map<
     string,
-    { id: string; stem: string; studentsWrong: number; timesWrong: number; classes: { classId: string; name: string; studentsWrong: number }[] }
+    { id: string; stem: string; topic: string; studentsWrong: number; timesWrong: number; classes: { classId: string; name: string; studentsWrong: number }[] }
   >();
   for (const c of myClasses) {
     const pool = await classFixPool(c.id, session.uid);
@@ -80,6 +80,7 @@ export async function GET() {
         slipAgg.set(e.q.id, {
           id: e.q.id,
           stem: e.q.stem,
+          topic: topicTitle(e.q.topic),
           studentsWrong: e.studentsWrong,
           timesWrong: e.timesWrong,
           classes: [{ classId: c.id, name: c.name, studentsWrong: e.studentsWrong }],
@@ -90,6 +91,51 @@ export async function GET() {
   const commonSlips = [...slipAgg.values()]
     .sort((a, b) => b.studentsWrong - a.studentsWrong || b.timesWrong - a.timesWrong)
     .slice(0, 5);
+
+  // needs attention — published assignments with a due date on the horizon
+  // (or just past) where at least one targeted student still hasn't handed
+  // in. The teacher's morning list: who to chase before the deadline bites.
+  const nowMs = Date.now();
+  const ATTENTION_WINDOW = 14 * 24 * 60 * 60 * 1000; // due within a fortnight
+  const GRACE_PAST = 3 * 24 * 60 * 60 * 1000; // ...or up to 3 days overdue
+  const attention: {
+    id: string;
+    title: string;
+    classTitle: string;
+    dueAt: number;
+    questionCount: number;
+    submittedCount: number;
+    total: number;
+    missing: { name: string; started: boolean }[];
+    missingCount: number;
+  }[] = [];
+  for (const a of myAssignments) {
+    if (a.draft || !a.dueAt) continue;
+    if (a.dueAt < nowMs - GRACE_PAST || a.dueAt > nowMs + ATTENTION_WINDOW) continue;
+    const targets = myStudents.filter((s) => assignmentTargetsStudent(a, s));
+    if (targets.length === 0) continue;
+    const subIds = new Set(
+      myAttempts.filter((x) => x.assignmentId === a.id && x.status === 'submitted').map((x) => x.studentId)
+    );
+    const startedIds = new Set(
+      myAttempts.filter((x) => x.assignmentId === a.id && x.status !== 'submitted').map((x) => x.studentId)
+    );
+    const missing = targets.filter((s) => !subIds.has(s.id));
+    if (missing.length === 0) continue;
+    attention.push({
+      id: a.id,
+      title: a.title,
+      classTitle: a.classTitle,
+      dueAt: a.dueAt,
+      questionCount: a.questions.length,
+      submittedCount: subIds.size,
+      total: targets.length,
+      missing: missing.slice(0, 6).map((s) => ({ name: s.displayName, started: startedIds.has(s.id) })),
+      missingCount: missing.length,
+    });
+  }
+  attention.sort((x, y) => x.dueAt - y.dueAt);
+  const needsAttention = attention.slice(0, 5);
 
   return NextResponse.json({
     stats: {
@@ -120,5 +166,6 @@ export async function GET() {
     weakTopics: topicRows.slice(0, 6),
     commonSlips,
     fixPools,
+    needsAttention,
   });
 }

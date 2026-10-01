@@ -29,7 +29,10 @@ export async function GET(_req: Request, ctx: Ctx) {
       const rec = r?.perQ?.[q.id];
       return toReview(q, i + 1, rec?.given ?? '—', rec?.expected ?? '', Boolean(rec?.correct), rec);
     });
-    // streak for the celebration banner (cheap: collection read is cached)
+    // streak for the celebration banner (cheap: collection read is cached).
+    // The milestone is captured at submit time and STORED on the attempt —
+    // re-reading it later always shows the same celebration even if another
+    // same-day quiz would now mask the crossing.
     const mySubmits = values(await colCached<Attempt>('attempts'))
       .filter((a) => a.studentId === attempt.studentId && a.status === 'submitted' && a.result && a.mode !== 'selftest')
       .map((a) => a.result?.submittedAt ?? 0);
@@ -43,6 +46,7 @@ export async function GET(_req: Request, ctx: Ctx) {
       reviews,
       topicStats: r?.topicStats ?? [],
       streak: streaksFrom(mySubmits).current,
+      streakMilestone: attempt.streakMilestone ?? null,
       explanations: attempt.explanations ?? {},
       teacherFeedback: attempt.teacherFeedback ?? null,
     });

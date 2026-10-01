@@ -353,10 +353,61 @@
   }
 }
 
+/* streak-milestone banner — a one-shot shine sweep diagonally across the
+   card, plus a slow halo pulse behind the flame */
+.milestone-shine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    transparent 38%,
+    color-mix(in oklab, #fff 65%, transparent) 50%,
+    transparent 62%,
+    transparent 100%
+  );
+  transform: translateX(-120%);
+  animation: milestone-shine 1.6s var(--ease-out-quint) 0.45s both;
+}
+@keyframes milestone-shine {
+  to { transform: translateX(120%); }
+}
+.milestone-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 2px solid color-mix(in oklab, var(--warn) 55%, transparent);
+  animation: milestone-ring 2.2s ease-out 0.6s infinite;
+}
+@keyframes milestone-ring {
+  0% { opacity: 0.9; transform: scale(1); }
+  70% { opacity: 0; transform: scale(1.5); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+/* needs-attention bell — a small live dot in the corner of the icon */
+.attention-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: var(--warn);
+  box-shadow: 0 0 0 0 color-mix(in oklab, var(--warn) 55%, transparent);
+  animation: attention-dot 2s ease-out infinite;
+}
+@keyframes attention-dot {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--warn) 55%, transparent); }
+  70% { box-shadow: 0 0 0 7px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
 /* respect users who prefer calm */
 @media (prefers-reduced-motion: reduce) {
   .anim-rise, .anim-pop, .anim-drift, .anim-pulse-soft, .anim-wiggle, .anim-float,
-  .stagger > *, .card-lift, .press, .heat-cell {
+  .stagger > *, .card-lift, .press, .heat-cell, .milestone-shine, .milestone-ring, .attention-dot {
     animation: none !important;
     transition: none !important;
   }
@@ -368,12 +419,30 @@
   }
   body {
     background: white !important;
+    /* keep the tinted correct/incorrect answer rows in the printout —
+       a result sheet is meant to carry its colours */
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
   .glass, .glass-strong, .glass-soft {
     background: white !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     box-shadow: none !important;
+    border-color: #ddd !important;
+  }
+  /* the result sheet uses ad-hoc glass cards rather than .glass — flatten
+     every frosted surface so ink isn't wasted on translucent layers */
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .milestone-shine, .milestone-ring {
+    display: none !important;
+  }
+  /* review cards read better with real borders when the glass is gone */
+  main [class*="bg-card/"],
+  main [class*="bg-card/"] {
     border-color: #ddd !important;
   }
 }

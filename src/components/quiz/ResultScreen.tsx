@@ -18,6 +18,7 @@ import {
   Flame,
   PenLine,
   Sparkles,
+  Printer,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +45,7 @@ interface ResultData {
   reviews: QReview[];
   topicStats: TopicStat[];
   streak: number;
+  streakMilestone?: number | null;
   teacherFeedback?: { text: string; at: number; byName: string } | null;
 }
 
@@ -224,6 +226,15 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
   const timeMin = r.timeTakenSec ? Math.floor(r.timeTakenSec / 60) : 0;
   const timeSec = r.timeTakenSec % 60;
   const streak = data.streak ?? 0;
+  const milestone = data.streakMilestone ?? null;
+  const milestoneCopy: Record<number, string> = {
+    3: 'Three days in a row — the habit is forming.',
+    7: 'A full week of daily quizzing. This is how grades move.',
+    14: 'Two weeks straight — your future self says thanks.',
+    30: 'A whole month of showing up. Seriously impressive.',
+    50: 'Fifty days — you\u2019re in rare company now.',
+    100: 'One hundred days. Absolute legend.',
+  };
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -231,7 +242,9 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
       {/* 80%+ — a proper celebration. Fires once on arrival, and once more
           if the AI examiner's marks push the score across the line. */}
       <Confetti trigger={r.pct >= 80 ? `${attemptId}:yes` : null} />
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
+      {/* a streak milestone earns its own golden shower */}
+      <Confetti trigger={milestone ? `${attemptId}:milestone` : null} palette="gold" />
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-5 print:hidden">
         <Button variant="ghost" onClick={home}>
           <ArrowLeft className="h-4 w-4" /> {isSelfTest ? 'Teacher home' : 'Home'}
         </Button>
@@ -300,6 +313,34 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
           </div>
         </div>
       </motion.div>
+
+      {/* streak milestone — a golden moment, literally */}
+      {milestone && !isSelfTest ? (
+        <motion.div
+          initial={{ opacity: 0, y: 18, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          role="status"
+          aria-label={`${milestone}-day streak milestone reached`}
+          className="relative overflow-hidden rounded-2xl border border-[var(--warn)]/40 bg-gradient-to-r from-[var(--warn)]/[0.14] via-[var(--accent)]/[0.10] to-[var(--warn)]/[0.14] backdrop-blur-xl backdrop-saturate-150 p-5 sm:p-6 mb-5"
+        >
+          {/* one-shot shine sweep across the whole banner */}
+          <span className="milestone-shine" aria-hidden />
+          <div className="flex items-center gap-4 sm:gap-5">
+            <span className="relative flex h-14 w-14 sm:h-16 sm:w-16 shrink-0 items-center justify-center rounded-full bg-[var(--warn)]/20 border border-[var(--warn)]/40" aria-hidden>
+              <span className="milestone-ring" aria-hidden />
+              <Flame className="h-7 w-7 sm:h-8 sm:w-8 text-[var(--warn)] anim-wiggle" />
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-xl sm:text-2xl font-bold text-[var(--warn-foreground)] tabular-nums">{milestone}-day streak</span>
+                <span className="text-sm font-semibold uppercase tracking-wide text-[var(--warn)]">unlocked</span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">{milestoneCopy[milestone] ?? 'Keep the flame burning.'}</p>
+            </div>
+          </div>
+        </motion.div>
+      ) : null}
 
       {/* feedback */}
       <div className="rounded-xl border border-white/60 bg-card/75 backdrop-blur-xl backdrop-saturate-150 p-5 mb-5">
@@ -537,7 +578,7 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
         )}
       </ol>
 
-      <div className="mt-6 flex flex-wrap gap-3">
+      <div className="mt-6 flex flex-wrap gap-3 print:hidden">
         <Button onClick={home}>
           <ArrowLeft className="h-4 w-4" /> {isSelfTest ? 'Back to teacher home' : 'Back to home'}
         </Button>
@@ -547,6 +588,9 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
             {redoing ? 'Starting…' : data.mode === 'practice' ? 'Try this quiz again' : 'Redo this quiz'}
           </Button>
         ) : null}
+        <Button variant="ghost" onClick={() => window.print()}>
+          <Printer className="h-4 w-4" /> Print / save PDF
+        </Button>
         {data.mode === 'practice' ? (
           <Button variant="ghost" onClick={() => go({ name: 's-practice' })}>
             Choose a different quiz

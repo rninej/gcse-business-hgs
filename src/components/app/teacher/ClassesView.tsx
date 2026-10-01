@@ -18,6 +18,7 @@ import {
   Wand2,
   Clock3,
   UserRoundSearch,
+  HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,6 +55,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { PageHeader, ThemedSkeleton, ErrorNote, EmptyState } from '@/components/shared';
@@ -889,6 +891,20 @@ function ClassDetail({ classId }: { classId: string }) {
               {pool.freshExcluded ? (
                 <p className="text-xs text-muted-foreground/80 mt-1 tabular-nums">
                   + {pool.freshExcluded} more from quizzes set in the last 24h — they rejoin tomorrow.
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex align-middle ml-1 text-muted-foreground/70 hover:text-foreground transition-colors rounded-full"
+                        aria-label="Why do fresh questions wait a day?"
+                      >
+                        <HelpCircle className="h-3.5 w-3.5" aria-hidden />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-64 text-xs leading-relaxed">
+                      Students have only just seen these questions, so re-asking them today would read as a repeat. They automatically rejoin the pool 24 hours after the quiz was set.
+                    </TooltipContent>
+                  </Tooltip>
                 </p>
               ) : null}
               {pool.top.length > 0 ? (
@@ -919,6 +935,20 @@ function ClassDetail({ classId }: { classId: string }) {
           </span>
           <p className="text-xs text-muted-foreground tabular-nums">
             Everything this class is stuck on comes from quizzes set in the last 24 hours — the fixer will have more to work with tomorrow.
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex align-middle ml-1 text-muted-foreground/70 hover:text-foreground transition-colors rounded-full"
+                  aria-label="Why wait a day?"
+                >
+                  <HelpCircle className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-64 text-xs leading-relaxed">
+                Questions from quizzes set in the last 24 hours are still fresh in students&rsquo; minds — they automatically rejoin the pool tomorrow.
+              </TooltipContent>
+            </Tooltip>
           </p>
         </section>
       ) : null}

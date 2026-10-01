@@ -1,10 +1,18 @@
 // Study streak maths — computed from submitted-attempt timestamps.
 // Shared by the student overview and the class leaderboard so both always agree.
 
+import { colCached, values } from './firebase';
+import type { Attempt } from './types';
+
 function dayKey(ms: number): number {
   // UTC day index — a stable, timezone-independent day boundary.
   return Math.floor(ms / 86_400_000);
 }
+
+/** Milestone lines worth celebrating — the result screen fires a special
+ *  banner (and golden confetti) the moment a submission pushes the student's
+ *  current streak across one of these. 3 hooks them early; 100 is legendary. */
+export const STREAK_MILESTONES = [3, 7, 14, 30, 50, 100] as const;
 
 export interface StreakInfo {
   current: number; // consecutive days ending today (or yesterday, before today's quiz)
@@ -54,4 +62,21 @@ export function streaksFrom(submittedAtMs: number[]): StreakInfo {
 export function hasQuizToday(submittedAtMs: number[]): boolean {
   const today = dayKey(Date.now());
   return submittedAtMs.some((ms) => dayKey(ms) === today);
+}
+
+/** The milestone line a submission just crossed, if any — pure maths.
+ *  Returns null when the streak was already at/after the line (e.g. a second
+ *  quiz on the same day must NOT re-unlock the same milestone). */
+export function crossedMilestone(before: number, after: number): number | null {
+  return STREAK_MILESTONES.find((m) => after >= m && before < m) ?? null;
+}
+
+/** Submitted-at timestamps of a student's real (non-self-test) quizzes.
+ *  Server-side only — used by the submit/finalize paths to detect a streak
+ *  milestone at the moment it happens, so the attempt remembers it forever
+ *  (a later same-day quiz would otherwise mask it on re-reads). */
+export async function studentSubmittedAt(studentId: string): Promise<number[]> {
+  return values(await colCached<Attempt>('attempts'))
+    .filter((a) => a.studentId === studentId && a.status === 'submitted' && a.result && a.mode !== 'selftest')
+    .map((a) => a.result?.submittedAt ?? 0);
 }

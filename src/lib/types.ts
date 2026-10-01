@@ -309,6 +309,10 @@ export interface Attempt {
   wallMs: number;
   hiddenMs: number;
   result: AttemptResult | null;
+  /** Streak milestone crossed by THIS submission (3/7/14/30/50/100), captured
+   *  at submit time so the celebration persists on the attempt forever — a
+   *  later same-day quiz would otherwise mask it when the result is re-read. */
+  streakMilestone?: number | null;
 }
 
 // ---------- Flashcards ----------

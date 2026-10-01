@@ -456,8 +456,8 @@ export function StudentHome() {
       {/* activity heatmap — every completed quiz as a square, 12 weeks back */}
       <ActivityHeatmap activity={overview.activity ?? []} streak={streak?.current} title="Your activity" className="mb-6" />
 
-      <div className="grid gap-3 mb-6 sm:grid-cols-3">
-        <div className="rounded-lg border bg-card p-4 sm:p-5 flex items-center gap-4">
+      <div className="grid gap-3 mb-6 sm:grid-cols-3 stagger">
+        <div className="rounded-xl border border-white/60 bg-card/75 backdrop-blur-xl backdrop-saturate-150 p-4 sm:p-5 flex items-center gap-4">
           <ScoreRing pct={overview.stats.avgPct ?? 0} label="average" size={88} />
           <div className="text-sm min-w-0">
             <div className="font-semibold">{overview.stats.quizzesDone} completed</div>
@@ -471,7 +471,7 @@ export function StudentHome() {
             ) : null}
           </div>
         </div>
-        <div className="rounded-lg border bg-card p-4 sm:p-5">
+        <div className="rounded-xl border border-white/60 bg-card/75 backdrop-blur-xl backdrop-saturate-150 p-4 sm:p-5">
           <div className="flex items-center gap-2 text-sm font-semibold mb-3">
             <ClipboardList className="h-4 w-4 text-primary" /> To do
           </div>
@@ -480,7 +480,7 @@ export function StudentHome() {
             {done.length} submitted · {assignments.length} total
           </p>
         </div>
-        <div className="rounded-lg border bg-card p-4 sm:p-5">
+        <div className="rounded-xl border border-white/60 bg-card/75 backdrop-blur-xl backdrop-saturate-150 p-4 sm:p-5">
           <div className="flex items-center gap-2 text-sm font-semibold mb-3">
             <TrendingUp className="h-4 w-4 text-primary" /> Strongest areas
           </div>
@@ -497,7 +497,7 @@ export function StudentHome() {
       {overview.recent.length > 0 ? (
         <>
           <h2 className="font-semibold mb-3 mt-8">Recent results</h2>
-          <ul className="rounded-lg border bg-card divide-y stagger">
+          <ul className="rounded-xl border border-white/60 bg-card/75 backdrop-blur-xl backdrop-saturate-150 divide-y stagger">
             {overview.recent.slice(0, 5).map((r) => (
               <li key={r.id}>
                 <button

@@ -12,6 +12,9 @@ import { useEffect, useRef } from 'react';
 
 const COLORS = ['#0d5c46', '#12805f', '#e8a13a', '#d97706', '#0f766e', '#f5f0e6', '#65a30d'];
 
+/** Golden shower — used for streak milestones, where the flame is the theme. */
+const GOLD = ['#e8a13a', '#d97706', '#f5d580', '#b45309', '#fde68a', '#fff7e0', '#92400e'];
+
 type Shape = 'paper' | 'circle' | 'tri' | 'ribbon';
 
 interface Piece {
@@ -43,7 +46,7 @@ function pickShape(): Shape {
   return 'ribbon';
 }
 
-export function Confetti({ trigger }: { trigger: string | null }) {
+export function Confetti({ trigger, palette = 'brand' }: { trigger: string | null; palette?: 'brand' | 'gold' }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef(0);
 
@@ -56,6 +59,7 @@ export function Confetti({ trigger }: { trigger: string | null }) {
     if (!trigger) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
+    const colors = palette === 'gold' ? GOLD : COLORS;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -89,7 +93,7 @@ export function Confetti({ trigger }: { trigger: string | null }) {
         h: shape === 'ribbon' ? 16 + Math.random() * 14 : shape === 'circle' ? 4 + Math.random() * 4 : 8 + Math.random() * 9,
         rot: Math.random() * Math.PI * 2,
         vrot: (Math.random() - 0.5) * 10,
-        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        color: colors[Math.floor(Math.random() * colors.length)],
         born: now,
         shape,
         phase: Math.random() * Math.PI * 2,
@@ -190,7 +194,7 @@ export function Confetti({ trigger }: { trigger: string | null }) {
     <canvas
       ref={canvasRef}
       aria-hidden
-      className="pointer-events-none fixed inset-0 z-[60]"
+      className="pointer-events-none fixed inset-0 z-[60] print:hidden"
       style={{ display: trigger ? 'block' : 'none' }}
     />
   );

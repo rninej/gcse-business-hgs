@@ -28,7 +28,7 @@ export function QuizBackdrop({ attemptId }: { attemptId: string }) {
 
   if (ok) {
     return (
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden print:hidden">
         {/* the scene — clearly visible; blur + wash keep it calm, and every
             reading surface (question card, header) is opaque on top of it */}
         <img
@@ -151,7 +151,7 @@ function DoodleBackdrop({ idx }: { idx: number }) {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden text-primary/[0.055] dark:text-primary/[0.07]"
+      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden text-primary/[0.055] dark:text-primary/[0.07] print:hidden"
     >
       <svg width="100%" height="100%">
         <defs>

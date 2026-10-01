@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Users, ClipboardList, CheckCircle2, TrendingUp, ShieldAlert, Layers, ArrowRight, PlusCircle, BookOpen, Trophy, Flame, Medal, Wand2 } from 'lucide-react';
+import { Users, ClipboardList, CheckCircle2, TrendingUp, ShieldAlert, Layers, ArrowRight, PlusCircle, BookOpen, Trophy, Flame, Medal, Wand2, BellRing, CircleDot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -25,9 +25,22 @@ import { cn } from '@/lib/utils';
 interface CommonSlip {
   id: string;
   stem: string;
+  topic?: string;
   studentsWrong: number;
   timesWrong: number;
   classes: { classId: string; name: string; studentsWrong: number }[];
+}
+
+interface AttentionRow {
+  id: string;
+  title: string;
+  classTitle: string;
+  dueAt: number;
+  questionCount: number;
+  submittedCount: number;
+  total: number;
+  missing: { name: string; started: boolean }[];
+  missingCount: number;
 }
 
 interface FixPool {
@@ -58,6 +71,7 @@ interface Overview {
   weakTopics: { topic: string; title: string; pct: number }[];
   commonSlips?: CommonSlip[];
   fixPools?: FixPool[];
+  needsAttention?: AttentionRow[];
 }
 
 export function TeacherHome() {
@@ -129,7 +143,11 @@ export function TeacherHome() {
         />
       </div>
 
-      <div className="grid lg:grid-cols-[1.5fr_1fr] gap-5">
+      <NeedsAttentionCard rows={data.needsAttention ?? []} />
+
+      {/* explicit minmax(0,1fr) column on mobile — an implicit auto track
+          sizes to max-content and overflows narrow viewports */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-5">
         <section className="glass rounded-xl">
           <div className="flex items-center justify-between px-5 py-4 border-b">
             <h2 className="font-semibold">Recent assignments</h2>
@@ -201,6 +219,101 @@ export function TeacherHome() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Needs attention — assignments due soon where someone hasn't handed  */
+/* in yet. The teacher's morning chase list, sorted by whichever        */
+/* deadline bites first.                                               */
+/* ------------------------------------------------------------------ */
+
+function NeedsAttentionCard({ rows }: { rows: AttentionRow[] }) {
+  const go = useApp((s) => s.go);
+  if (rows.length === 0) return null;
+
+  const dueLabel = (dueAt: number) => {
+    const diff = dueAt - Date.now();
+    const days = Math.round(diff / 86400000);
+    if (diff < 0) return { text: `overdue by ${Math.abs(days) === 0 ? 'less than a day' : `${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'}`}`, tone: 'danger' as const };
+    if (days === 0) return { text: 'due today', tone: 'danger' as const };
+    if (days === 1) return { text: 'due tomorrow', tone: 'warn' as const };
+    return { text: `due in ${days} days`, tone: 'default' as const };
+  };
+
+  return (
+    <section
+      className="relative glass rounded-xl mb-6 p-4 sm:p-6 overflow-hidden"
+      aria-label="Assignments needing attention"
+    >
+      <div className="flex items-start gap-3 min-w-0">
+        <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--warn)]/15 text-[var(--warn)]" aria-hidden>
+          <BellRing className="h-5 w-5" />
+          <span className="attention-dot" aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <h2 className="font-semibold">Needs your attention</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Assignments due soon where some students haven&rsquo;t handed in — tap a row to see who.
+          </p>
+        </div>
+      </div>
+      <ul className="mt-4 divide-y rounded-lg border bg-card/60 overflow-hidden stagger">
+        {rows.map((row) => {
+          const due = dueLabel(row.dueAt);
+          return (
+            <li key={row.id}>
+              <button
+                className="w-full text-left px-4 py-3 hover:bg-secondary/50 transition-colors"
+                onClick={() => go({ name: 't-results', assignmentId: row.id })}
+              >
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{row.title}</div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className="truncate">{row.classTitle}</span>·<span>{row.questionCount} questions</span>
+                      <span
+                        className={cn(
+                          'font-medium',
+                          due.tone === 'danger' && 'text-[var(--danger)]',
+                          due.tone === 'warn' && 'text-[var(--warn)]'
+                        )}
+                      >
+                        {due.text}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-sm font-semibold tabular-nums">
+                      {row.submittedCount}
+                      <span className="text-muted-foreground font-normal">/{row.total}</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground flex items-center gap-1 justify-end">
+                      <CheckCircle2 className="h-3 w-3" /> handed in
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                  {row.missing.map((m) => (
+                    <span
+                      key={m.name}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--warn)]/35 bg-[var(--warn)]/[0.08] px-2.5 py-0.5 text-[11px] font-medium text-[var(--warn-foreground)]"
+                      title={m.started ? 'Started but not submitted' : 'Not started'}
+                    >
+                      {m.started ? <CircleDot className="h-3 w-3 text-[var(--warn)]" aria-hidden /> : null}
+                      {m.name}
+                    </span>
+                  ))}
+                  {row.missingCount > row.missing.length ? (
+                    <span className="text-[11px] text-muted-foreground">+{row.missingCount - row.missing.length} more</span>
+                  ) : null}
+                </div>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Common slips — what the whole cohort is stuck on right now, with   */
 /* one-tap "set a fixer" per class. Same pool as the class-page card.  */
 /* ------------------------------------------------------------------ */
@@ -264,6 +377,11 @@ function CommonSlipsCard({ slips, pools }: { slips: CommonSlip[]; pools: FixPool
                 {sl.studentsWrong} student{sl.studentsWrong === 1 ? '' : 's'}
               </Badge>
               <span className="flex-1 min-w-0 text-sm truncate" title={sl.stem}>{sl.stem}</span>
+              {sl.topic ? (
+                <Badge variant="outline" className="hidden md:inline-flex text-[10px] h-5 px-1.5 gap-1 shrink-0 text-muted-foreground">
+                  <BookOpen className="h-3 w-3" aria-hidden /> {sl.topic}
+                </Badge>
+              ) : null}
               <span className="hidden sm:flex items-center gap-1 shrink-0">
                 {sl.classes.map((c) => (
                   <Badge key={c.classId} variant="outline" className="text-[10px] h-5 px-1.5 gap-1">

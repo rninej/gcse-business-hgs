@@ -12,6 +12,7 @@ import { markAttempt } from './marking';
 import { assessRisk, pointsFor } from './risk';
 import { templateFeedback } from './ai';
 import { TOPIC_MAP } from './topics';
+import { crossedMilestone, streaksFrom, studentSubmittedAt } from './streaks';
 import type { Attempt, AttemptResult } from './types';
 
 /** attempts currently being finalized (guards double-sweeps within this process) */
@@ -104,6 +105,11 @@ async function finalizeOne(a: Attempt, now: number): Promise<Attempt> {
   const points = pointsFor(marked.score, marked.total, marked.pct);
   const timeTakenSec = Math.round(wallMs / 1000);
 
+  // streak milestone captured at the moment of finalization (prior quizzes
+  // only — same rule as the normal submit path)
+  const isSelfTest = a.mode === 'selftest';
+  const priorSubmits = isSelfTest ? [] : await studentSubmittedAt(a.studentId);
+
   const topicTitles: Record<string, string> = Object.fromEntries(
     (marked.topicStats ?? []).map((s) => [s.topic, TOPIC_MAP[s.topic]?.title ?? s.topic])
   );
@@ -141,6 +147,10 @@ async function finalizeOne(a: Attempt, now: number): Promise<Attempt> {
     writtenPending: marked.writtenPending,
   };
 
+  const streakMilestone = isSelfTest
+    ? null
+    : crossedMilestone(streaksFrom(priorSubmits).current, streaksFrom([...priorSubmits, result.submittedAt]).current);
+
   await merge('attempts', a.id, {
     status: 'submitted' as const,
     answers,
@@ -150,7 +160,8 @@ async function finalizeOne(a: Attempt, now: number): Promise<Attempt> {
     wallMs,
     hiddenMs,
     result,
+    streakMilestone,
   });
 
-  return { ...a, status: 'submitted', wallMs, hiddenMs, result, answers };
+  return { ...a, status: 'submitted', wallMs, hiddenMs, result, answers, streakMilestone };
 }

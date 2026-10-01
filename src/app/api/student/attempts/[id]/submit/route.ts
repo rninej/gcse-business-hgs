@@ -6,6 +6,7 @@ import { assessRisk, pointsFor } from '@/lib/risk';
 import { generateFeedback } from '@/lib/ai';
 import { toReview } from '@/lib/sanitize';
 import { TOPIC_MAP } from '@/lib/topics';
+import { crossedMilestone, streaksFrom, studentSubmittedAt } from '@/lib/streaks';
 import type { Attempt, PerQTelemetry, TelemetryEvent } from '@/lib/types';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -80,6 +81,10 @@ export async function POST(req: Request, ctx: Ctx) {
   const points = isSelfTest ? 0 : pointsFor(marked.score, marked.total, marked.pct); // self-tests earn no points
   const timeTakenSec = Math.round(wallMs / 1000);
 
+  // streak milestone — captured at the moment of submission (prior quizzes
+  // only, so a second same-day quiz can't re-unlock or mask the line)
+  const priorSubmits = isSelfTest ? [] : await studentSubmittedAt(attempt.studentId);
+
   // feedback (AI with template fallback — never blocks the result)
   const topicTitles: Record<string, string> = Object.fromEntries(
     (marked.topicStats ?? []).map((s) => [s.topic, TOPIC_MAP[s.topic]?.title ?? s.topic])
@@ -117,6 +122,10 @@ export async function POST(req: Request, ctx: Ctx) {
     writtenPending: marked.writtenPending,
   };
 
+  const streakMilestone = isSelfTest
+    ? null
+    : crossedMilestone(streaksFrom(priorSubmits).current, streaksFrom([...priorSubmits, result.submittedAt]).current);
+
   await merge('attempts', attempt.id, {
     status: 'submitted' as const,
     answers,
@@ -126,6 +135,7 @@ export async function POST(req: Request, ctx: Ctx) {
     wallMs,
     hiddenMs,
     result,
+    streakMilestone,
   });
 
   const reviews = attempt.questions.map((q, i) => {

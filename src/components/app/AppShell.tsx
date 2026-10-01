@@ -109,7 +109,7 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
     // backdrop photo (fixed, -z-10) show through behind the content
     <div className="min-h-screen flex flex-col">
       {/* Desktop sidebar — frosted glass over the backdrop photo */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col z-40 border-r border-white/50 bg-[var(--sidebar)]/70 backdrop-blur-2xl backdrop-saturate-150 shadow-[inset_1px_0_0_0_rgb(255_255_255/0.5),8px_0_32px_-16px_rgb(13_92_70/0.18)]">
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col z-40 border-r border-white/50 bg-[var(--sidebar)]/70 backdrop-blur-2xl backdrop-saturate-150 shadow-[inset_1px_0_0_0_rgb(255_255_255/0.5),8px_0_32px_-16px_rgb(13_92_70/0.18)] print:hidden">
         <div className="px-5 pt-5 pb-4 border-b border-white/40">
           <BrandLockup />
         </div>
@@ -180,7 +180,7 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
         <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-28 md:pb-10">
           <ViewFrame>{children}</ViewFrame>
         </main>
-        <footer className="mt-auto border-t border-white/40 bg-[var(--sidebar)]/60 backdrop-blur-xl pb-20 md:pb-0">
+        <footer className="mt-auto border-t border-white/40 bg-[var(--sidebar)]/60 backdrop-blur-xl pb-20 md:pb-0 print:hidden">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>© {new Date().getFullYear()} gcsebusiness — for Edexcel GCSE (9–1) Business</span>
             <span className="flex items-center gap-1.5">
@@ -192,7 +192,7 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
 
       {/* Mobile bottom nav — glass with a sliding active dot */}
       <nav
-        className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/40 bg-background/70 backdrop-blur-2xl backdrop-saturate-150"
+        className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/40 bg-background/70 backdrop-blur-2xl backdrop-saturate-150 print:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         aria-label="Main"
       >
