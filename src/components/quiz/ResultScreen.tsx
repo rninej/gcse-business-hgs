@@ -168,6 +168,24 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
     }
   }
 
+  // build a practice quiz out of ONLY the questions this student got wrong —
+  // the smartest way to revise (written answers still being marked are left
+  // out; they may turn out right)
+  const [retrying, setRetrying] = useState(false);
+  async function retryWrong() {
+    setRetrying(true);
+    try {
+      const res = await api.post<{ attemptId: string; questionCount: number }>(
+        `/api/student/attempts/${attemptId}/retry-wrong`
+      );
+      toast({ title: `Practising the ${res.questionCount} you got wrong`, description: 'A fresh shuffle — your marks update the progress map.' });
+      go({ name: 'quiz', attemptId: res.attemptId });
+    } catch (e) {
+      setRetrying(false);
+      toast({ title: 'Could not start the retry', description: (e as Error).message, variant: 'destructive' });
+    }
+  }
+
   if (error)
     return (
       <div className="max-w-3xl mx-auto">
@@ -192,6 +210,10 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
   const correctCount = data.reviews.filter((x) => x.type !== 'written' && x.correct).length;
   const writtenReviews = data.reviews.filter((x) => x.type === 'written');
   const pendingWritten = r.writtenPending ?? 0;
+  // questions definitely marked wrong (pending written answers don't count yet)
+  const wrongCount = data.reviews.filter(
+    (x) => !x.correct && !(x.type === 'written' && x.pendingMark)
+  ).length;
   const topicRows = (data.topicStats ?? []).map((v) => ({
     label: `${v.topic} · ${topicTitle(v.topic)}`,
     pct: v.t ? Math.round((v.c / v.t) * 100) : 0,
@@ -205,18 +227,32 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
   return (
     <div className="max-w-3xl mx-auto">
       <QuizBackdrop attemptId={attemptId} />
-      <div className="flex items-center justify-between mb-5 gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
         <Button variant="ghost" onClick={home}>
           <ArrowLeft className="h-4 w-4" /> {isSelfTest ? 'Teacher home' : 'Home'}
         </Button>
-        {!isSelfTest ? (
-          <Button variant="outline" onClick={() => void redo()} disabled={redoing}>
-            <RotateCw className={cn('h-4 w-4', redoing && 'animate-spin')} />
-            {redoing ? 'Starting…' : 'Redo this quiz'}
-          </Button>
-        ) : (
-          <Badge variant="secondary">Your own dry run — not saved to class stats</Badge>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {wrongCount > 0 ? (
+            <Button
+              variant="outline"
+              className="border-primary/40 text-primary hover:bg-primary/5"
+              onClick={() => void retryWrong()}
+              disabled={retrying || redoing}
+              title="A short practice quiz with only the questions you got wrong"
+            >
+              <Target className={cn('h-4 w-4', retrying && 'animate-pulse')} />
+              {retrying ? 'Building…' : `Practise the ${wrongCount} you got wrong`}
+            </Button>
+          ) : null}
+          {!isSelfTest ? (
+            <Button variant="outline" onClick={() => void redo()} disabled={redoing || retrying}>
+              <RotateCw className={cn('h-4 w-4', redoing && 'animate-spin')} />
+              {redoing ? 'Starting…' : 'Redo this quiz'}
+            </Button>
+          ) : (
+            <Badge variant="secondary">Your own dry run — not saved to class stats</Badge>
+          )}
+        </div>
       </div>
 
       {/* headline */}

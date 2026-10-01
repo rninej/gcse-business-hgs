@@ -254,7 +254,7 @@ function ClassLeaderboard() {
         ) : data.rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">No students in this class yet.</p>
         ) : (
-          <ol className="space-y-1.5">
+          <ol className="space-y-1.5 stagger">
             {data.rows.map((r, i) => (
               <li key={r.studentId}>
                 <button

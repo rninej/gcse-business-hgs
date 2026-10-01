@@ -41,6 +41,10 @@ export async function GET() {
   const points = attempts.reduce((sum, a) => sum + (a.result?.points ?? 0), 0);
   const streak = streaksFrom(attempts.map((a) => a.result?.submittedAt ?? 0));
 
+  // submitted-at timestamps — feeds the activity heatmap (client buckets
+  // them into LOCAL days so a 23:00 quiz lands on the right day)
+  const activity = attempts.map((a) => a.result!.submittedAt);
+
   return NextResponse.json({
     stats: {
       quizzesDone: attempts.length,
@@ -49,6 +53,7 @@ export async function GET() {
       bestPct: pcts.length ? Math.max(...pcts) : null,
     },
     streak,
+    activity,
     // true the very first time a brand-new account lands on its dashboard —
     // StudentHome uses it to offer the optional password-change popup once
     firstLogin: !me.firstLoginDone,
