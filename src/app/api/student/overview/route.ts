@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/session';
 import { streaksFrom, hasQuizToday } from '@/lib/streaks';
 import { topicTitle } from '@/lib/topics';
 import { collectWrongPool } from '@/lib/wrongPool';
+import { computeBadges } from '@/lib/badges';
 import type { Attempt, Student } from '@/lib/types';
 
 export async function GET() {
@@ -54,6 +55,32 @@ export async function GET() {
   // across every submitted quiz — powers the smart-practice nudge
   const wrongPool = collectWrongPool(attempts).length;
 
+  // ---- achievements: badge unlock maths on facts already loaded ----
+  // (hours use server time; the deployment runs UTC, which matches the
+  // students' UK clocks in winter and is one hour off during BST)
+  const perfectCount = attempts.filter((a) => a.result!.pct === 100).length;
+  const topicsSeen = [...topicAgg.keys()];
+  const submitHours = [...new Set(attempts.map((a) => new Date(a.result!.submittedAt).getHours()))];
+  const times = attempts.map((a) => a.result!.submittedAt).sort((x, y) => x - y);
+  let comeback = false;
+  for (let i = 1; i < times.length; i++) {
+    if (times[i] - times[i - 1] >= 7 * 86_400_000) {
+      comeback = true;
+      break;
+    }
+  }
+  const badges = computeBadges({
+    quizzesDone: attempts.length,
+    points,
+    bestPct: pcts.length ? Math.max(...pcts) : null,
+    avgPct,
+    streakBest: streak.best,
+    perfectCount,
+    topicsSeen,
+    submitHours,
+    comeback,
+  });
+
   return NextResponse.json({
     stats: {
       quizzesDone: attempts.length,
@@ -80,5 +107,7 @@ export async function GET() {
       hasTeacherFeedback: Boolean(a.teacherFeedback?.text),
     })),
     mastery,
+    // achievement badges — small DTOs, definition order (see src/lib/badges.ts)
+    badges,
   });
 }

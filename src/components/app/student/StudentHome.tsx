@@ -11,10 +11,22 @@ import {
   TrendingUp,
   Award,
   Flame,
+  FlameKindling,
   Trophy,
   Brain,
   Zap,
+  Lock,
+  Flag,
+  Activity,
+  Rocket,
+  Gem,
+  Target,
+  Coins,
+  Crown,
+  Orbit,
+  MoonStar,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -34,6 +46,7 @@ import { PageHeader, ThemedSkeleton, ErrorNote, EmptyState, DueChip, PctChip } f
 import { BarList, ScoreRing } from '@/components/charts';
 import { ActivityHeatmap } from '@/components/app/ActivityHeatmap';
 import { cn } from '@/lib/utils';
+import type { BadgeState } from '@/lib/badges';
 
 interface AssignmentRow {
   id: string;
@@ -71,6 +84,8 @@ interface Overview {
   wrongPool?: number;
   recent: { id: string; title: string; mode: string; pct: number; score: number; total: number; submittedAt: number }[];
   mastery: { topic: string; title: string; pct: number; attempts: number }[];
+  /** achievement badges — computed server-side, definition order (src/lib/badges.ts) */
+  badges?: BadgeState[];
 }
 
 interface LeaderRow {
@@ -93,6 +108,7 @@ interface Leaderboard {
 export function StudentHome() {
   const go = useApp((s) => s.go);
   const session = useApp((s) => s.session);
+  const { toast } = useToast();
   const [assignments, setAssignments] = useState<AssignmentRow[] | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [board, setBoard] = useState<Leaderboard | null>(null);
@@ -116,6 +132,32 @@ export function StudentHome() {
   }, []);
 
   useEffect(load, [load]);
+
+  /* Badge unlock toasts — new unlocks since the student's last visit ring in
+   * one at a time. On the very first load there is no seen-set yet: record the
+   * current unlocked badges silently so pre-existing progress never spams a
+   * wall of toasts — only genuinely new unlocks (from now on) are celebrated. */
+  useEffect(() => {
+    const badges = overview?.badges;
+    if (!badges?.length) return;
+    const unlocked = badges.filter((b) => b.unlocked).map((b) => b.id);
+    const seen = readSeenBadges();
+    if (seen === null) {
+      writeSeenBadges(unlocked);
+      return;
+    }
+    const seenSet = new Set(seen);
+    const fresh = unlocked.filter((id) => !seenSet.has(id));
+    writeSeenBadges(unlocked);
+    fresh.forEach((id, i) => {
+      const b = badges.find((x) => x.id === id);
+      if (!b) return;
+      window.setTimeout(
+        () => toast({ title: `Badge unlocked — ${b.title}!`, description: b.desc }),
+        i * 2600 // one at a time; each toast lives ~2.5s
+      );
+    });
+  }, [overview, toast]);
 
   async function start(a: AssignmentRow) {
     if (a.status === 'submitted' && a.attemptId) {
@@ -494,6 +536,9 @@ export function StudentHome() {
         </div>
       </div>
 
+      {/* achievements — badge collection, the beyond-Educake motivator */}
+      {overview.badges?.length ? <Achievements badges={overview.badges} /> : null}
+
       {overview.recent.length > 0 ? (
         <>
           <h2 className="font-semibold mb-3 mt-8">Recent results</h2>
@@ -631,4 +676,123 @@ function initials(name: string): string {
   const first = parts[0]?.[0] ?? '';
   const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : '';
   return (first + last).toUpperCase() || '?';
+}
+
+/* ------------------------------------------------------------------ */
+/* Achievements — the badge collection. Unlocked chips sit on primary-  */
+/* tinted glass with a one-shot shine; locked ones stay muted with a    */
+/* lock overlay and progress towards the next unlock ("3/5").           */
+/* ------------------------------------------------------------------ */
+
+/** localStorage key: badge ids the student has already seen unlocked.
+ *  Written by the unlock-toast effect above; absent on first ever load. */
+const SEEN_BADGES_KEY = 'hgs.badges.seen';
+
+function readSeenBadges(): string[] | null {
+  try {
+    const raw = localStorage.getItem(SEEN_BADGES_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : null;
+  } catch {
+    return null; // unreadable — treat as first load, silently re-record
+  }
+}
+
+function writeSeenBadges(ids: string[]) {
+  try {
+    localStorage.setItem(SEEN_BADGES_KEY, JSON.stringify(ids));
+  } catch {
+    /* private mode — unlocks just won't be remembered */
+  }
+}
+
+/** lucide icon keys used by the badge definitions (src/lib/badges.ts) */
+const BADGE_ICONS: Record<string, LucideIcon> = {
+  flag: Flag,
+  activity: Activity,
+  zap: Zap,
+  rocket: Rocket,
+  gem: Gem,
+  target: Target,
+  flame: Flame,
+  'flame-kindling': FlameKindling,
+  coins: Coins,
+  crown: Crown,
+  orbit: Orbit,
+  'moon-star': MoonStar,
+};
+
+function progressText(p: { current: number; target: number }): string {
+  return `${p.current.toLocaleString()}/${p.target.toLocaleString()}`;
+}
+
+function Achievements({ badges }: { badges: BadgeState[] }) {
+  const unlockedCount = badges.filter((b) => b.unlocked).length;
+  return (
+    <section className="mt-8" aria-label="Achievements">
+      <h2 className="font-semibold mb-3">
+        Achievements
+        <span className="text-muted-foreground font-normal"> · {unlockedCount} of {badges.length}</span>
+      </h2>
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 stagger" role="list">
+        {badges.map((b) => {
+          const Icon = BADGE_ICONS[b.icon] ?? Award;
+          return b.unlocked ? (
+            <div
+              key={b.id}
+              role="listitem"
+              aria-label={`${b.title} badge — unlocked`}
+              className="badge-unlocked relative overflow-hidden rounded-xl p-3.5 flex items-center gap-3 card-lift"
+            >
+              {/* one-shot shine as the grid mounts */}
+              <span
+                className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shine_1.4s_0.8s_ease-out_1] motion-reduce:animate-none"
+                aria-hidden
+              />
+              <span
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"
+                aria-hidden
+              >
+                <Icon className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold leading-tight">{b.title}</div>
+                <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug line-clamp-2">{b.desc}</p>
+              </div>
+            </div>
+          ) : (
+            <div
+              key={b.id}
+              role="listitem"
+              aria-label={`${b.title} badge — locked`}
+              className="rounded-xl border bg-secondary/50 p-3.5 flex items-center gap-3"
+            >
+              <span
+                className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground/70"
+                aria-hidden
+              >
+                <Icon className="h-5 w-5" />
+                {/* lock overlay — corner badge on the tile */}
+                <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-card border shadow-sm text-muted-foreground">
+                  <Lock className="h-2.5 w-2.5" aria-hidden />
+                </span>
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-sm font-medium leading-tight text-muted-foreground truncate">{b.title}</span>
+                  {b.progress ? (
+                    <span className="text-[11px] tabular-nums text-muted-foreground/80 shrink-0">
+                      {progressText(b.progress)}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="text-[11px] text-muted-foreground/80 mt-0.5 leading-snug line-clamp-2">{b.desc}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 }

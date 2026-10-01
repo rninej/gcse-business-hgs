@@ -1,14 +1,17 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { PlayCircle, Layers3, Sparkles, Search, X, Layers } from 'lucide-react';
+import { PlayCircle, Layers3, Sparkles, Search, X, Layers, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 import { PageHeader, ThemedSkeleton, ErrorNote, TypeBadge } from '@/components/shared';
-import { topicTitle, TOPIC_MAP } from '@/lib/topics';
+import { topicTitle, TOPIC_MAP, TOPICS } from '@/lib/topics';
+import { cn } from '@/lib/utils';
 import type { QuestionType } from '@/lib/types';
 
 interface QuizRow {
@@ -102,6 +105,9 @@ export function PracticeView() {
         </p>
       </div>
 
+      {/* build your own quiz — the hero: a one-off mix from the practice pool */}
+      <MixBuilder />
+
       {/* search */}
       <div className="relative mb-6" role="search">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden />
@@ -179,5 +185,161 @@ export function PracticeView() {
         );
       })}
     </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Build your own quiz — pick topics, a question count and (optionally) */
+/* a difficulty, then the server assembles a one-off practice attempt    */
+/* from the practice pool. Untimed, unlimited goes, exactly like the     */
+/* library quizzes — it is the same practice machinery underneath.       */
+/* ------------------------------------------------------------------ */
+
+const DIFFICULTY_OPTIONS: { value: 'mixed' | '1' | '2' | '3'; label: string }[] = [
+  { value: 'mixed', label: 'Mixed' },
+  { value: '1', label: 'Foundation' },
+  { value: '2', label: 'Standard' },
+  { value: '3', label: 'Challenge' },
+];
+
+function MixBuilder() {
+  const go = useApp((s) => s.go);
+  const { toast } = useToast();
+  const [topics, setTopics] = useState<Set<string>>(new Set());
+  const [count, setCount] = useState(10);
+  const [difficulty, setDifficulty] = useState<'mixed' | '1' | '2' | '3'>('mixed');
+  const [building, setBuilding] = useState(false);
+
+  function toggle(id: string) {
+    setTopics((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function start() {
+    if (topics.size === 0 || building) return;
+    setBuilding(true);
+    try {
+      const res = await api.post<{ attemptId: string }>('/api/student/practice', {
+        topics: [...topics],
+        count,
+        difficulty,
+      });
+      go({ name: 'quiz', attemptId: res.attemptId });
+    } catch (e) {
+      toast({ title: 'Could not build your quiz', description: (e as Error).message });
+      setBuilding(false);
+    }
+  }
+
+  const picked = topics.size;
+
+  return (
+    <section className="glass rounded-2xl p-4 sm:p-6 mb-5 anim-rise" aria-label="Build your own quiz">
+      <div className="flex items-start gap-3.5">
+        <span
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary"
+          aria-hidden
+        >
+          <Wand2 className="h-6 w-6" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base sm:text-lg font-semibold leading-tight">Build your own quiz</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+            Pick your topics, choose how many questions — we&rsquo;ll do the rest.
+          </p>
+        </div>
+      </div>
+
+      {/* topic chips — all 10 spec topics, wrap on any width */}
+      <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Pick your topics">
+        {TOPICS.map((t) => {
+          const on = topics.has(t.id);
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => toggle(t.id)}
+              aria-pressed={on}
+              className={cn(
+                'glass-soft rounded-full h-9 px-3.5 text-[13px] inline-flex items-center gap-1.5 press',
+                on
+                  ? 'glass-selected font-semibold text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <span className="tabular-nums font-medium">{t.id}</span> {t.short}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* count + difficulty */}
+      <div className="mt-5 grid gap-5 sm:grid-cols-2">
+        <div>
+          <div className="flex items-baseline justify-between mb-2.5">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Questions
+            </span>
+            <span className="text-sm font-bold tabular-nums text-primary">{count}</span>
+          </div>
+          <Slider
+            value={[count]}
+            min={5}
+            max={30}
+            step={5}
+            onValueChange={(v) => setCount(v[0] ?? 10)}
+            aria-label="How many questions"
+          />
+        </div>
+        <div>
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Difficulty <span className="font-normal normal-case">· optional</span>
+          </span>
+          <div
+            className="mt-2 flex flex-wrap gap-1 glass-soft rounded-xl p-1"
+            role="group"
+            aria-label="Difficulty"
+          >
+            {DIFFICULTY_OPTIONS.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => setDifficulty(o.value)}
+                aria-pressed={difficulty === o.value}
+                className={cn(
+                  'rounded-lg h-8 px-3 text-[13px] font-medium transition-colors press',
+                  difficulty === o.value
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* action row */}
+      <div className="mt-5 pt-4 border-t border-white/40 flex flex-col sm:flex-row sm:items-center gap-3">
+        <p className="text-xs text-muted-foreground min-w-0 flex-1" aria-live="polite">
+          {picked === 0
+            ? 'Pick at least one topic to get started.'
+            : `${picked} topic${picked === 1 ? '' : 's'} picked · untimed, unlimited goes`}
+        </p>
+        <Button
+          onClick={() => void start()}
+          disabled={picked === 0 || building}
+          className="w-full sm:w-auto shadow-[0_8px_24px_-8px_var(--primary)]"
+        >
+          <Wand2 className={cn('h-4 w-4', building && 'animate-spin')} />
+          {building ? 'Building…' : 'Start my quiz'}
+        </Button>
+      </div>
+    </section>
   );
 }
