@@ -1,14 +1,41 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Users, ClipboardList, CheckCircle2, TrendingUp, ShieldAlert, Layers, ArrowRight, PlusCircle, BookOpen, Trophy, Flame, Medal } from 'lucide-react';
+import { Users, ClipboardList, CheckCircle2, TrendingUp, ShieldAlert, Layers, ArrowRight, PlusCircle, BookOpen, Trophy, Flame, Medal, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 import { PageHeader, StatCard, ThemedSkeleton, ErrorNote, DueChip, EmptyState } from '@/components/shared';
 import { BarList } from '@/components/charts';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { StudentProfileDialog } from './StudentProfile';
 import { cn } from '@/lib/utils';
+
+interface CommonSlip {
+  id: string;
+  stem: string;
+  studentsWrong: number;
+  timesWrong: number;
+  classes: { classId: string; name: string; studentsWrong: number }[];
+}
+
+interface FixPool {
+  classId: string;
+  name: string;
+  questions: number;
+  students: number;
+}
 
 interface Overview {
   stats: {
@@ -29,6 +56,8 @@ interface Overview {
     totalStudents: number;
   }[];
   weakTopics: { topic: string; title: string; pct: number }[];
+  commonSlips?: CommonSlip[];
+  fixPools?: FixPool[];
 }
 
 export function TeacherHome() {
@@ -61,6 +90,8 @@ export function TeacherHome() {
     );
 
   const s = data.stats;
+  const slips = data.commonSlips ?? [];
+  const pools = (data.fixPools ?? []).filter((p) => p.questions > 0);
   return (
     <>
       <PageHeader
@@ -162,8 +193,107 @@ export function TeacherHome() {
         </section>
       </div>
 
+      <CommonSlipsCard slips={slips} pools={pools} />
+
       <ClassLeaderboard />
     </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Common slips — what the whole cohort is stuck on right now, with   */
+/* one-tap "set a fixer" per class. Same pool as the class-page card.  */
+/* ------------------------------------------------------------------ */
+
+function CommonSlipsCard({ slips, pools }: { slips: CommonSlip[]; pools: FixPool[] }) {
+  const go = useApp((s) => s.go);
+  const { toast } = useToast();
+  const [target, setTarget] = useState<FixPool | null>(null);
+  const [fixing, setFixing] = useState(false);
+
+  if (slips.length === 0 && pools.length === 0) return null;
+
+  async function setFixer(p: FixPool) {
+    setFixing(true);
+    try {
+      const res = await api.post<{ assignmentId: string; questionCount: number; poolSize: number }>(
+        `/api/teacher/classes/${p.classId}/smart-practice`
+      );
+      toast({
+        title: `Fixer set for ${p.name}`,
+        description: `${res.questionCount} question${res.questionCount === 1 ? '' : 's'} from the class's common slips — visible now.`,
+      });
+      setTarget(null);
+      go({ name: 't-assignments' });
+    } catch (e) {
+      toast({ title: 'Could not build the quiz', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setFixing(false);
+    }
+  }
+
+  return (
+    <section
+      className="relative glass rounded-xl mt-6 p-4 sm:p-6 overflow-hidden"
+      aria-label="Common slips across your classes"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary" aria-hidden>
+            <Wand2 className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="font-semibold">Common slips across your classes</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Questions your students keep getting wrong — build a self-marking fixer in one tap.
+            </p>
+          </div>
+        </div>
+        {pools.map((p) => (
+          <Button key={p.classId} size="sm" className="w-full sm:w-auto shadow-[0_8px_24px_-8px_var(--primary)]" onClick={() => setTarget(p)}>
+            <Wand2 className="h-3.5 w-3.5" /> Fix {p.name} · {p.questions}
+          </Button>
+        ))}
+      </div>
+
+      {slips.length > 0 ? (
+        <ul className="mt-4 divide-y rounded-lg border bg-card/60 overflow-hidden stagger">
+          {slips.map((sl) => (
+            <li key={sl.id} className="flex items-center gap-3 px-4 py-3">
+              <Badge variant="secondary" className="text-[10px] h-5 px-1.5 tabular-nums shrink-0">
+                {sl.studentsWrong} student{sl.studentsWrong === 1 ? '' : 's'}
+              </Badge>
+              <span className="flex-1 min-w-0 text-sm truncate" title={sl.stem}>{sl.stem}</span>
+              <span className="hidden sm:flex items-center gap-1 shrink-0">
+                {sl.classes.map((c) => (
+                  <Badge key={c.classId} variant="outline" className="text-[10px] h-5 px-1.5 gap-1">
+                    {c.name}
+                    {sl.classes.length > 1 ? <span className="text-muted-foreground tabular-nums">· {c.studentsWrong}</span> : null}
+                  </Badge>
+                ))}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      <AlertDialog open={target !== null} onOpenChange={(o) => !o && setTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Set a mistake-fixing quiz for {target?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              One untimed quiz, no due date, built from the {target?.questions} question{target?.questions === 1 ? '' : 's'} this class is stuck on (up to the 20 worst, freshest slips excluded). It appears on every student&rsquo;s dashboard immediately and marks itself as usual.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Not now</AlertDialogCancel>
+            <AlertDialogAction onClick={() => target && void setFixer(target)} disabled={fixing}>
+              <Wand2 className="h-4 w-4" /> {fixing ? 'Building…' : 'Set it for the class'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </section>
   );
 }
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { colCached, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { topicTitle } from '@/lib/topics';
+import { classFixPool } from '@/lib/classPool';
 import type { Attempt, Assignment, Student, StudentClass } from '@/lib/types';
 import { assignmentTargetsStudent } from '@/lib/types';
 
@@ -56,6 +57,40 @@ export async function GET() {
 
   const flagged = submitted.filter((a) => a.result && (a.result.riskBand === 'elevated' || a.result.riskBand === 'high'));
 
+  // common slips across ALL classes — the same pool the class-page mistake
+  // fixer uses (freshness rule included), aggregated per question so the
+  // dashboard can show what the whole cohort is stuck on right now
+  const fixPools: { classId: string; name: string; questions: number; students: number }[] = [];
+  const slipAgg = new Map<
+    string,
+    { id: string; stem: string; studentsWrong: number; timesWrong: number; classes: { classId: string; name: string; studentsWrong: number }[] }
+  >();
+  for (const c of myClasses) {
+    const pool = await classFixPool(c.id, session.uid);
+    if (pool.ranked.length > 0) {
+      fixPools.push({ classId: c.id, name: c.name, questions: pool.ranked.length, students: pool.studentsAffected });
+    }
+    for (const e of pool.ranked) {
+      const agg = slipAgg.get(e.q.id);
+      if (agg) {
+        agg.studentsWrong += e.studentsWrong;
+        agg.timesWrong += e.timesWrong;
+        agg.classes.push({ classId: c.id, name: c.name, studentsWrong: e.studentsWrong });
+      } else {
+        slipAgg.set(e.q.id, {
+          id: e.q.id,
+          stem: e.q.stem,
+          studentsWrong: e.studentsWrong,
+          timesWrong: e.timesWrong,
+          classes: [{ classId: c.id, name: c.name, studentsWrong: e.studentsWrong }],
+        });
+      }
+    }
+  }
+  const commonSlips = [...slipAgg.values()]
+    .sort((a, b) => b.studentsWrong - a.studentsWrong || b.timesWrong - a.timesWrong)
+    .slice(0, 5);
+
   return NextResponse.json({
     stats: {
       classCount: myClasses.length,
@@ -83,5 +118,7 @@ export async function GET() {
       };
     }),
     weakTopics: topicRows.slice(0, 6),
+    commonSlips,
+    fixPools,
   });
 }

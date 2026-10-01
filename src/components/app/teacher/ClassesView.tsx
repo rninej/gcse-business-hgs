@@ -16,6 +16,7 @@ import {
   FileText,
   Mail,
   Wand2,
+  Clock3,
   UserRoundSearch,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -204,6 +205,7 @@ function ClassDetail({ classId }: { classId: string }) {
   const [pool, setPool] = useState<{
     questions: number;
     studentsAffected: number;
+    freshExcluded?: number;
     top: { id: string; stem: string; studentsWrong: number; timesWrong: number }[];
   }>({ questions: 0, studentsAffected: 0, top: [] });
   const [fixOpen, setFixOpen] = useState(false);
@@ -247,6 +249,7 @@ function ClassDetail({ classId }: { classId: string }) {
         wrongPool?: {
           questions: number;
           studentsAffected: number;
+          freshExcluded?: number;
           top: { id: string; stem: string; studentsWrong: number; timesWrong: number }[];
         };
       }>(`/api/teacher/classes/${classId}`)
@@ -864,7 +867,8 @@ function ClassDetail({ classId }: { classId: string }) {
       ) : null}
 
       {/* mistake fixer — one untimed quiz built from what this class is
-          collectively stuck on (questions tripping the most students first) */}
+          collectively stuck on (questions tripping the most students first).
+          Slips from quizzes set in the last 24h wait a day before rejoining. */}
       {pool.questions > 0 ? (
         <section
           className="relative mt-6 rounded-xl border border-primary/25 bg-gradient-to-br from-primary/10 via-card/80 to-[var(--warn)]/10 p-4 sm:p-6 overflow-hidden backdrop-blur-xl shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)]"
@@ -882,6 +886,11 @@ function ClassDetail({ classId }: { classId: string }) {
               <p className="text-xs text-muted-foreground mt-0.5">
                 {pool.studentsAffected} student{pool.studentsAffected === 1 ? '' : 's'} currently stuck on something — build one auto-marked revision quiz from the worst offenders.
               </p>
+              {pool.freshExcluded ? (
+                <p className="text-xs text-muted-foreground/80 mt-1 tabular-nums">
+                  + {pool.freshExcluded} more from quizzes set in the last 24h — they rejoin tomorrow.
+                </p>
+              ) : null}
               {pool.top.length > 0 ? (
                 <ul className="mt-3 space-y-1.5">
                   {pool.top.map((t) => (
@@ -895,10 +904,22 @@ function ClassDetail({ classId }: { classId: string }) {
                 </ul>
               ) : null}
             </div>
-            <Button className="shadow-[0_8px_24px_-8px_var(--primary)]" onClick={() => setFixOpen(true)}>
+            <Button className="w-full sm:w-auto shadow-[0_8px_24px_-8px_var(--primary)]" onClick={() => setFixOpen(true)}>
               <Wand2 className="h-4 w-4" /> Set mistake-fixing quiz
             </Button>
           </div>
+        </section>
+      ) : (pool.freshExcluded ?? 0) > 0 ? (
+        <section
+          className="mt-6 rounded-xl border border-dashed bg-card/60 p-4 sm:p-5 flex items-center gap-3"
+          aria-label="Mistake fixer waiting"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground" aria-hidden>
+            <Clock3 className="h-4.5 w-4.5" />
+          </span>
+          <p className="text-xs text-muted-foreground tabular-nums">
+            Everything this class is stuck on comes from quizzes set in the last 24 hours — the fixer will have more to work with tomorrow.
+          </p>
         </section>
       ) : null}
 

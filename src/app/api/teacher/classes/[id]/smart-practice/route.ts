@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { col, colCached, put, values } from '@/lib/firebase';
+import { col, put } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { shuffleMcqOptions } from '@/lib/questions';
-import { collectClassWrongPool, rankClassWrongPool } from '@/lib/wrongPool';
-import type { Attempt, Assignment, StudentClass } from '@/lib/types';
+import { classFixPool } from '@/lib/classPool';
+import type { Assignment, StudentClass } from '@/lib/types';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -15,7 +15,8 @@ const MAX_QUESTIONS = 20;
  * "Mistake fixer": builds one untimed assignment for the whole class from
  * the questions its students are collectively stuck on — every student's
  * wrong pool is combined, then ranked so questions tripping the MOST
- * students come first. Published immediately (never a draft), no due date.
+ * students come first. Questions from quizzes set in the last 24h are
+ * excluded (still fresh). Published immediately (never a draft), no due date.
  */
 export async function POST(_req: Request, ctx: Ctx) {
   const session = await requireRole('teacher');
@@ -28,24 +29,20 @@ export async function POST(_req: Request, ctx: Ctx) {
     return NextResponse.json({ error: 'Class not found' }, { status: 404 });
   }
 
-  const attempts = values(await colCached<Attempt>('attempts')).filter(
-    (a) => a.classId === id && a.studentId && a.status === 'submitted' && a.result
-  );
-
-  const perStudent = new Map<string, Attempt[]>();
-  for (const a of attempts) {
-    const list = perStudent.get(a.studentId) ?? [];
-    list.push(a);
-    perStudent.set(a.studentId, list);
-  }
-
-  const ranked = rankClassWrongPool(collectClassWrongPool([...perStudent.values()]));
-  if (ranked.length === 0) {
+  const pool = await classFixPool(id, session.uid);
+  if (pool.ranked.length === 0) {
     return NextResponse.json(
-      { error: 'Nothing to fix — every question this class has been set is currently answered correctly!' },
+      {
+        error:
+          pool.totalQuestions === 0
+            ? 'Nothing to fix — every question this class has been set is currently answered correctly!'
+            : 'Everything this class is stuck on comes from quizzes set in the last 24 hours — still fresh in students\u2019 minds. Try again tomorrow.',
+      },
       { status: 400 }
     );
   }
+
+  const ranked = pool.ranked;
 
   // most-students-stuck first, then renumbered + option-shuffled for the quiz
   const picked = ranked.slice(0, MAX_QUESTIONS).map((e, i) => ({ ...e.q, n: i + 1 }));

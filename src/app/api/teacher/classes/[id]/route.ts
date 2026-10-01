@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { col, colCached, del, values } from '@/lib/firebase';
 import { decryptPassword } from '@/lib/passwords';
 import { requireRole } from '@/lib/session';
-import { collectClassWrongPool, collectWrongPool, rankClassWrongPool } from '@/lib/wrongPool';
+import { classFixPool } from '@/lib/classPool';
 import type { Attempt, Assignment, Student, StudentClass } from '@/lib/types';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -41,18 +41,9 @@ export async function GET(_req: Request, ctx: Ctx) {
   const quizzesBy = Object.fromEntries(students.map((s) => [s.id, 0])) as Record<string, number>;
   for (const a of attempts) quizzesBy[a.studentId] = (quizzesBy[a.studentId] ?? 0) + 1;
 
-  // class-wide wrong pool — feeds the "mistake fixer" card (how much
-  // material this class is collectively stuck on right now)
-  const perStudent = new Map<string, Attempt[]>();
-  for (const a of attempts) {
-    const list = perStudent.get(a.studentId) ?? [];
-    list.push(a);
-    perStudent.set(a.studentId, list);
-  }
-  const classPool = rankClassWrongPool(collectClassWrongPool([...perStudent.values()]));
-  // a student counts as "affected" when they are currently stuck on at
-  // least one question (their own wrong pool is non-empty)
-  const studentsAffected = [...perStudent.values()].filter((atts) => collectWrongPool(atts).length > 0).length;
+  // class-wide wrong pool with the freshness rule applied — feeds the
+  // "mistake fixer" card (exactly what a fixer quiz would contain)
+  const pool = await classFixPool(id, session.uid);
 
   return NextResponse.json({
     class: cls,
@@ -60,9 +51,10 @@ export async function GET(_req: Request, ctx: Ctx) {
     activity,
     quizzesBy,
     wrongPool: {
-      questions: classPool.length,
-      studentsAffected,
-      top: classPool.slice(0, MAX_PREVIEW).map((e) => ({
+      questions: pool.ranked.length,
+      studentsAffected: pool.studentsAffected,
+      freshExcluded: pool.freshExcluded,
+      top: pool.ranked.slice(0, MAX_PREVIEW).map((e) => ({
         id: e.q.id,
         stem: e.q.stem,
         studentsWrong: e.studentsWrong,

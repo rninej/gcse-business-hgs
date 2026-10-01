@@ -1,16 +1,26 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { CalendarDays, Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
-/* Activity heatmap — every completed quiz is a square, 12 weeks back. */
+/* Activity heatmap — every completed quiz is a square, weeks back.   */
 /* GitHub-style contribution grid in the frosted-glass theme.          */
 /* Shared by the student dashboard ("Your activity") and the teacher's */
-/* class page ("Class activity").                                      */
+/* class page ("Class activity") — with a 12 / 26 / 52-week switch.    */
 /* ------------------------------------------------------------------ */
 
-const HEAT_WEEKS = 12;
+const RANGE_OPTIONS = [12, 26, 52] as const;
+type Range = (typeof RANGE_OPTIONS)[number];
+
+/** keeps squares readable as the grid widens — 12w fits ~520px, wider
+ *  ranges scroll horizontally instead of turning cells into slivers */
+function gridMinWidth(weeks: number): string {
+  if (weeks <= 12) return 'min-w-[520px]';
+  if (weeks <= 26) return 'min-w-[820px]';
+  return 'min-w-[1180px]';
+}
 
 export function ActivityHeatmap({
   activity,
@@ -27,42 +37,50 @@ export function ActivityHeatmap({
   /** optional extra line under the header (teacher view: who leads) */
   footerNote?: React.ReactNode;
 }) {
-  // bucket the timestamps into LOCAL days (a 23:00 quiz lands on the right day)
-  const perDay = new Map<string, number>();
-  for (const t of activity) {
-    const d = new Date(t);
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    perDay.set(key, (perDay.get(key) ?? 0) + 1);
-  }
+  const [weeks, setWeeks] = useState<Range>(12);
 
-  // build the grid: columns are weeks starting Monday, rows Mon…Sun.
-  // Start 11 weeks back at that week's Monday so the final column is this week.
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const mondayThisWeek = new Date(today);
-  mondayThisWeek.setDate(today.getDate() - ((today.getDay() + 6) % 7)); // Mon=0
-  const firstMonday = new Date(mondayThisWeek);
-  firstMonday.setDate(mondayThisWeek.getDate() - (HEAT_WEEKS - 1) * 7);
-
-  const weeks: { date: Date; count: number; isToday: boolean; isFuture: boolean }[][] = [];
-  for (let w = 0; w < HEAT_WEEKS; w++) {
-    const col: { date: Date; count: number; isToday: boolean; isFuture: boolean }[] = [];
-    for (let d = 0; d < 7; d++) {
-      const date = new Date(firstMonday);
-      date.setDate(firstMonday.getDate() + w * 7 + d);
-      const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-      col.push({
-        date,
-        count: perDay.get(key) ?? 0,
-        isToday: date.getTime() === today.getTime(),
-        isFuture: date.getTime() > today.getTime(),
-      });
+  // everything below only recomputes when the data or range changes
+  const view = useMemo(() => {
+    // bucket the timestamps into LOCAL days (a 23:00 quiz lands on the right day)
+    const perDay = new Map<string, number>();
+    for (const t of activity) {
+      const d = new Date(t);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      perDay.set(key, (perDay.get(key) ?? 0) + 1);
     }
-    weeks.push(col);
-  }
 
-  const totalQuizzes = activity.length;
-  const activeCells = weeks.flat().filter((c) => c.count > 0).length;
+    // build the grid: columns are weeks starting Monday, rows Mon…Sun.
+    // Start (weeks-1) back at that week's Monday so the final column is this week.
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const mondayThisWeek = new Date(today);
+    mondayThisWeek.setDate(today.getDate() - ((today.getDay() + 6) % 7)); // Mon=0
+    const firstMonday = new Date(mondayThisWeek);
+    firstMonday.setDate(mondayThisWeek.getDate() - (weeks - 1) * 7);
+
+    const cols: { date: Date; count: number; isToday: boolean; isFuture: boolean }[][] = [];
+    let inRange = 0;
+    for (let w = 0; w < weeks; w++) {
+      const col: { date: Date; count: number; isToday: boolean; isFuture: boolean }[] = [];
+      for (let d = 0; d < 7; d++) {
+        const date = new Date(firstMonday);
+        date.setDate(firstMonday.getDate() + w * 7 + d);
+        const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+        const count = perDay.get(key) ?? 0;
+        if (count > 0) inRange += count;
+        col.push({
+          date,
+          count,
+          isToday: date.getTime() === today.getTime(),
+          isFuture: date.getTime() > today.getTime(),
+        });
+      }
+      cols.push(col);
+    }
+    return { cols, inRange, activeCells: cols.flat().filter((c) => c.count > 0).length, today };
+  }, [activity, weeks]);
+
+  const { cols, inRange, activeCells, today } = view;
 
   function level(count: number): string {
     if (count <= 0) return 'bg-secondary/70';
@@ -78,15 +96,15 @@ export function ActivityHeatmap({
   }
 
   // month name shown on the first column where the month changes
-  const monthMarks = weeks.map((col, i) => {
+  const monthMarks = cols.map((col, i) => {
     if (i === 0) return col[0].date.toLocaleDateString('en-GB', { month: 'short' });
-    const prev = weeks[i - 1][0].date;
+    const prev = cols[i - 1][0].date;
     return prev.getMonth() !== col[0].date.getMonth() ? col[0].date.toLocaleDateString('en-GB', { month: 'short' }) : null;
   });
 
   return (
     <section className={cn('rounded-lg border bg-card p-4 sm:p-5', className)} aria-label={title}>
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-3">
         <h2 className="flex items-center gap-2 font-semibold text-sm">
           <CalendarDays className="h-4 w-4 text-primary" aria-hidden /> {title}
         </h2>
@@ -97,15 +115,34 @@ export function ActivityHeatmap({
             </span>
           ) : null}
           <span className="tabular-nums">
-            {totalQuizzes} quiz{totalQuizzes === 1 ? '' : 'zes'} · {activeCells} active {activeCells === 1 ? 'day' : 'days'} in {HEAT_WEEKS} weeks
+            {inRange} quiz{inRange === 1 ? '' : 'zes'} · {activeCells} active {activeCells === 1 ? 'day' : 'days'} in {weeks} weeks
           </span>
+          {/* range switch — 12 / 26 / 52 weeks */}
+          <div className="flex items-center rounded-full border bg-secondary/60 p-0.5" role="group" aria-label="Date range">
+            {RANGE_OPTIONS.map((w) => (
+              <button
+                key={w}
+                type="button"
+                onClick={() => setWeeks(w)}
+                aria-pressed={weeks === w}
+                className={cn(
+                  'rounded-full px-2 py-0.5 text-[10px] font-medium tabular-nums transition-colors',
+                  weeks === w
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                )}
+              >
+                {w}w
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       <div className="overflow-x-auto scroll-slim pb-1">
-        <div className="min-w-[520px]">
+        <div className={gridMinWidth(weeks)}>
           {/* month marks */}
-          <div className="grid mb-1" style={{ gridTemplateColumns: `1.35rem repeat(${HEAT_WEEKS}, 1fr)` }} aria-hidden>
+          <div className="grid mb-1" style={{ gridTemplateColumns: `1.35rem repeat(${weeks}, 1fr)` }} aria-hidden>
             {monthMarks.map((m, i) => (
               <span key={i} className="text-[10px] text-muted-foreground pl-1 leading-none h-3.5">
                 {m ?? ''}
@@ -124,8 +161,8 @@ export function ActivityHeatmap({
               <span />
             </div>
             {/* the squares */}
-            <div className="grid gap-[3px] flex-1" style={{ gridTemplateColumns: `repeat(${HEAT_WEEKS}, 1fr)` }}>
-              {weeks.map((col, wi) => (
+            <div className="grid gap-[3px] flex-1" style={{ gridTemplateColumns: `repeat(${weeks}, 1fr)` }}>
+              {cols.map((col, wi) => (
                 <div key={wi} className="grid grid-rows-7 gap-[3px]">
                   {col.map((c) => (
                     <div

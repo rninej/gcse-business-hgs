@@ -295,7 +295,7 @@ export function StudentHome() {
             </div>
             <Button
               size="sm"
-              className="bg-[var(--warn)] text-[var(--warn-foreground)] hover:bg-[var(--warn)]/90"
+              className="w-full sm:w-auto bg-[var(--warn)] text-[var(--warn-foreground)] hover:bg-[var(--warn)]/90"
               onClick={() => go({ name: 's-practice' })}
             >
               <Flame className="h-3.5 w-3.5" /> Keep it going
@@ -332,7 +332,7 @@ export function StudentHome() {
             <Button
               onClick={() => void startSmartPractice()}
               disabled={poolStarting}
-              className="shadow-[0_8px_24px_-8px_var(--primary)]"
+              className="w-full sm:w-auto shadow-[0_8px_24px_-8px_var(--primary)]"
             >
               <Zap className={cn('h-4 w-4', poolStarting && 'animate-pulse')} />
               {poolStarting ? 'Building…' : 'Practise them now'}
