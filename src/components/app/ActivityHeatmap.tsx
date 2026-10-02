@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CalendarDays, Flame, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
-/* Activity heatmap — every completed quiz is a square, weeks back.   */
+/* Activity heatmap — every completed quiz is a SQUARE, weeks back.    */
 /* GitHub-style contribution grid in the frosted-glass theme.          */
 /* Shared by the student dashboard ("Your activity") and the teacher's */
 /* class page ("Class activity") — with a 12 / 26 / 52-week switch     */
@@ -16,13 +16,10 @@ import { cn } from '@/lib/utils';
 const RANGE_OPTIONS = [12, 26, 52] as const;
 type Range = (typeof RANGE_OPTIONS)[number];
 
-/** keeps squares readable as the grid widens — 12w fits ~520px, wider
- *  ranges scroll horizontally instead of turning cells into slivers */
-function gridMinWidth(weeks: number): string {
-  if (weeks <= 12) return 'min-w-[520px]';
-  if (weeks <= 26) return 'min-w-[820px]';
-  return 'min-w-[1180px]';
-}
+const GAP = 3; // px between cells (screen)
+const LABEL_W = 16; // px — weekday label column
+const CELL_MIN = 9; // px — below this the 52-week grid scrolls instead
+const CELL_MAX = 18; // px — keeps 12-week squares proportionate
 
 interface Cell {
   date: Date;
@@ -48,6 +45,25 @@ export function ActivityHeatmap({
 }) {
   const [weeks, setWeeks] = useState<Range>(12);
   const [printing, setPrinting] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  // adaptive SQUARE cell size — the grid measures its container and picks
+  // the biggest cell (clamped 9–18px) that fits `weeks` columns; if even 9px
+  // doesn't fit, the grid keeps 9px squares and scrolls horizontally
+  const [cell, setCell] = useState(14);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const measure = () => {
+      const avail = el.clientWidth - LABEL_W - 8;
+      const size = Math.floor((avail - (weeks - 1) * GAP) / weeks);
+      setCell(Math.max(CELL_MIN, Math.min(CELL_MAX, size)));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [weeks]);
 
   // everything below only recomputes when the data or range changes
   const view = useMemo(() => {
@@ -132,52 +148,63 @@ export function ActivityHeatmap({
     };
   }, [printing]);
 
-  const grid = (print: boolean) => (
-    <div className={print ? '' : gridMinWidth(weeks)}>
-      {/* month marks */}
-      <div className="grid mb-1" style={{ gridTemplateColumns: `${print ? '1.1rem' : '1.35rem'} repeat(${weeks}, 1fr)` }} aria-hidden>
-        {monthMarks.map((m, i) => (
-          <span key={i} className="text-[10px] text-muted-foreground pl-1 leading-none h-3.5">
-            {m ?? ''}
-          </span>
-        ))}
-      </div>
-      <div className={print ? 'flex gap-[2px]' : 'flex gap-1.5'}>
-        {/* weekday labels */}
-        <div className={cn('grid grid-rows-7 text-[9px] text-muted-foreground shrink-0', print ? 'gap-[1px] w-4' : 'gap-[3px] w-4')} aria-hidden>
-          <span className="leading-none h-3.5 flex items-center">Mon</span>
-          <span />
-          <span className="leading-none h-3.5 flex items-center">Wed</span>
-          <span />
-          <span className="leading-none h-3.5 flex items-center">Fri</span>
-          <span />
-          <span />
-        </div>
-        {/* the squares */}
+  const grid = (print: boolean) => {
+    // screen: adaptive square cells · print: fixed 9px squares
+    const size = print ? 9 : cell;
+    const gap = print ? 1 : GAP;
+    const labelW = print ? 15 : LABEL_W;
+    return (
+      <div>
+        {/* month marks — column track matches the square grid below */}
         <div
-          className={cn('grid flex-1', print ? 'gap-[1px]' : 'gap-[3px]')}
-          style={{ gridTemplateColumns: `repeat(${weeks}, 1fr)` }}
+          className="grid mb-1"
+          style={{ gridTemplateColumns: `${labelW}px repeat(${weeks}, ${size}px)`, columnGap: gap }}
+          aria-hidden
         >
-          {cols.map((col, wi) => (
-            <div key={wi} className={cn('grid grid-rows-7', print ? 'gap-[1px]' : 'gap-[3px]')}>
-              {col.map((c) => (
-                <div
-                  key={c.date.getTime()}
-                  title={print ? undefined : label(c)}
-                  className={cn(
-                    'rounded-[3px] transition-colors heat-cell',
-                    print ? 'h-[9px] w-full' : 'h-3.5 w-full',
-                    c.isFuture ? 'heat-future bg-transparent' : level(c.count),
-                    !print && c.isToday && 'ring-2 ring-primary/50 ring-offset-1 ring-offset-[var(--card)]'
-                  )}
-                />
-              ))}
-            </div>
+          {monthMarks.map((m, i) => (
+            <span key={i} className="text-[10px] text-muted-foreground pl-1 leading-none h-3.5">
+              {m ?? ''}
+            </span>
           ))}
         </div>
+        <div className="flex" style={{ gap }}>
+          {/* weekday labels */}
+          <div
+            className="grid grid-rows-7 text-[9px] text-muted-foreground shrink-0"
+            style={{ gap, width: labelW }}
+            aria-hidden
+          >
+            <span className="leading-none h-3.5 flex items-center">Mon</span>
+            <span />
+            <span className="leading-none h-3.5 flex items-center">Wed</span>
+            <span />
+            <span className="leading-none h-3.5 flex items-center">Fri</span>
+            <span />
+            <span />
+          </div>
+          {/* the squares — width = height, at every range */}
+          <div className="flex" style={{ gap }}>
+            {cols.map((col, wi) => (
+              <div key={wi} className="grid grid-rows-7" style={{ gap }}>
+                {col.map((c) => (
+                  <div
+                    key={c.date.getTime()}
+                    title={print ? undefined : label(c)}
+                    className={cn(
+                      'rounded-[3px] transition-colors heat-cell',
+                      c.isFuture ? 'heat-future bg-transparent' : level(c.count),
+                      !print && c.isToday && 'ring-2 ring-primary/50 ring-offset-1 ring-offset-[var(--card)]'
+                    )}
+                    style={{ width: size, height: size }}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const printSheet = printing
     ? createPortal(
@@ -272,7 +299,7 @@ export function ActivityHeatmap({
         </div>
       </div>
 
-      <div className="overflow-x-auto scroll-slim pb-1">
+      <div ref={wrapRef} className="overflow-x-auto scroll-slim pb-1">
         {grid(false)}
       </div>
 

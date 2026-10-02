@@ -128,7 +128,7 @@ export function ProfileDialog({ trigger }: { trigger: 'row' | 'icon' }) {
         {trigger === 'row' ? (
           <button
             type="button"
-            className="group -mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-[var(--sidebar-accent)]/70 focus-visible:outline-2 focus-visible:outline-primary"
+            className="group flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left transition-colors hover:bg-[var(--sidebar-accent)]/70 focus-visible:outline-2 focus-visible:outline-primary"
             aria-label="Edit your profile picture"
             title="Change your profile picture"
           >

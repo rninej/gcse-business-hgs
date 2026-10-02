@@ -1,20 +1,15 @@
 'use client';
 
-// Random decorative background for quiz-taking. Every attempt picks a random
-// business-scene photo (seeded by attempt id, so it stays put during one quiz
-// but differs between quizzes). The photo sits behind everything at low
-// opacity with a gradient wash, so it is clearly visible yet never fights the
-// questions. If the image fails to load, a hand-drawn doodle pattern takes
-// over instead.
+// Minimalist backdrop for quiz-taking. Every attempt picks one of six
+// hand-drawn business doodle tiles (SVG pattern — crisp at every
+// resolution, lightweight, never pixelated). Student feedback was clear:
+// the old forest photos read as low-resolution and heavy, so the doodle
+// pattern — the original fallback — is now the primary backdrop. The photo
+// code is gone entirely; nothing depends on image downloads any more.
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
-/** Files in /public/quiz-backdrops — calm forest scenes only (numbered so the
- *  seeded pick is stable). Woodland photos keep the quiz feeling peaceful and
- *  focused; they never appear anywhere else in the app. */
-const PHOTOS = [1, 2, 3, 4, 5, 6].map((n) => `/quiz-backdrops/forest-${String(n).padStart(2, '0')}.jpg`);
-
-/** Deterministic pick from an attempt id — same quiz, same backdrop. */
+/** Deterministic pick from an attempt id — same quiz, same doodle. */
 function pick(seed: string, len: number): number {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
@@ -22,33 +17,12 @@ function pick(seed: string, len: number): number {
 }
 
 export function QuizBackdrop({ attemptId }: { attemptId: string }) {
-  const idx = useMemo(() => pick(attemptId, PHOTOS.length), [attemptId]);
-  const [ok, setOk] = useState(true);
-  const photo = PHOTOS[idx];
-
-  if (ok) {
-    return (
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden print:hidden">
-        {/* the scene — clearly visible; blur + wash keep it calm, and every
-            reading surface (question card, header) is opaque on top of it */}
-        <img
-          src={photo}
-          alt=""
-          onError={() => setOk(false)}
-          className="h-full w-full object-cover opacity-45 dark:opacity-35 blur-[2px] scale-[1.06]"
-        />
-        {/* soft wash tames the busiest areas without hiding the scene */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/10 to-background/45" />
-      </div>
-    );
-  }
-
-  // fallback — the original doodle pattern
-  return <DoodleBackdrop idx={pick(attemptId, DOODLE_COUNT)} />;
+  const idx = useMemo(() => pick(attemptId, DOODLE_COUNT), [attemptId]);
+  return <DoodleBackdrop idx={idx} />;
 }
 
 /* ------------------------------------------------------------------ */
-/* Hand-drawn doodle tiles (the original backdrop, kept as the backup) */
+/* Hand-drawn doodle tiles — business motifs at whisper-quiet opacity */
 
 const DOODLE_COUNT = 6;
 

@@ -19,6 +19,7 @@ import hr from './hr';
 import globalisation from './globalisation';
 import examt1 from './exam-t1';
 import examt2 from './exam-t2';
+import longform from './longform';
 import casesgrowth from './cases-growth';
 import casesfinance from './cases-finance';
 import cashflowbreakeven from './cashflow-breakeven';
@@ -62,6 +63,7 @@ const DEFS = [
   growthstrategies,
   financecalcs,
   peopleperformance,
+  longform,
   // Student practice pool (never shown to teachers as settable homework)
   practice11,
   practice12,

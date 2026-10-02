@@ -20,7 +20,7 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
 
-export function PasswordDialog({ variant = 'outline' }: { variant?: 'outline' | 'ghost' }) {
+export function PasswordDialog({ variant = 'outline' }: { variant?: 'outline' | 'ghost' | 'sidebar' }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState('');
@@ -65,6 +65,14 @@ export function PasswordDialog({ variant = 'outline' }: { variant?: 'outline' | 
           <Button variant="ghost" size="icon" aria-label="Change password">
             <KeyRound className="h-5 w-5" />
           </Button>
+        ) : variant === 'sidebar' ? (
+          <button
+            type="button"
+            className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-left text-muted-foreground hover:text-foreground hover:bg-[var(--sidebar-accent)]/70 transition-colors"
+          >
+            <KeyRound className="h-[17px] w-[17px]" aria-hidden />
+            <span>Change password</span>
+          </button>
         ) : (
           <Button variant="outline" size="sm" className="w-full">
             <KeyRound className="h-4 w-4" /> Change password

@@ -158,22 +158,24 @@ export function StudentBell({ variant = 'icon' }: { variant?: 'icon' | 'row' }) 
             ) : null}
           </Button>
         ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-between relative"
+          <button
+            type="button"
+            className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-left text-muted-foreground hover:text-foreground hover:bg-[var(--sidebar-accent)]/70 transition-colors relative"
             aria-label={`Notifications${unread ? ` — ${unread} unread` : ''}`}
           >
-            <span className="flex items-center gap-2">
-              <Bell className="h-4 w-4" />
-              Notifications
+            <span className="relative">
+              <Bell className="h-[17px] w-[17px]" aria-hidden />
+              {unread > 0 ? (
+                <span
+                  className="absolute -top-1.5 -right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-[3px] text-[8px] font-bold text-primary-foreground tabular-nums"
+                  aria-hidden
+                >
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              ) : null}
             </span>
-            {unread > 0 ? (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground tabular-nums" aria-hidden>
-                {unread > 9 ? '9+' : unread}
-              </span>
-            ) : null}
-          </Button>
+            <span>Notifications</span>
+          </button>
         )}
       </PopoverTrigger>
       <PopoverContent align={variant === 'icon' ? 'end' : 'start'} side={variant === 'icon' ? 'bottom' : 'right'} className="glass w-auto p-3">

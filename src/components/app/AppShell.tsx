@@ -150,14 +150,21 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
             );
           })}
         </nav>
-        <div className="p-4 border-t border-white/40 space-y-3">
+        <div className="px-3 pt-3 pb-4 border-t border-white/40 space-y-1">
           {/* user block doubles as the profile-picture editor */}
           <ProfileDialog trigger="row" />
           {!isTeacher ? <StudentBell variant="row" /> : null}
-          <PasswordDialog />
-          <Button variant="outline" size="sm" className="w-full" onClick={() => logout()}>
-            <LogOut className="h-4 w-4" /> Log out
-          </Button>
+          {/* same geometry as the nav rows above — icon and label sit on the
+              identical left rail so the sidebar reads as one aligned column */}
+          <PasswordDialog variant="sidebar" />
+          <button
+            type="button"
+            onClick={() => logout()}
+            className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-left text-muted-foreground hover:text-foreground hover:bg-[var(--sidebar-accent)]/70 transition-colors"
+          >
+            <LogOut className="h-[17px] w-[17px]" aria-hidden />
+            <span>Log out</span>
+          </button>
         </div>
       </aside>
 

@@ -1,7 +1,7 @@
 'use client';
 
 // Shared presentational primitives
-import { type LucideIcon } from 'lucide-react';
+import { type LucideIcon, ChevronRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -36,12 +36,18 @@ export function StatCard({
   value,
   sub,
   tone = 'default',
+  onClick,
+  actionLabel = 'View',
 }: {
   icon: LucideIcon;
   label: string;
   value: string | number | null;
   sub?: string;
   tone?: 'default' | 'good' | 'warn' | 'bad';
+  /** when set the card becomes a button that navigates somewhere */
+  onClick?: () => void;
+  /** screen-reader/tooltip label for where the card goes */
+  actionLabel?: string;
 }) {
   const toneCls =
     tone === 'good'
@@ -51,22 +57,50 @@ export function StatCard({
         : tone === 'bad'
           ? 'text-[var(--danger)]'
           : 'text-primary';
-  return (
-    <Card className="p-4">
-      <CardContent className="p-0 flex items-start gap-3">
-        <div className="rounded-xl bg-secondary p-2.5 h-10 w-10 flex items-center justify-center shrink-0">
-          <Icon className="h-5 w-5 text-primary" aria-hidden />
+
+  const body = (
+    <CardContent className="p-0 flex items-start gap-3">
+      <div className="rounded-xl bg-secondary p-2.5 h-10 w-10 flex items-center justify-center shrink-0">
+        <Icon className="h-5 w-5 text-primary" aria-hidden />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className={`text-2xl font-semibold leading-tight ${toneCls}`}>
+          {value === null || value === undefined ? '—' : value}
         </div>
-        <div className="min-w-0">
-          <div className={`text-2xl font-semibold leading-tight ${toneCls}`}>
-            {value === null || value === undefined ? '—' : value}
-          </div>
-          <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
-          {sub ? <div className="text-xs text-muted-foreground/80 mt-0.5">{sub}</div> : null}
-        </div>
-      </CardContent>
-    </Card>
+        <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
+        {sub ? <div className="text-xs text-muted-foreground/80 mt-0.5">{sub}</div> : null}
+      </div>
+      {onClick ? (
+        <span
+          className="flex h-5 w-5 items-center justify-center rounded-full border border-border text-muted-foreground shrink-0 mt-0.5 stat-go"
+          aria-hidden
+        >
+          <ChevronRight className="h-3 w-3" />
+        </span>
+      ) : null}
+    </CardContent>
   );
+
+  if (onClick) {
+    return (
+      <Card
+        role="button"
+        tabIndex={0}
+        aria-label={`${label}: ${value ?? '—'} — ${actionLabel}`}
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick();
+          }
+        }}
+        className="p-4 text-left cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-primary outline-offset-2 group"
+      >
+        {body}
+      </Card>
+    );
+  }
+  return <Card className="p-4">{body}</Card>;
 }
 
 export function EmptyState({

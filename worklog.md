@@ -829,3 +829,29 @@ Stage Summary:
 - /debug owner dashboard live: verified-figures comparison table, 14 USPs, AI free-tier model proving £0 AI spend at any school scale, lean/commercial cost tables (£10-337/yr), interactive calculator, editable print-ready invoice (VAT toggle), sources section.
 - Key economics: class of 30 costs £10/yr lean (Educake charges £660); 300 students £70-337/yr; licence at £144 = 78% under Educake with healthy margin.
 - Committed and pushed to main for Vercel deploy.
+
+---
+Task ID: 30
+Agent: main (Z.ai Code)
+Task: Browser-tab favicon, bulk roster file upload for Add students, clickable dashboard stat cards, + student-feedback pack (minimalist backdrop, square heatmap cells, sidebar alignment, 20 long-form bank questions)
+
+Work Log:
+- FIX favicon (browser tab icon was missing): metadata.icons with only apple had suppressed Next.js file-based icon auto-detection, so no <link rel=icon> was emitted at all. Generated src/app/favicon.ico (16/32/48 multi-size via PIL from the theme logo) and declared icon links explicitly (icon.svg + favicon.ico + shortcut + apple) in layout.tsx. Verified: head now serves 5 icon links; /favicon.ico 200.
+- NEW bulk roster upload (src/lib/roster.ts + Add-students dialog): teachers upload a class list instead of typing names. Parses CSV/TSV/TXT natively and XLSX/XLS/ODS via lazily-imported SheetJS (bun add xlsx). Handles SIMS/Bromcom-style exports: header detection (First name/Forename/Surname/Pupil name…), first+last column joining, single full-name columns, junk columns (email/DOB/UPN) ignored, non-name rows filtered, dedupe. UI: dashed upload zone with Choose-a-file button + drag-and-drop, parsed names land in the existing editable textarea, inline status ("N names from file — editable below") and inline errors — no toasts (a toast here overlapped the Create button and swallowed its click: real UX bug found during QA, fixed by going inline).
+- FIX dialogs clipped on short screens (found during QA on a 577px viewport): base DialogContent in ui/dialog.tsx now has max-h-[calc(100dvh-2rem)] overflow-y-auto — every dialog app-wide can now scroll to its footer instead of being unreachable. Add-students textarea 7→5 rows.
+- NEW clickable dashboard stat cards: StatCard (shared.tsx) gained onClick/actionLabel — renders as a keyboard-accessible button with chevron affordance, hover lift/ring. TeacherHome wires all 5: Classes/Students → t-classes, Assignments set → t-assignments, Average score → deep-link to latest submitted assignment's results, Integrity flags → deep-link to the most-flagged assignment's results. Overview API now returns latestSubmittedAssignmentId + topFlaggedAssignmentId.
+- FIX heatmap cells are now SQUARE at all ranges (student feedback): ActivityHeatmap rewritten from stretchy 1fr columns (41×14px slivers) to adaptive fixed squares via ResizeObserver — cell = clamp(9..18px) to fit weeks columns; 52w scrolls horizontally on narrow screens instead of squashing. Print grid uses fixed 9px squares. Verified 18×18 @ 12w and 14×14 @ 52w, all square.
+- FIX sidebar text alignment (student feedback): footer rows (Change password, Log out, Notifications bell row) restyled to the exact nav-row geometry (px-3, gap-3, 17px icons) so every row shares one left rail; ProfileDialog row -mx-2/px-2 hack removed; PasswordDialog gained a 'sidebar' variant.
+- NEW minimalist quiz backdrop (student feedback: photos looked low-res): forest-photo backdrop removed entirely; the hand-drawn business doodle SVG pattern (crisp at any resolution, on-theme) is now the primary — QuizBackdrop renders DoodleBackdrop seeded by attempt id.
+- NEW 20 long-form questions (student feedback: more long-form): src/data/bank/longform.ts — "Long-Answer Exam Practice" quiz, 6/9/12-mark analyse/discuss/justify/evaluate questions across all topics 1.1–2.5, each with a full examiner mark scheme (WrittenPoints), realistic figures consistent with the established fictional businesses. Registered in the bank index (assignment audience → bank picker, lucky dip, AI fallback pool).
+
+QA (agent-browser):
+- Teacher login → dashboard: 5 stat cards are buttons with aria-labels; Classes card → Classes view; Average score card → deep-linked to latest results ("E2E draft flow check").
+- Roster upload: CSV with headers+junk columns → "Amelia Watson/Ben Carter/Priya Sharma"; XLSX with Forename/Surname → 4 clean names; TXT → 3 names; Create accounts → POST 200, 4 accounts created with usernames + memorable passwords (verified in list + credentials sheet); test students removed afterwards (class back to 2).
+- Heatmap square at 12w/52w; doodle pattern live in student quiz ([id^=qdoodle-] present, 0 forest images); mobile 390px zero overflow on dashboard.
+- VLM visual review: dashboard "clean, clearly clickable with visible values"; upload dialog "clean and well-structured"; backdrop "extremely clean and subtle".
+- lint clean; dev.log error-free; / and /debug 200.
+
+Stage Summary:
+- All three requested features shipped (tab icon, file-upload roster, clickable stats) plus four student-feedback items (square heatmap, minimalist backdrop, sidebar alignment, long-form questions) and two real bugs found & fixed during QA (missing <link rel=icon>, dialogs unreachable on short screens + toast-swallowed-click).
+- Committed and pushed to main for Vercel.

@@ -73,6 +73,8 @@ interface Overview {
   commonSlips?: CommonSlip[];
   fixPools?: FixPool[];
   needsAttention?: AttentionRow[];
+  latestSubmittedAssignmentId?: string | null;
+  topFlaggedAssignmentId?: string | null;
 }
 
 export function TeacherHome() {
@@ -125,15 +127,39 @@ export function TeacherHome() {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-        <StatCard icon={Layers} label="Classes" value={s.classCount} />
-        <StatCard icon={Users} label="Students" value={s.studentCount} />
-        <StatCard icon={ClipboardList} label="Assignments set" value={s.assignmentCount} />
+        <StatCard
+          icon={Layers}
+          label="Classes"
+          value={s.classCount}
+          onClick={() => go({ name: 't-classes' })}
+          actionLabel="open your classes"
+        />
+        <StatCard
+          icon={Users}
+          label="Students"
+          value={s.studentCount}
+          onClick={() => go({ name: 't-classes' })}
+          actionLabel="open the class lists"
+        />
+        <StatCard
+          icon={ClipboardList}
+          label="Assignments set"
+          value={s.assignmentCount}
+          onClick={() => go({ name: 't-assignments' })}
+          actionLabel="open assignments"
+        />
         <StatCard
           icon={TrendingUp}
           label="Average score"
           value={s.avgPct === null ? '—' : `${s.avgPct}%`}
           sub={`${s.submittedCount} submitted`}
           tone={s.avgPct === null ? 'default' : s.avgPct >= 70 ? 'good' : s.avgPct >= 50 ? 'warn' : 'bad'}
+          onClick={() =>
+            data.latestSubmittedAssignmentId
+              ? go({ name: 't-results', assignmentId: data.latestSubmittedAssignmentId })
+              : go({ name: 't-assignments' })
+          }
+          actionLabel={data.latestSubmittedAssignmentId ? 'open the latest marked results' : 'open assignments'}
         />
         <StatCard
           icon={ShieldAlert}
@@ -141,6 +167,12 @@ export function TeacherHome() {
           value={s.flaggedCount}
           sub={s.flaggedCount ? 'review in results' : 'all clear'}
           tone={s.flaggedCount > 0 ? 'bad' : 'good'}
+          onClick={() =>
+            data.topFlaggedAssignmentId
+              ? go({ name: 't-results', assignmentId: data.topFlaggedAssignmentId })
+              : go({ name: 't-assignments' })
+          }
+          actionLabel={data.topFlaggedAssignmentId ? 'review the flagged submissions' : 'open assignments'}
         />
       </div>
 

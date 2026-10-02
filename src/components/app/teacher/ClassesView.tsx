@@ -14,6 +14,8 @@ import {
   RefreshCw,
   FileDown,
   FileText,
+  FileSpreadsheet,
+  Loader2,
   Mail,
   Wand2,
   Clock3,
@@ -56,6 +58,8 @@ import {
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+import { parseRosterFile, ROSTER_ACCEPT } from '@/lib/roster';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { PageHeader, ThemedSkeleton, ErrorNote, EmptyState } from '@/components/shared';
@@ -219,6 +223,36 @@ function ClassDetail({ classId }: { classId: string }) {
   const [creds, setCreds] = useState<CreatedCred[] | null>(null);
   const [adding, setAdding] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [parsingFile, setParsingFile] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [lastFile, setLastFile] = useState<{ name: string; found: number } | null>(null);
+  const [rosterError, setRosterError] = useState<string | null>(null);
+
+  // read a class-list file (Excel/CSV/TSV/TXT) into the names box.
+  // Feedback is shown INLINE inside the upload zone — a toast here would sit
+  // on top of the dialog's Create button and could swallow its click.
+  async function handleRosterFile(file: File | undefined | null) {
+    if (!file) return;
+    setParsingFile(true);
+    setDragOver(false);
+    setRosterError(null);
+    try {
+      const { names: found, skipped } = await parseRosterFile(file);
+      if (found.length === 0) {
+        setRosterError('No student names found in that file — look for a sheet with one student per row (First name, Last name works best).');
+      } else {
+        setNames(found.join('\n'));
+        setLastFile({ name: file.name, found: found.length });
+        if (skipped) {
+          setRosterError(`${skipped} row${skipped === 1 ? '' : 's'} skipped (duplicates or not names) — check the list below.`);
+        }
+      }
+    } catch {
+      setRosterError('Could not read that file — try exporting it as CSV or Excel (.xlsx), or paste the names directly.');
+    } finally {
+      setParsingFile(false);
+    }
+  }
 
   // class logins sheet (share/export all credentials)
   const [loginsOpen, setLoginsOpen] = useState(false);
@@ -586,6 +620,56 @@ function ClassDetail({ classId }: { classId: string }) {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
+                  {/* upload or drag-and-drop a class list */}
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragOver(true);
+                    }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      void handleRosterFile(e.dataTransfer.files?.[0]);
+                    }}
+                    className={cn(
+                      'rounded-lg border border-dashed p-3.5 text-center transition-colors',
+                      dragOver ? 'border-primary bg-primary/10' : 'border-border bg-secondary/40'
+                    )}
+                  >
+                    {parsingFile ? (
+                      <p className="text-sm text-muted-foreground flex items-center justify-center gap-2 py-1">
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Reading {lastFile ? 'file' : 'class list'}…
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium">Upload your class list</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Excel (.xlsx/.xls), CSV, TSV or text — or drag a file onto this box. Extra columns (email, DOB…) are ignored.
+                        </p>
+                        <label className="mt-2.5 inline-flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-sm font-medium cursor-pointer hover:bg-secondary/80 transition-colors">
+                          <FileSpreadsheet className="h-4 w-4 text-primary" aria-hidden />
+                          Choose a file
+                          <input
+                            type="file"
+                            accept={ROSTER_ACCEPT}
+                            className="sr-only"
+                            onChange={(e) => {
+                              void handleRosterFile(e.target.files?.[0]);
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                        {lastFile ? (
+                          <p className="text-xs text-[var(--success)] mt-2 font-medium">
+                            {lastFile.found} names from {lastFile.name} — editable below
+                          </p>
+                        ) : null}
+                        {rosterError ? (
+                          <p className="text-xs text-[var(--danger)] mt-1.5" role="alert">{rosterError}</p>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="names">Student names</Label>
                     <Textarea
@@ -593,7 +677,7 @@ function ClassDetail({ classId }: { classId: string }) {
                       value={names}
                       onChange={(e) => setNames(e.target.value)}
                       placeholder={'Amelia Watson\nBen Carter\nPriya Sharma'}
-                      rows={7}
+                      rows={5}
                       className="font-mono text-sm"
                     />
                     <p className="text-xs text-muted-foreground">

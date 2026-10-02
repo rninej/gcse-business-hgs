@@ -57,6 +57,20 @@ export async function GET() {
 
   const flagged = submitted.filter((a) => a.result && (a.result.riskBand === 'elevated' || a.result.riskBand === 'high'));
 
+  // deep-link targets for the dashboard stat cards: the most recent
+  // assignment with submissions (Average score card) and the assignment
+  // holding the most integrity flags (Integrity flags card)
+  const latestSubmittedAssignmentId = myAssignments.find((a) =>
+    submitted.some((at) => at.assignmentId === a.id)
+  )?.id ?? null;
+  const flagCounts = new Map<string, number>();
+  for (const at of flagged) {
+    if (!at.assignmentId) continue;
+    flagCounts.set(at.assignmentId, (flagCounts.get(at.assignmentId) ?? 0) + 1);
+  }
+  const topFlaggedAssignmentId =
+    [...flagCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+
   // common slips across ALL classes — the same pool the class-page mistake
   // fixer uses (freshness rule included), aggregated per question so the
   // dashboard can show what the whole cohort is stuck on right now
@@ -169,5 +183,7 @@ export async function GET() {
     commonSlips,
     fixPools,
     needsAttention,
+    latestSubmittedAssignmentId,
+    topFlaggedAssignmentId,
   });
 }
