@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { item, merge } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { notifyStudents } from '@/lib/notify';
+import { patchLite } from '@/lib/attemptLite';
 import type { Attempt } from '@/lib/types';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -30,11 +31,13 @@ export async function POST(req: Request, ctx: Ctx) {
 
   if (text.length === 0) {
     await merge('attempts', id, { teacherFeedback: null });
+    await patchLite(attempt.studentId, id, { hasTeacherFeedback: false });
     return NextResponse.json({ ok: true, cleared: true });
   }
 
   const teacherFeedback = { text, at: Date.now(), byName: session.name };
   await merge('attempts', id, { teacherFeedback });
+  await patchLite(attempt.studentId, id, { hasTeacherFeedback: true });
 
   // ring the student's bell — but only when the note is genuinely new (not a
   // re-save of identical text), so a teacher's typo edits never double-ring

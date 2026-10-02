@@ -3,7 +3,8 @@ import { colCached, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { topicTitle } from '@/lib/topics';
 import { classFixPool } from '@/lib/classPool';
-import type { Attempt, Assignment, Student, StudentClass } from '@/lib/types';
+import { allLite, type AttemptLite } from '@/lib/attemptLite';
+import type { Assignment, Student, StudentClass } from '@/lib/types';
 import { assignmentTargetsStudent } from '@/lib/types';
 
 export async function GET() {
@@ -14,7 +15,7 @@ export async function GET() {
     colCached<StudentClass>('classes'),
     colCached<Student>('students'),
     colCached<Assignment>('assignments'),
-    colCached<Attempt>('attempts'),
+    allLite(),
   ]);
 
   const myClasses = values(classes).filter((c) => c.teacherId === session.uid);
@@ -22,11 +23,11 @@ export async function GET() {
   const myAssignments = values(assignments)
     .filter((a) => a.teacherId === session.uid)
     .sort((a, b) => b.createdAt - a.createdAt);
-  const myAttempts = values(attempts).filter((a) => a.teacherId === session.uid && a.mode !== 'selftest');
+  const myAttempts: AttemptLite[] = attempts.filter((a) => a.teacherId === session.uid && a.mode !== 'selftest');
 
   // students may redo assignments — use each student's LATEST submitted go per
   // assignment for dashboard stats, so redos don't inflate counts or averages
-  const latestByKey = new Map<string, Attempt>();
+  const latestByKey = new Map<string, AttemptLite>();
   for (const at of myAttempts) {
     if (at.status !== 'submitted' || !at.result || !at.assignmentId) continue;
     const key = `${at.studentId}:${at.assignmentId}`;

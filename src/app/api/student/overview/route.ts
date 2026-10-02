@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { colCached, values } from '@/lib/firebase';
+import { colCached } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { streaksFrom, hasQuizToday } from '@/lib/streaks';
 import { topicTitle } from '@/lib/topics';
-import { collectWrongPool } from '@/lib/wrongPool';
+import { liteForStudent } from '@/lib/attemptLite';
+import { readWrongPool } from '@/lib/wrongPoolFeed';
 import { computeBadges } from '@/lib/badges';
-import type { Attempt, Student } from '@/lib/types';
+import type { Student } from '@/lib/types';
 
 export async function GET() {
   const session = await requireRole('student');
@@ -15,8 +16,9 @@ export async function GET() {
   const me = students[session.uid];
   if (!me) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
 
-  const attempts = values(await colCached<Attempt>('attempts'))
-    .filter((a) => a.studentId === session.uid && a.status === 'submitted' && a.result)
+  // the student's OWN slim feed — a few KB, never anyone else's attempts
+  const attempts = (await liteForStudent(session.uid))
+    .filter((a) => a.status === 'submitted' && a.result)
     .sort((a, b) => (b.result?.submittedAt ?? 0) - (a.result?.submittedAt ?? 0));
 
   const pcts = attempts.map((a) => a.result!.pct);
@@ -51,9 +53,9 @@ export async function GET() {
   // streak maths uses — drives the "streak at risk" nudge on the dashboard)
   const quizToday = hasQuizToday(activity);
 
-  // the wrong-answer pool: questions whose most recent outcome is wrong,
-  // across every submitted quiz — powers the smart-practice nudge
-  const wrongPool = collectWrongPool(attempts).length;
+  // the wrong-answer pool feed is maintained at submit time — counting it is
+  // one tiny read of the student's own data
+  const wrongPool = Object.keys(await readWrongPool(session.uid)).length;
 
   // ---- achievements: badge unlock maths on facts already loaded ----
   // (hours use server time; the deployment runs UTC, which matches the
@@ -104,7 +106,7 @@ export async function GET() {
       total: a.result!.total,
       submittedAt: a.result!.submittedAt,
       feedbackBy: a.result!.feedbackBy,
-      hasTeacherFeedback: Boolean(a.teacherFeedback?.text),
+      hasTeacherFeedback: a.hasTeacherFeedback,
     })),
     mastery,
     // achievement badges — small DTOs, definition order (see src/lib/badges.ts)

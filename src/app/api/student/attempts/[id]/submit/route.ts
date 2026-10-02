@@ -7,6 +7,8 @@ import { generateFeedback } from '@/lib/ai';
 import { toReview } from '@/lib/sanitize';
 import { TOPIC_MAP } from '@/lib/topics';
 import { crossedMilestone, streaksFrom, studentSubmittedAt } from '@/lib/streaks';
+import { upsertLite } from '@/lib/attemptLite';
+import { syncWrongPool } from '@/lib/wrongPoolFeed';
 import type { Attempt, PerQTelemetry, TelemetryEvent } from '@/lib/types';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -126,6 +128,18 @@ export async function POST(req: Request, ctx: Ctx) {
     ? null
     : crossedMilestone(streaksFrom(priorSubmits).current, streaksFrom([...priorSubmits, result.submittedAt]).current);
 
+  const submitted: Attempt = {
+    ...attempt,
+    status: 'submitted',
+    answers,
+    perQ,
+    events,
+    wallMs,
+    hiddenMs,
+    result,
+    streakMilestone,
+  };
+
   await merge('attempts', attempt.id, {
     status: 'submitted' as const,
     answers,
@@ -137,6 +151,13 @@ export async function POST(req: Request, ctx: Ctx) {
     result,
     streakMilestone,
   });
+
+  // slim-feed mirrors — dashboards and results tables read these, never the
+  // fat collection
+  await upsertLite(submitted);
+  if (!isSelfTest) {
+    await syncWrongPool(attempt.studentId, attempt.questions, marked.perQ, result.submittedAt);
+  }
 
   const reviews = attempt.questions.map((q, i) => {
     const rec = marked.perQ[q.id];

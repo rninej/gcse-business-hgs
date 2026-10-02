@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { col, item, put, values } from '@/lib/firebase';
+import { item, put } from '@/lib/firebase';
+import { liteForStudent, upsertLite } from '@/lib/attemptLite';
 import { requireRole } from '@/lib/session';
 import { shuffleMcqOptions } from '@/lib/questions';
 import type { Attempt, Assignment, Teacher } from '@/lib/types';
@@ -15,8 +16,7 @@ export async function POST(_req: Request, ctx: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await ctx.params;
 
-  const teachers = await col<Teacher>('teachers');
-  const me = teachers[session.uid];
+  const me = await item<Teacher>('teachers', session.uid);
   if (!me) return NextResponse.json({ error: 'Account not found.' }, { status: 404 });
 
   const assignment = await item<Assignment>('assignments', id);
@@ -24,11 +24,11 @@ export async function POST(_req: Request, ctx: Ctx) {
     return NextResponse.json({ error: 'Assignment not found.' }, { status: 404 });
   }
 
-  // resume an unfinished self-test of this assignment
-  const attempts = values(await col<Attempt>('attempts'));
+  // resume an unfinished self-test of this assignment (own slim feed — no
+  // full-collection read)
   const title = `${assignment.title} · self-test`;
-  const existing = attempts.find(
-    (a) => a.studentId === session.uid && a.mode === 'selftest' && a.status === 'in-progress' && a.assignmentTitle === title
+  const existing = (await liteForStudent(session.uid)).find(
+    (a) => a.mode === 'selftest' && a.status === 'in-progress' && a.assignmentTitle === title
   );
   if (existing) return NextResponse.json({ ok: true, attemptId: existing.id, resumed: true });
 
@@ -56,5 +56,6 @@ export async function POST(_req: Request, ctx: Ctx) {
     result: null,
   };
   await put('attempts', attemptId, attempt);
+  await upsertLite(attempt);
   return NextResponse.json({ ok: true, attemptId, resumed: false });
 }

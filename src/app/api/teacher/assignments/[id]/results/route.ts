@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import { col, colCached, values } from '@/lib/firebase';
+import { colCached, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
-import { finalizeExpired } from '@/lib/finalize';
+import { finalizeFromLite } from '@/lib/finalize';
+import { allLite, type AttemptLite } from '@/lib/attemptLite';
 import { topicTitle } from '@/lib/topics';
-import { assignmentTargetsStudent, type Attempt, type Assignment, type RiskBand, type Student, type TeacherStudentResult } from '@/lib/types';
+import { assignmentTargetsStudent, type Assignment, type RiskBand, type Student, type TeacherStudentResult } from '@/lib/types';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -12,7 +13,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await ctx.params;
 
-  const assignments = await col<Assignment>('assignments');
+  const assignments = await colCached<Assignment>('assignments');
   const a = assignments[id];
   if (!a || a.teacherId !== session.uid) {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
@@ -21,14 +22,17 @@ export async function GET(_req: Request, ctx: Ctx) {
   const allStudents = values(await colCached<Student>('students')).filter((s) => assignmentTargetsStudent(a, s));
   // avatars live in their own collection so the students one stays light
   const avatars = await colCached<{ img?: string }>('avatars');
-  // finalize timed attempts whose clock ran out (students who never reopened);
-  // teacher self-tests are excluded — they never count as class statistics
-  const allAttempts = await finalizeExpired(
-    values(await colCached<Attempt>('attempts')).filter((x) => x.assignmentId === id && x.mode !== 'selftest')
+  // the slim attempt feed — this route is polled every few seconds while a
+  // class works, so it must never touch the fat attempts collection (the
+  // feed is untouched by heartbeats and answer-confirmations; only creates,
+  // submits and feedback bump it). Abandoned timed attempts are finalized
+  // via tiny per-attempt heartbeat reads.
+  const allAttempts = await finalizeFromLite(
+    (await allLite()).filter((x) => x.assignmentId === id && x.mode !== 'selftest')
   );
   // students may redo the assignment — group every attempt per student,
   // oldest first; the latest go is the headline row, the rest stay in history
-  const byStudent = new Map<string, Attempt[]>();
+  const byStudent = new Map<string, AttemptLite[]>();
   for (const x of allAttempts) {
     const list = byStudent.get(x.studentId) ?? [];
     list.push(x);
@@ -88,15 +92,16 @@ export async function GET(_req: Request, ctx: Ctx) {
       };
     });
 
-  // fill avgMsPerQ from attempts (not stored on result) — compute where available
+  // fill avgMsPerQ from the slim feed's per-question millisecond map —
+  // paste/tab counts ride along on the same record
   for (const row of rows) {
     const at = (byStudent.get(row.studentId) ?? []).filter((x) => x.status === 'submitted').pop();
     if (row.status === 'submitted' || row.status === 'late') {
-      if (at && at.result) {
-        const times = Object.values(at.perQ ?? {}).map((p) => p.ms).filter((m) => m > 0);
+      if (at) {
+        const times = Object.values(at.ms ?? {}).filter((m) => m > 0);
         row.avgMsPerQ = times.length ? Math.round(times.reduce((x, y) => x + y, 0) / times.length) : undefined;
-        row.pasteCount = (at.events ?? []).filter((e) => e.e === 'paste').length;
-        row.tabSwitches = (at.events ?? []).filter((e) => e.e === 'hide').length;
+        row.pasteCount = at.pasteCount;
+        row.tabSwitches = at.tabSwitches;
       }
     }
   }
@@ -124,7 +129,7 @@ export async function GET(_req: Request, ctx: Ctx) {
 
   // question-level analysis (latest go per student) — per-question answer
   // distribution + who said what, for the Topics & questions tab
-  const latestByStudent = new Map<string, Attempt>();
+  const latestByStudent = new Map<string, AttemptLite>();
   for (const s of submitted) {
     const at = (byStudent.get(s.studentId) ?? []).filter((x) => x.status === 'submitted').pop();
     if (at) latestByStudent.set(s.studentId, at);

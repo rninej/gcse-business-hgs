@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { QUIZ_MAP, QUIZZES } from '@/data/bank';
-import { col, put, values } from '@/lib/firebase';
+import { item, put } from '@/lib/firebase';
+import { liteForStudent, upsertLite } from '@/lib/attemptLite';
 import { shuffleMcqOptions } from '@/lib/questions';
 import { requireRole } from '@/lib/session';
 import { TOPIC_MAP } from '@/lib/topics';
@@ -29,8 +30,7 @@ export async function POST(req: Request) {
   const session = await requireRole('student');
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const students = await col<Student>('students');
-  const me = students[session.uid];
+  const me = await item<Student>('students', session.uid);
   if (!me) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
 
   const body = (await req.json().catch(() => ({}))) as { quizId?: string } & MixBody;
@@ -50,11 +50,10 @@ export async function POST(req: Request) {
 
   // NB: Firebase RTDB drops null values, so assignmentId reads back as
   // undefined for practice attempts — treat both as "no assignment".
-  const attempts = values(await col<Attempt>('attempts'))
-    .filter((x) => x.studentId === session.uid && !x.assignmentId);
+  const myLite = await liteForStudent(session.uid);
   const practiceTitle = `${quiz.title} · practice`;
-  const existing = attempts.find(
-    (x) => x.assignmentTitle === practiceTitle && x.status === 'in-progress'
+  const existing = myLite.find(
+    (x) => !x.assignmentId && x.assignmentTitle === practiceTitle && x.status === 'in-progress'
   );
   if (existing) {
     return NextResponse.json({ ok: true, attemptId: existing.id, resumed: true });
@@ -93,6 +92,7 @@ export async function POST(req: Request) {
     result: null,
   };
   await put('attempts', attemptId, attempt);
+  await upsertLite(attempt);
   return NextResponse.json({ ok: true, attemptId, resumed: false });
 }
 
@@ -179,6 +179,7 @@ async function startCustomMix(
     result: null,
   };
   await put('attempts', attemptId, attempt);
+  await upsertLite(attempt);
   return NextResponse.json({
     ok: true,
     attemptId,

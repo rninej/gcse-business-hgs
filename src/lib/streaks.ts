@@ -1,8 +1,8 @@
 // Study streak maths — computed from submitted-attempt timestamps.
 // Shared by the student overview and the class leaderboard so both always agree.
 
-import { colCached, values } from './firebase';
-import type { Attempt } from './types';
+import { liteForStudent } from './attemptLite';
+import type { AttemptLite } from './attemptLite';
 
 function dayKey(ms: number): number {
   // UTC day index — a stable, timezone-independent day boundary.
@@ -74,9 +74,11 @@ export function crossedMilestone(before: number, after: number): number | null {
 /** Submitted-at timestamps of a student's real (non-self-test) quizzes.
  *  Server-side only — used by the submit/finalize paths to detect a streak
  *  milestone at the moment it happens, so the attempt remembers it forever
- *  (a later same-day quiz would otherwise mask it on re-reads). */
+ *  (a later same-day quiz would otherwise mask it on re-reads). Reads the
+ *  slim per-student feed, not the fat attempts collection. */
 export async function studentSubmittedAt(studentId: string): Promise<number[]> {
-  return values(await colCached<Attempt>('attempts'))
-    .filter((a) => a.studentId === studentId && a.status === 'submitted' && a.result && a.mode !== 'selftest')
+  const mine: AttemptLite[] = await liteForStudent(studentId);
+  return mine
+    .filter((a) => a.status === 'submitted' && a.result && a.mode !== 'selftest')
     .map((a) => a.result?.submittedAt ?? 0);
 }

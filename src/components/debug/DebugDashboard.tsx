@@ -5,7 +5,7 @@
 // All public facts (Educake price, Trustpilot score, provider free tiers)
 // were verified against live sources — see Sources at the bottom.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -34,8 +34,10 @@ import { BrandLockup } from '@/components/app/Brand';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { api } from '@/lib/api';
 
 // ---------- shared math ----------
 
@@ -206,7 +208,130 @@ const USPS: { icon: typeof Wand2; title: string; body: string }[] = [
 
 // ---------- page ----------
 
+type GateState = 'loading' | 'claim' | 'locked' | 'open';
+
+/** Hidden page, first-visitor lock: the first person to arrive sets the
+ *  password that guards this dashboard from then on (stored scrypt-hashed in
+ *  Firebase). A valid unlock holds for 12 hours in a signed cookie. */
 export function DebugDashboard() {
+  const [gate, setGate] = useState<GateState>('loading');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api
+      .get<{ claimed: boolean; unlocked: boolean }>('/api/owner')
+      .then((s) => setGate(s.unlocked ? 'open' : s.claimed ? 'locked' : 'claim'))
+      .catch(() => setGate('claim')); // lock unreachable — safest guess is the claim form
+  }, []);
+
+  const submit = async () => {
+    setError(null);
+    if (gate === 'claim' && password !== confirm) {
+      setError('Those two passwords do not match.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.post('/api/owner', { password });
+      setGate('open');
+      setPassword('');
+      setConfirm('');
+    } catch (e) {
+      setError((e as Error).message || 'That did not work — try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (gate === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">Checking the lock…</p>
+      </div>
+    );
+  }
+
+  if (gate !== 'open') {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <header className="border-b border-white/40 bg-background/70 backdrop-blur-xl">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 min-h-16 py-2.5 flex items-center justify-between gap-3">
+            <BrandLockup />
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/"><ArrowLeft className="h-4 w-4" /> App</Link>
+            </Button>
+          </div>
+        </header>
+        <main className="flex-1 flex items-center justify-center px-4 py-10">
+          <Card className="w-full max-w-sm glass">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/15">
+                <ShieldCheck className="h-5 w-5 text-primary" aria-hidden />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold tracking-tight">
+                  {gate === 'claim' ? 'Set the owner password' : 'Owner dashboard'}
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {gate === 'claim'
+                    ? 'This dashboard is unclaimed. The password you choose now is the one every future visit needs — the first person here sets it.'
+                    : 'Enter the owner password to open the dashboard for the next 12 hours.'}
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="owner-pw">Password</Label>
+                <PasswordInput
+                  id="owner-pw"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && submit()}
+                  placeholder={gate === 'claim' ? 'Choose a password (4+ characters)' : 'Owner password'}
+                />
+              </div>
+              {gate === 'claim' && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="owner-pw2">Confirm password</Label>
+                  <PasswordInput
+                    id="owner-pw2"
+                    autoComplete="new-password"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && submit()}
+                    placeholder="Type it once more"
+                  />
+                </div>
+              )}
+              {error && (
+                <p role="alert" className="text-sm text-[var(--danger)]">{error}</p>
+              )}
+              <Button className="w-full" onClick={submit} disabled={busy || password.length < 4}>
+                {busy ? 'Checking…' : gate === 'claim' ? 'Claim & open' : 'Unlock'}
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+        <footer className="mt-auto border-t border-white/40 bg-background/60">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 text-xs text-muted-foreground">
+            Hidden page — not indexed, not linked anywhere on the site.
+          </div>
+        </footer>
+      </div>
+    );
+  }
+
+  const lock = async () => {
+    await api.del('/api/owner').catch(() => undefined);
+    setGate('locked');
+  };
+
+  return <DebugDashboardInner onLock={lock} />;
+}
+
+function DebugDashboardInner({ onLock }: { onLock: () => void | Promise<void> }) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <style>{`
@@ -228,6 +353,9 @@ export function DebugDashboard() {
             <Badge className="hidden sm:inline-flex" variant="outline">Owner dashboard · not indexed</Badge>
             <Button variant="outline" size="sm" onClick={() => window.print()}>
               <Printer className="h-4 w-4" /> Print / PDF
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => void onLock()}>
+              <Gavel className="h-4 w-4" /> Lock
             </Button>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/"><ArrowLeft className="h-4 w-4" /> App</Link>

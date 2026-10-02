@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { colCached, item, values } from '@/lib/firebase';
+import { colCached, item } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { decryptPassword } from '@/lib/passwords';
 import { streaksFrom } from '@/lib/streaks';
 import { toReview } from '@/lib/sanitize';
 import { finalizeExpired } from '@/lib/finalize';
+import { liteForStudent } from '@/lib/attemptLite';
 import type { Attempt, QReview, RiskBand, Student } from '@/lib/types';
 
 type Ctx = { params: Promise<{ sid: string }> };
@@ -48,13 +49,15 @@ export async function GET(_req: Request, ctx: Ctx) {
   const classes = await colCached<{ id: string; name: string }>('classes');
   const className = student.classId ? (classes[student.classId]?.name ?? '') : '';
 
-  // every attempt of this student that is not a teacher self-test; finalise
-  // expired timed attempts so the numbers are up to date
-  const mine = await finalizeExpired(
-    values(await colCached<Attempt>('attempts')).filter(
-      (x) => x.studentId === sid && x.mode !== 'selftest'
-    )
-  );
+  // every attempt of this student that is not a teacher self-test. The slim
+  // feed gives us the ids (a tiny per-student read); the full records are
+  // then fetched one by one — this dialog genuinely needs questions, answers
+  // and telemetry, and it's a one-off open, not a poll.
+  const idx = (await liteForStudent(sid)).filter((x) => x.mode !== 'selftest');
+  const fulls = (
+    await Promise.all(idx.map((x) => item<Attempt>('attempts', x.id)))
+  ).filter((x): x is Attempt => Boolean(x));
+  const mine = await finalizeExpired(fulls);
   mine.sort((a, b) => a.startedAt - b.startedAt);
 
   const submitted = mine.filter((x) => x.status === 'submitted' && x.result);

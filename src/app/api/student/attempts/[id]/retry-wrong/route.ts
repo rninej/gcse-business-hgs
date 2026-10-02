@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { put } from '@/lib/firebase';
 import { loadAccessibleAttempt } from '@/lib/attemptAccess';
+import { upsertLite } from '@/lib/attemptLite';
 import { shuffleMcqOptions } from '@/lib/questions';
 import type { Attempt } from '@/lib/types';
 
@@ -68,5 +69,6 @@ export async function POST(_req: Request, ctx: Ctx) {
     result: null,
   };
   await put('attempts', attemptId, retry);
+  await upsertLite(retry);
   return NextResponse.json({ ok: true, attemptId, questionCount: wrong.length });
 }

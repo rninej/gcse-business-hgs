@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { colCached, values } from '@/lib/firebase';
 import { loadAccessibleAttempt } from '@/lib/attemptAccess';
 import { isAbandonedTimed, finalizeAttempt } from '@/lib/finalize';
+import { liteForStudent } from '@/lib/attemptLite';
 import { streaksFrom } from '@/lib/streaks';
 import { toClientQuestions, toReview } from '@/lib/sanitize';
 import type { Attempt } from '@/lib/types';
@@ -29,12 +29,13 @@ export async function GET(_req: Request, ctx: Ctx) {
       const rec = r?.perQ?.[q.id];
       return toReview(q, i + 1, rec?.given ?? '—', rec?.expected ?? '', Boolean(rec?.correct), rec);
     });
-    // streak for the celebration banner (cheap: collection read is cached).
+    // streak for the celebration banner — the slim feed carries every
+    // submitted-at this needs, without the fat collection read.
     // The milestone is captured at submit time and STORED on the attempt —
     // re-reading it later always shows the same celebration even if another
     // same-day quiz would now mask the crossing.
-    const mySubmits = values(await colCached<Attempt>('attempts'))
-      .filter((a) => a.studentId === attempt.studentId && a.status === 'submitted' && a.result && a.mode !== 'selftest')
+    const mySubmits = (await liteForStudent(attempt.studentId))
+      .filter((a) => a.status === 'submitted' && a.result && a.mode !== 'selftest')
       .map((a) => a.result?.submittedAt ?? 0);
     return NextResponse.json({
       status: 'submitted',

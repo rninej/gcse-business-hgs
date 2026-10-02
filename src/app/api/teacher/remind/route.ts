@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { col, colCached, values } from '@/lib/firebase';
+import { colCached, item, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { calendarDaysUntil } from '@/lib/dates';
+import { allLite } from '@/lib/attemptLite';
 import { notifyStudents, recentlyReminded } from '@/lib/notify';
 import { assignmentTargetsStudent } from '@/lib/types';
-import type { Assignment, Attempt, Student } from '@/lib/types';
+import type { Assignment, Student } from '@/lib/types';
 
 /** Cooldown before the same teacher can nudge the same student about the
  *  same assignment again — stops a button-masher from spamming a class. */
@@ -36,8 +37,7 @@ export async function POST(req: Request) {
   }
   if (!assignmentId) return NextResponse.json({ error: 'Which assignment?' }, { status: 400 });
 
-  const assignments = await col<Assignment>('assignments');
-  const a = assignments[assignmentId];
+  const a = await item<Assignment>('assignments', assignmentId);
   if (!a || a.teacherId !== session.uid || a.draft) {
     return NextResponse.json({ error: 'Assignment not found.' }, { status: 404 });
   }
@@ -48,9 +48,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'No students to nudge on this one.' }, { status: 400 });
   }
 
-  const attempts = values(await colCached<Attempt>('attempts'));
   const subIds = new Set(
-    attempts.filter((x) => x.assignmentId === a.id && x.status === 'submitted').map((x) => x.studentId)
+    (await allLite())
+      .filter((x) => x.assignmentId === a.id && x.status === 'submitted')
+      .map((x) => x.studentId)
   );
   const missing = targets.filter((s) => !subIds.has(s.id));
   if (missing.length === 0) {

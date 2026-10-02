@@ -8,6 +8,8 @@ import { item, merge } from './firebase';
 import { markWrittenAnswer } from './ai';
 import { scoreFromPerQ } from './marking';
 import { pointsFor } from './risk';
+import { patchLite } from './attemptLite';
+import { syncWrongPool } from './wrongPoolFeed';
 import type { Attempt, PerQRecord } from './types';
 
 export interface WrittenMarkRun {
@@ -24,6 +26,7 @@ export async function markPendingWritten(attemptId: string): Promise<WrittenMark
 
   const perQ: Record<string, PerQRecord> = { ...(attempt.result.perQ ?? {}) };
   let marked = 0;
+  const markedQids = new Set<string>();
 
   for (const q of attempt.questions) {
     if (q.type !== 'written') continue;
@@ -43,6 +46,7 @@ export async function markPendingWritten(attemptId: string): Promise<WrittenMark
       pointResults: mark.points,
     };
     marked += 1;
+    markedQids.add(q.id);
     // persist per-question as we go — a timeout mid-way loses nothing
     await merge('attempts', attempt.id, { [`result/perQ/${q.id}`]: perQ[q.id] });
   }
@@ -65,8 +69,40 @@ export async function markPendingWritten(attemptId: string): Promise<WrittenMark
       'result/points': points,
       'result/writtenPending': pendingLeft,
     });
+
+    // mirrors for the slim feeds (dashboards read these, not the fat record)
+    if (attempt.result) {
+      await patchLite(attempt.studentId, attempt.id, {
+        result: {
+          ...attempt.result,
+          perQ,
+          score: score.score,
+          total: score.total,
+          pct: score.pct,
+          topicStats: score.topicStats,
+          points,
+          writtenPending: pendingLeft,
+        },
+      });
+    }
+    if (attempt.mode !== 'selftest') {
+      // re-fold ONLY the questions the examiner just marked — timesWrong
+      // must never double-count the rest of the submission
+      await syncWrongPool(
+        attempt.studentId,
+        attempt.questions,
+        perQ,
+        attempt.result?.submittedAt ?? Date.now(),
+        markedQids
+      );
+    }
   } else if ((attempt.result.writtenPending ?? 0) !== pendingLeft) {
     await merge('attempts', attempt.id, { 'result/writtenPending': pendingLeft });
+    if (attempt.result) {
+      await patchLite(attempt.studentId, attempt.id, {
+        result: { ...attempt.result, writtenPending: pendingLeft },
+      });
+    }
   }
 
   return { marked, pendingLeft };

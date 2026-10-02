@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { col, del, merge, values } from '@/lib/firebase';
+import { col, del, item, merge, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
+import { allLite } from '@/lib/attemptLite';
 import { notifyStudents } from '@/lib/notify';
 import { assignmentTargetsStudent, type Attempt, type Assignment, type Student } from '@/lib/types';
 
@@ -11,12 +12,11 @@ export async function GET(_req: Request, ctx: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await ctx.params;
 
-  const assignments = await col<Assignment>('assignments');
-  const a = assignments[id];
+  const a = await item<Assignment>('assignments', id);
   if (!a || a.teacherId !== session.uid) {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
-  const attempts = values(await col<Attempt>('attempts')).filter((x) => x.assignmentId === id);
+  const attempts = (await allLite()).filter((x) => x.assignmentId === id);
   return NextResponse.json({
     assignment: {
       id: a.id,

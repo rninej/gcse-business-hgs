@@ -7,12 +7,14 @@
 // deterministic; feedback uses the instant template (no slow AI call inside a
 // read route's hot path).
 
-import { merge } from './firebase';
+import { item, merge, fb } from './firebase';
 import { markAttempt } from './marking';
 import { assessRisk, pointsFor } from './risk';
 import { templateFeedback } from './ai';
 import { TOPIC_MAP } from './topics';
 import { crossedMilestone, streaksFrom, studentSubmittedAt } from './streaks';
+import { upsertLite, toLite, type AttemptLite } from './attemptLite';
+import { syncWrongPool } from './wrongPoolFeed';
 import type { Attempt, AttemptResult } from './types';
 
 /** attempts currently being finalized (guards double-sweeps within this process) */
@@ -151,6 +153,16 @@ async function finalizeOne(a: Attempt, now: number): Promise<Attempt> {
     ? null
     : crossedMilestone(streaksFrom(priorSubmits).current, streaksFrom([...priorSubmits, result.submittedAt]).current);
 
+  const finalized: Attempt = {
+    ...a,
+    status: 'submitted',
+    wallMs,
+    hiddenMs,
+    result,
+    answers,
+    streakMilestone,
+  };
+
   await merge('attempts', a.id, {
     status: 'submitted' as const,
     answers,
@@ -163,5 +175,49 @@ async function finalizeOne(a: Attempt, now: number): Promise<Attempt> {
     streakMilestone,
   });
 
-  return { ...a, status: 'submitted', wallMs, hiddenMs, result, answers, streakMilestone };
+  // keep the slim feeds in step: dashboards read these, not the fat record
+  await upsertLite(finalized);
+  if (!isSelfTest) {
+    await syncWrongPool(a.studentId, a.questions, marked.perQ, result.submittedAt);
+  }
+
+  return finalized;
+}
+
+/**
+ * Abandon-sweep for lite feed entries: the results table and the student's
+ * assignment list hold slim records, which (by design) do not carry the
+ * heartbeat. For each in-progress TIMED entry we read just that one field
+ * (a ~50-byte subpath read) and finalize only the genuinely abandoned or
+ * expired ones — so an open polling tab never re-downloads full attempts.
+ */
+export async function finalizeFromLite(lites: AttemptLite[]): Promise<AttemptLite[]> {
+  const out: AttemptLite[] = [];
+  const now = Date.now();
+  for (const l of lites) {
+    const limitMs = l.timeLimitMin ? l.timeLimitMin * 60_000 : 0;
+    if (l.status !== 'in-progress' || limitMs <= 0) {
+      out.push(l);
+      continue;
+    }
+    const timeExpired = now > l.startedAt + limitMs;
+    let abandoned = false;
+    if (!timeExpired) {
+      // pre-heartbeat records have no lastSeenAt — only true expiry applies
+      const lastSeen = await fb.get<number | null>(`attempts/${l.id}/lastSeenAt`);
+      abandoned = typeof lastSeen === 'number' && now - lastSeen > HEARTBEAT_GRACE_MS;
+    }
+    if (!timeExpired && !abandoned) {
+      out.push(l);
+      continue;
+    }
+    const full = await item<Attempt>('attempts', l.id);
+    if (!full || full.status !== 'in-progress') {
+      out.push(l);
+      continue;
+    }
+    const finalized = await finalizeAttempt(full, now); // hook refreshes the lite feed
+    out.push(toLite(finalized.status === 'submitted' ? finalized : full));
+  }
+  return out;
 }

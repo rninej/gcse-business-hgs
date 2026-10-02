@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { colCached, merge, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { calendarDaysUntil } from '@/lib/dates';
-import { finalizeExpired } from '@/lib/finalize';
+import { finalizeFromLite } from '@/lib/finalize';
+import { liteForStudent } from '@/lib/attemptLite';
 import { notifyStudents } from '@/lib/notify';
-import { assignmentTargetsStudent, type Attempt, type Assignment, type Student } from '@/lib/types';
+import { assignmentTargetsStudent, type Assignment, type Student } from '@/lib/types';
 
 export async function GET() {
   const session = await requireRole('student');
@@ -58,11 +59,9 @@ export async function GET() {
     }
   }
 
-  let attempts = values(await colCached<Attempt>('attempts')).filter((a) => a.studentId === session.uid);
-
-  // finalize timed attempts whose clock ran out while the student was away,
-  // so expired quizzes don't sit "in progress" forever
-  attempts = await finalizeExpired(attempts);
+  // the student's own slim feed — scores and statuses without the fat
+  // question snapshots, telemetry and event logs
+  const attempts = await finalizeFromLite(await liteForStudent(session.uid));
 
   const rows = assignments.map((a) => {
     // a student may redo an assignment — every go is a separate attempt;

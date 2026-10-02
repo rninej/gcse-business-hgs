@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { put, colCached, values } from '@/lib/firebase';
+import { put } from '@/lib/firebase';
+import { liteForStudent, upsertLite } from '@/lib/attemptLite';
+import { readWrongPool } from '@/lib/wrongPoolFeed';
 import { requireRole } from '@/lib/session';
 import { shuffleMcqOptions } from '@/lib/questions';
-import { collectWrongPool, rankWrongPool } from '@/lib/wrongPool';
+import { rankWrongPool } from '@/lib/wrongPool';
 import type { Attempt } from '@/lib/types';
 
 /** Cap — a smart-practice session stays focused instead of becoming a marathon. */
@@ -22,11 +24,9 @@ export async function POST() {
   const session = await requireRole('student');
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const attempts = values(await colCached<Attempt>('attempts')).filter(
-    (a) => a.studentId === session.uid && a.status === 'submitted' && a.result
-  );
-
-  const ranked = rankWrongPool(collectWrongPool(attempts));
+  // the wrong-pool feed is maintained at submit time — reading it here moves
+  // a few KB of the student's own data instead of the whole attempts collection
+  const ranked = rankWrongPool(Object.values(await readWrongPool(session.uid)));
   if (ranked.length === 0) {
     return NextResponse.json(
       { error: 'Nothing to practise — every question you have been set is answered correctly!' },
@@ -45,9 +45,9 @@ export async function POST() {
       : `Smart practice · ${picked.length} question${picked.length === 1 ? '' : 's'}`;
 
   // inherits class/teacher from the student's most recent submitted attempt
-  const latest = [...attempts].sort(
-    (a, b) => (b.result?.submittedAt ?? 0) - (a.result?.submittedAt ?? 0)
-  )[0];
+  const latest = (await liteForStudent(session.uid)).find(
+    (x) => x.status === 'submitted' && x.result
+  );
 
   const retry: Attempt = {
     id: attemptId,
@@ -73,5 +73,6 @@ export async function POST() {
     result: null,
   };
   await put('attempts', attemptId, retry);
+  await upsertLite(retry);
   return NextResponse.json({ ok: true, attemptId, questionCount: picked.length, poolSize });
 }

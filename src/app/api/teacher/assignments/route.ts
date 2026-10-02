@@ -3,10 +3,11 @@ import { randomUUID } from 'crypto';
 import { col, colCached, put, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { generateQuestions } from '@/lib/questions';
+import { allLite } from '@/lib/attemptLite';
 import { notifyStudents } from '@/lib/notify';
 import { QUIZ_MAP } from '@/data/bank';
 import { TOPICS } from '@/lib/topics';
-import { assignmentTargetsStudent, type Attempt, type Assignment, type Question, type QuestionType, type Student, type StudentClass } from '@/lib/types';
+import { assignmentTargetsStudent, type Assignment, type Question, type QuestionType, type Student, type StudentClass } from '@/lib/types';
 
 type CustomInput = Partial<Question> & { type: QuestionType };
 
@@ -154,7 +155,8 @@ export async function GET() {
   const assignments = values(await colCached<Assignment>('assignments')).filter((a) => a.teacherId === session.uid);
   const students = values(await colCached<Student>('students')).filter((s) => s.teacherId === session.uid);
   const classes = values(await colCached<StudentClass>('classes')).filter((c) => c.teacherId === session.uid);
-  const attempts = values(await colCached<Attempt>('attempts')).filter((a) => a.teacherId === session.uid);
+  // slim feed — the list only needs submission counts, never full attempts
+  const attempts = (await allLite()).filter((a) => a.teacherId === session.uid);
 
   const rows = assignments
     .sort((a, b) => b.createdAt - a.createdAt)

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { col, colCached, del, merge, values } from '@/lib/firebase';
+import { col, colCached, del, fb, merge, values } from '@/lib/firebase';
 import { encryptPassword, hashPassword, memorablePassword } from '@/lib/passwords';
 import { requireRole } from '@/lib/session';
 import type { Attempt, Student } from '@/lib/types';
@@ -18,7 +18,14 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   }
 
   const attempts = values(await col<Attempt>('attempts')).filter((a) => a.studentId === sid);
-  await Promise.all([del('students', sid), ...attempts.map((a) => del('attempts', a.id))]);
+  await Promise.all([
+    del('students', sid),
+    ...attempts.map((a) => del('attempts', a.id)),
+    // slim-feed mirrors go too, or dashboards would show ghost quizzes
+    ...attempts.map((a) => fb.remove(`attemptLite/${sid}/${a.id}`)),
+    fb.remove(`wrongPool/${sid}`),
+    fb.remove(`notifFeed/${sid}`),
+  ]);
   return NextResponse.json({ ok: true });
 }
 

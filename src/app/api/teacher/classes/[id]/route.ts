@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { col, colCached, del, values } from '@/lib/firebase';
+import { col, colCached, del, item, fb, values } from '@/lib/firebase';
 import { decryptPassword } from '@/lib/passwords';
 import { requireRole } from '@/lib/session';
 import { classFixPool } from '@/lib/classPool';
+import { allLite } from '@/lib/attemptLite';
 import type { Attempt, Assignment, Student, StudentClass } from '@/lib/types';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -15,8 +16,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await ctx.params;
 
-  const classes = await col<StudentClass>('classes');
-  const cls = classes[id];
+  const cls = await item<StudentClass>('classes', id);
   if (!cls || cls.teacherId !== session.uid) {
     return NextResponse.json({ error: 'Class not found' }, { status: 404 });
   }
@@ -33,8 +33,9 @@ export async function GET(_req: Request, ctx: Ctx) {
 
   // class activity — every submitted quiz by any student in this class:
   // timestamps feed the heatmap, per-student counts feed the table chips
+  // (slim feed — no question snapshots or telemetry come down the wire)
   const studentIds = new Set(students.map((s) => s.id));
-  const attempts = values(await colCached<Attempt>('attempts')).filter(
+  const attempts = (await allLite()).filter(
     (a) => a.studentId && studentIds.has(a.studentId) && a.status === 'submitted' && a.result
   );
   const activity = attempts.map((a) => a.result!.submittedAt);
@@ -84,6 +85,10 @@ export async function DELETE(_req: Request, ctx: Ctx) {
     ...students.map((s) => del('students', s.id)),
     ...attempts.map((a) => del('attempts', a.id)),
     ...assignments.map((a) => del('assignments', a.id)),
+    // slim-feed mirrors must go too, or dashboards would show ghost quizzes
+    ...attempts.map((a) => fb.remove(`attemptLite/${a.studentId}/${a.id}`)),
+    ...students.map((s) => fb.remove(`wrongPool/${s.id}`)),
+    ...students.map((s) => fb.remove(`notifFeed/${s.id}`)),
   ]);
   return NextResponse.json({ ok: true });
 }

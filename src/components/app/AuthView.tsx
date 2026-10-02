@@ -2,7 +2,6 @@
 
 // Landing + authentication. Teachers register; students receive accounts from their teacher.
 import { useState } from 'react';
-import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -105,7 +104,6 @@ export function AuthView() {
           <span>© {new Date().getFullYear()} gcsebusiness</span>
           <span className="flex items-center gap-3">
             <span>Students: your teacher creates your account and hands out your login.</span>
-            <Link href="/debug" className="underline decoration-dotted underline-offset-2 hover:text-foreground transition-colors">Owner dashboard</Link>
           </span>
         </div>
       </footer>

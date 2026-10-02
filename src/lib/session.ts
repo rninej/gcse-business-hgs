@@ -73,3 +73,54 @@ export async function requireRole(role: Role): Promise<SessionInfo | null> {
   if (!s || s.role !== role) return null;
   return s;
 }
+
+/* ------------------------------------------------------------------ */
+/* Owner dashboard lock (/debug) — a separate, lightweight token so the */
+/* business dashboard can be gated without touching account sessions.  */
+/* ------------------------------------------------------------------ */
+
+export const OWNER_COOKIE = 'hgs_owner';
+const OWNER_MAX_AGE = 60 * 60 * 12; // 12 hours per unlock
+
+export function makeOwnerToken(): string {
+  const body = b64u(JSON.stringify({ owner: true, exp: Date.now() + OWNER_MAX_AGE * 1000 }));
+  return `${body}.${sign(body)}`;
+}
+
+export function readOwnerToken(token: string | undefined): boolean {
+  if (!token) return false;
+  const [body, sig] = token.split('.');
+  if (!body || !sig) return false;
+  const expected = Buffer.from(sign(body));
+  const got = Buffer.from(sig);
+  if (expected.length !== got.length || !timingSafeEqual(expected, got)) return false;
+  try {
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as {
+      owner?: boolean;
+      exp?: number;
+    };
+    return payload.owner === true && typeof payload.exp === 'number' && payload.exp > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+export async function isOwnerUnlocked(): Promise<boolean> {
+  const jar = await cookies();
+  return readOwnerToken(jar.get(OWNER_COOKIE)?.value);
+}
+
+export async function setOwnerCookie(): Promise<void> {
+  const jar = await cookies();
+  jar.set(OWNER_COOKIE, makeOwnerToken(), {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: OWNER_MAX_AGE,
+  });
+}
+
+export async function clearOwnerCookie(): Promise<void> {
+  const jar = await cookies();
+  jar.set(OWNER_COOKIE, '', { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 0 });
+}

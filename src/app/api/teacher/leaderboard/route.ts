@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { colCached, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { streaksFrom } from '@/lib/streaks';
-import type { Attempt, Student, StudentClass } from '@/lib/types';
+import { allLite } from '@/lib/attemptLite';
+import type { Student, StudentClass } from '@/lib/types';
 
 /**
  * Class leaderboard for the teacher dashboard: points earned in the last
@@ -27,7 +28,8 @@ export async function GET(req: Request) {
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 
   const weekAgo = Date.now() - 7 * 86_400_000;
-  const attempts = values(await colCached<Attempt>('attempts')).filter(
+  // slim feed — the leaderboard never needs question snapshots or telemetry
+  const attempts = (await allLite()).filter(
     (a) => a.classId === cls.id && a.status === 'submitted' && a.result && a.mode !== 'selftest'
   );
   // avatars live in their own collection so the students one stays light

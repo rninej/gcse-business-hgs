@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { col, put, values } from '@/lib/firebase';
+import { item, put } from '@/lib/firebase';
+import { liteForStudent, upsertLite } from '@/lib/attemptLite';
 import { requireRole } from '@/lib/session';
 import { shuffleMcqOptions } from '@/lib/questions';
 import { assignmentTargetsStudent, type Attempt, type Assignment, type Student } from '@/lib/types';
@@ -19,12 +20,10 @@ export async function POST(_req: Request, ctx: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await ctx.params;
 
-  const students = await col<Student>('students');
-  const me = students[session.uid];
+  const me = await item<Student>('students', session.uid);
   if (!me) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
 
-  const assignments = await col<Assignment>('assignments');
-  const a = assignments[id];
+  const a = await item<Assignment>('assignments', id);
   if (
     !a ||
     a.draft ||
@@ -35,9 +34,8 @@ export async function POST(_req: Request, ctx: Ctx) {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
 
-  const attempts = values(await col<Attempt>('attempts')).filter((x) => x.assignmentId === id);
-  const mine = attempts
-    .filter((x) => x.studentId === session.uid)
+  const mine = (await liteForStudent(session.uid))
+    .filter((x) => x.assignmentId === id)
     .sort((x, y) => x.startedAt - y.startedAt);
   const inProgress = mine.find((x) => x.status !== 'submitted');
   if (inProgress) {
@@ -71,6 +69,7 @@ export async function POST(_req: Request, ctx: Ctx) {
     result: null,
   };
   await put('attempts', attemptId, attempt);
+  await upsertLite(attempt);
   // attemptN tells the client which go this is (1st, 2nd, …) for the header
   return NextResponse.json({ ok: true, attemptId, resumed: false, attemptN: mine.length + 1 });
 }

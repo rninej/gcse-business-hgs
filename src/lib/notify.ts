@@ -1,9 +1,14 @@
 // Server-side notification helpers — writes the little bell messages
 // students see when work is set for them or they're nudged about it.
-// Records live in Firebase under /hgs/notifications keyed by id.
+//
+// Storage is per-student: notifFeed/{studentId}/{notificationId}. A student's
+// bell only ever downloads their own feed (~1KB) instead of the whole school's
+// notification collection, and the version channel makes the 60-second bell
+// poll cost ~200 bytes when nothing changed. Records are ALSO mirrored to the
+// legacy flat /notifications collection so an older deployment never breaks.
 
 import { randomUUID } from 'crypto';
-import { colCached, put, values } from './firebase';
+import { colCached, fb, flatValues, put, values } from './firebase';
 import type { StudentNotification, NotificationKind } from './types';
 
 export interface NewNote {
@@ -41,7 +46,11 @@ export async function notifyStudents(studentIds: string[], note: NewNote): Promi
         ...(note.attemptId ? { attemptId: note.attemptId } : {}),
         ...(note.fromId ? { fromId: note.fromId } : {}),
       };
-      await put('notifications', record.id, record);
+      // per-student feed (the read path) + legacy flat mirror (rollback safety)
+      await Promise.all([
+        fb.set(`notifFeed/${studentId}/${record.id}`, record),
+        put('notifications', record.id, record),
+      ]);
     })
   );
   return results.filter((r) => r.status === 'fulfilled').length;
@@ -49,11 +58,24 @@ export async function notifyStudents(studentIds: string[], note: NewNote): Promi
 
 /** All notifications for one student, newest first (server-side only). */
 export async function notificationsFor(studentId: string): Promise<StudentNotification[]> {
-  const all = values(await colCached<StudentNotification>('notifications'));
-  return all
-    .filter((n) => n.studentId === studentId)
+  const feed = await colCached<StudentNotification>(`notifFeed/${studentId}`);
+  return values(feed)
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 30);
+}
+
+/** Mark every unread notification of one student as read — one PATCH with
+ *  slash-separated keys (RTDB merges those as server-side paths), so the
+ *  record bodies are untouched and it stays a single round-trip. */
+export async function markAllRead(studentId: string): Promise<number> {
+  const feed = await colCached<StudentNotification>(`notifFeed/${studentId}`);
+  const unread = values(feed).filter((n) => !n.readAt);
+  if (unread.length === 0) return 0;
+  const now = Date.now();
+  const patch: Record<string, number> = {};
+  for (const n of unread) patch[`${n.id}/readAt`] = now;
+  await fb.patch(`notifFeed/${studentId}`, patch);
+  return unread.length;
 }
 
 /** Students who were already nudged about this assignment by this teacher
@@ -64,7 +86,8 @@ export async function recentlyReminded(
   fromId: string,
   cooldownMs: number
 ): Promise<Map<string, number>> {
-  const all = values(await colCached<StudentNotification>('notifications'));
+  const nested = await colCached<Record<string, StudentNotification>>('notifFeed');
+  const all = flatValues(nested);
   const cutoff = Date.now() - cooldownMs;
   const map = new Map<string, number>();
   for (const n of all) {

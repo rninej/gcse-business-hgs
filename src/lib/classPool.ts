@@ -1,7 +1,7 @@
 import { colCached, values } from '@/lib/firebase';
-import { collectClassWrongPool, collectWrongPool, rankClassWrongPool } from '@/lib/wrongPool';
-import type { ClassWrongStats } from '@/lib/wrongPool';
-import type { Attempt, Assignment } from '@/lib/types';
+import { readAllWrongPools } from '@/lib/wrongPoolFeed';
+import type { ClassWrongStats, WrongPoolEntry } from '@/lib/wrongPool';
+import type { Assignment, Student } from '@/lib/types';
 
 /** Questions from quizzes set within this window are treated as "fresh" and
  *  excluded from the mistake fixer — students just saw them, so re-asking
@@ -19,30 +19,60 @@ export interface ClassPoolResult {
   studentsAffected: number;
 }
 
+/** Combine per-student wrong-pool feed entries into class-level stats —
+ *  a question counts as "still wrong" per student only while its most recent
+ *  outcome for THAT student is wrong (the feed maintains exactly that). */
+function combineClassPool(perStudentEntries: WrongPoolEntry[][]): ClassWrongStats[] {
+  const combined = new Map<string, ClassWrongStats>();
+  for (const entries of perStudentEntries) {
+    for (const e of entries) {
+      const agg = combined.get(e.q.id);
+      if (agg) {
+        agg.studentsWrong += 1;
+        agg.timesWrong += e.timesWrong;
+        agg.lastWrongAt = Math.max(agg.lastWrongAt, e.lastWrongAt);
+      } else {
+        combined.set(e.q.id, {
+          q: { ...e.q },
+          studentsWrong: 1,
+          timesWrong: e.timesWrong,
+          lastWrongAt: e.lastWrongAt,
+        });
+      }
+    }
+  }
+  return [...combined.values()];
+}
+
 /**
  * The class-wide wrong pool with the freshness rule applied. Shared by the
  * class detail card, the mistake-fixer POST route and the teacher dashboard
- * so all three always agree on what a fixer would contain.
+ * so all three always agree on what a fixer would contain. Reads the
+ * per-student wrong-pool feeds (maintained at submit time) — a few KB per
+ * class instead of the whole attempts collection.
  */
 export async function classFixPool(classId: string, teacherId: string): Promise<ClassPoolResult> {
-  const attempts = values(await colCached<Attempt>('attempts')).filter(
-    (a) => a.classId === classId && a.studentId && a.status === 'submitted' && a.result
-  );
+  const [students, pools, assignments] = await Promise.all([
+    colCached<Student>('students'),
+    readAllWrongPools(),
+    colCached<Assignment>('assignments'),
+  ]);
 
-  const perStudent = new Map<string, Attempt[]>();
-  for (const a of attempts) {
-    const list = perStudent.get(a.studentId) ?? [];
-    list.push(a);
-    perStudent.set(a.studentId, list);
+  const studentIds = new Set(values(students).filter((s) => s.classId === classId).map((s) => s.id));
+  const perStudentEntries: WrongPoolEntry[][] = [];
+  for (const sid of studentIds) {
+    const feed = pools[sid];
+    if (feed && Object.keys(feed).length > 0) perStudentEntries.push(Object.values(feed));
   }
-  const perStudentAttempts = [...perStudent.values()];
 
-  const all = rankClassWrongPool(collectClassWrongPool(perStudentAttempts));
+  const all = combineClassPool(perStudentEntries).sort(
+    (a, b) => b.studentsWrong - a.studentsWrong || b.timesWrong - a.timesWrong || a.lastWrongAt - b.lastWrongAt
+  );
 
   // questions from assignments this teacher set for this class in the last
   // 24 hours are "fresh" — exclude them from the fixable pool
   const freshIds = new Set(
-    values(await colCached<Assignment>('assignments'))
+    values(assignments)
       .filter(
         (x) =>
           x.teacherId === teacherId &&
@@ -53,8 +83,8 @@ export async function classFixPool(classId: string, teacherId: string): Promise<
   );
 
   const ranked = all.filter((e) => !freshIds.has(e.q.id));
-  const studentsAffected = perStudentAttempts.filter((atts) =>
-    collectWrongPool(atts).some((e) => !freshIds.has(e.q.id))
+  const studentsAffected = perStudentEntries.filter((entries) =>
+    entries.some((e) => !freshIds.has(e.q.id))
   ).length;
 
   return {
