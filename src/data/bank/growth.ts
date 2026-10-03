@@ -19,13 +19,13 @@ const growth: QuizDef = {
       stem: 'Which of the following is an internal source of finance that a successful business could use to fund its expansion?',
       options: [
         'A bank overdraft',
-        'Retained profit',
+        'Profit kept back in the business',
         'A government grant',
         'A new share issue to outside investors',
       ],
       correct: 1,
       explain:
-        'Retained profit is profit kept back in the business rather than paid out — it is an internal source, so no interest or repayments are needed. Overdrafts, grants and share issues all come from outside the business.',
+        'Profit kept back in the business rather than paid out is an internal source, so no interest or repayments are needed. Overdrafts, grants and share issues all come from outside the business.',
     },
     {
       id: 'g2',
@@ -36,14 +36,14 @@ const growth: QuizDef = {
       stem: 'Which of the following is a problem most likely to be linked with such a fast rate of growth?',
       extract: {
         title: 'Biscuiteers',
-        text: 'Biscuiteers Baking Company Ltd is a high-end luxury biscuit company selling hand-iced biscuits and kits to decorate your own biscuits, which are given as gifts. The company started in the UK in 2007. Projected revenue for 2023/24 is £11m, with a growth rate of 400% per annum. It has partnered with Dior, Great Ormond Street Hospital, Harrods and Emma Bridgewater to co-brand ranges as the start of a move into the wholesale biscuit market and then overseas.',
+        text: 'Biscuiteers Baking Company Ltd is a high-end luxury biscuit company selling hand-iced biscuits and kits to decorate your own biscuits, which are given as gifts. The company started in the UK in 2007. Projected revenue for 2023/24 is £11m, with a growth rate of 400% per annum. It has partnered with Dior, Great Ormond Street Hospital, Harrods and Emma Bridgewater to co-brand collections as the start of a move into the wholesale biscuit trade and then overseas.',
       },
       diagram: 'luxgrowth',
       options: [
-        'Cash flow comes under pressure because the business must pay for stock and staff long before customers pay',
-        'The business becomes too well known, which puts customers off',
-        'Growth always reduces the number of staff needed',
-        'Fixed costs disappear, so the firm loses economies of scale',
+        'Cash is squeezed — stock and staff must be paid for long before customers pay',
+        'The business becomes far too well known, which puts customers off',
+        'Growth always reduces the number of staff a business needs',
+        'Fixed costs disappear, so the firm loses its cost advantages of size',
       ],
       correct: 0,
       explain:
@@ -57,7 +57,7 @@ const growth: QuizDef = {
       marks: 1,
       stem: 'What does PLC stand for?',
       accept: ['public limited company'],
-      explain: 'PLC stands for public limited company — a company whose shares can be sold to the general public, usually on a stock exchange.',
+      explain: 'PLC stands for public limited company — a company whose shares can be sold to the general public rather than only to private investors.',
     },
     {
       id: 'g4',
@@ -68,7 +68,7 @@ const growth: QuizDef = {
       stem: 'Purplebricks is a PLC. What is the name of the network where potential investors could buy and sell its shares? One word completes the sentence: the stock ________.',
       extract: {
         title: 'Purplebricks',
-        text: 'Purplebricks is an online estate agent. As a PLC its shares were traded publicly, so any investor could buy a slice of the business.',
+        text: 'Purplebricks is a digital estate agent. As a PLC its shares were traded publicly, so any investor could buy a slice of the business.',
       },
       accept: ['exchange', 'market'],
       explain:
@@ -98,7 +98,7 @@ const growth: QuizDef = {
       stem: 'What is the correct term for the business activity that took place when Strike bought Purplebricks in May 2023?',
       extract: {
         title: 'Strike buys Purplebricks',
-        text: 'In May 2023 the online estate agent Purplebricks was bought by its rival Strike for just £1.',
+        text: 'In May 2023 the digital estate agent Purplebricks was bought by its rival Strike for just £1.',
       },
       accept: ['takeover', 'acquisition', 'take over', 'take-over'],
       explain:
@@ -113,18 +113,18 @@ const growth: QuizDef = {
       stem: 'Purplebricks was sold to Strike for just £1. What type of growth strategy does this represent for Strike?',
       extract: {
         title: 'Strike buys Purplebricks',
-        text: 'In May 2023 Purplebricks was sold to Strike for £1. The deal handed Strike Purplebricks’ brand and operations, removing a competitor from the market.',
+        text: 'In May 2023 Purplebricks was sold to Strike for £1. The deal handed Strike Purplebricks’ brand and operations, removing a competitor from the industry.',
       },
       diagram: 'shareprice',
       options: [
         'Organic (internal) growth',
-        'External (inorganic) growth through takeover',
+        'Inorganic growth, by buying another firm',
         'Horizontal integration by merger of equals',
         'Diversification into a new industry',
       ],
       correct: 1,
       explain:
-        'Buying another business is external (inorganic) growth. It was a takeover, not a merger, because Strike acquired Purplebricks rather than the two firms combining as equals.',
+        'Buying another business is inorganic growth. Strike bought Purplebricks outright rather than the two firms combining as equals — so the deal was a purchase, not a merger.',
     },
     {
       id: 'g8',
@@ -155,9 +155,9 @@ const growth: QuizDef = {
       },
       options: [
         'Organic (internal) growth',
-        'A takeover',
-        'A merger',
-        'Diversification',
+        'Buying a rival bakery',
+        'A merger with another firm',
+        'Diversification into new products',
       ],
       correct: 0,
       explain:
@@ -171,7 +171,7 @@ const growth: QuizDef = {
       marks: 1,
       stem: 'What is another name for inorganic growth?',
       accept: ['external growth', 'external'],
-      explain: 'Inorganic growth is also called external growth, because the business grows by buying or joining with other businesses (mergers and takeovers) rather than expanding from within.',
+      explain: 'Inorganic growth is also called external growth, because the business grows by buying or joining with other businesses rather than expanding from within.',
     },
     {
       id: 'g11',
@@ -185,14 +185,14 @@ const growth: QuizDef = {
         text: 'Biscuiteers Baking Company Ltd is a private limited company (Ltd). Like other Ltds, it cannot sell shares to the general public, which limits how much capital it can raise.',
       },
       options: [
-        'Flotation — selling shares on a stock exchange for the first time',
+        'Flotation — selling shares to the general public for the first time',
         'Administration — handing the business to insolvency practitioners',
         'Incorporation — becoming a separate legal entity for the first time',
         'Nationalisation — the government buys the business',
       ],
       correct: 0,
       explain:
-        'When a private company becomes a PLC it usually floats: it offers its shares for sale on a stock exchange such as the London Stock Exchange, raising capital from outside investors.',
+        'When a private company becomes a PLC it usually floats: it offers its shares for sale to the general public, raising capital from outside investors.',
     },
     {
       id: 'g12',
@@ -223,12 +223,12 @@ const growth: QuizDef = {
       stem: 'What type of business growth is a merger an example of?',
       options: [
         'Organic (internal) growth',
-        'External (inorganic) growth',
+        'Inorganic growth',
         'Franchising',
         'Diversification by a start-up',
       ],
       correct: 1,
-      explain: 'A merger is when two businesses agree to combine. That makes it external (inorganic) growth — the opposite of organic growth from within.',
+      explain: 'A merger is when two businesses agree to combine. That makes it inorganic growth — buying or joining with another business rather than expanding from within.',
     },
     {
       id: 'g15',
@@ -241,7 +241,7 @@ const growth: QuizDef = {
         'The business can be taken over by anyone who buys enough shares',
         'The business must pay corporation tax for the first time',
         'Directors lose the right to make any management decisions',
-        'Shares can no longer be bought or sold',
+        'Shares can no longer be bought or sold by anyone',
       ],
       correct: 0,
       explain:
@@ -308,7 +308,7 @@ const growth: QuizDef = {
       stem: 'In 2016, Sainsbury’s bought Argos for £1.4bn. This is an example of organic growth.',
       answer: false,
       explain:
-        'False — buying another business is external (inorganic) growth. Sainsbury’s acquired Argos, so this was a takeover.',
+        'False — buying another business is inorganic growth, not organic growth. Sainsbury’s bought Argos outright, so the deal was a purchase of one firm by another rather than expansion from within.',
     },
     {
       id: 'g21',
@@ -331,17 +331,17 @@ const growth: QuizDef = {
       stem: 'Which of the following is a reason why Associated British Foods (ABF) would have wanted to own Primark?',
       extract: {
         title: 'Primark and ABF',
-        text: 'Primark is owned by Associated British Foods (ABF), a London-headquartered group which also owns food brands including Ryvita, Patak’s and Kingsmill, and much of the UK sugar industry. Primark has no online store — almost all sales happen in its shops.',
+        text: 'Primark is owned by Associated British Foods (ABF), a London-headquartered group which also owns food brands including Ryvita, Patak’s and Kingsmill, and much of the UK sugar industry. Primark has no e-commerce store — almost all sales happen in its shops.',
       },
       options: [
-        'Primark’s high-profit, fast-growing retail business would add a valuable new income stream alongside ABF’s food brands',
-        'It would let ABF close Primark’s shops and sell the premises',
+        'Primark’s high-profit retail arm would add a valuable new income stream for ABF',
+        'It would let ABF close down Primark’s shops and sell off the premises',
         'ABF wanted to stop selling food and become a pure fashion business',
         'Primark promised to start selling ABF’s flour to customers in store',
       ],
       correct: 0,
       explain:
-        'ABF is mainly a food and ingredients business; owning Primark spreads its portfolio into high-street fashion retail. Diversifying like this reduces ABF’s dependence on food markets and adds Primark’s strong profits.',
+        'ABF is mainly a food and ingredients business; owning Primark takes it into high-street fashion retail. Diversifying like this reduces ABF’s dependence on food sales and adds Primark’s strong profits.',
     },
   ],
 };

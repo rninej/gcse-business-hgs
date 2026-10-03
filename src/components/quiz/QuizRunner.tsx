@@ -46,6 +46,8 @@ import { useApp } from '@/lib/store';
 import { ErrorNote, MarksChip, TypeBadge } from '@/components/shared';
 import { Diagram } from '@/components/charts';
 import { ExplainMeButton } from '@/components/quiz/ExplainMeButton';
+import { QuizTools } from '@/components/quiz/QuizTools';
+import { playFinish, playWrong, playCorrect } from '@/lib/sfx';
 import { QuizBackdrop } from '@/components/quiz/QuizBackdrop';
 import type { ClientQuestion, PerQTelemetry, TelemetryEvent } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -214,6 +216,15 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
   const q: ClientQuestion | undefined = questions[idx];
   const qChecked = q ? checked[q.id] : undefined;
   const checkedCount = useMemo(() => Object.keys(checked).length, [checked]);
+  /** questions without a confirmed (or saved written) answer — drives the
+   *  "you have N left — sure?" guard on every submit path */
+  const unansweredCount = useMemo(() => {
+    if (!data) return 0;
+    const written = data.questions.filter(
+      (x) => x.type === 'written' && (answers[x.id] ?? '').toString().trim().length > 0
+    ).length;
+    return data.questions.length - checkedCount - written;
+  }, [data, answers, checkedCount]);
   const deadline = useMemo(
     () => (data?.remainingMs != null ? Date.now() + data.remainingMs : null),
     [data]
@@ -288,6 +299,9 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
         ...prev,
         [q.id]: { a: answer, correct: res.correct, expected: res.expected, explain: res.explain, at: Date.now() },
       }));
+      // a quiet chime — Seneca-style feedback, switchable in the ⋯ menu
+      if (res.correct) playCorrect();
+      else playWrong();
       setTimeout(() => {
         outcomeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }, 60);
@@ -303,6 +317,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
     store.markSubmitted();
     setSubmitting(true);
     setSubmitFailed(false);
+    playFinish();
     const cur = questions[idx];
     if (cur) {
       store.flushQ(cur.id);
@@ -346,6 +361,14 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
       toast({ title: 'Could not submit', description: msg, variant: 'destructive' });
       if (!auto) window.scrollTo({ top: 0 });
     }
+  }
+
+  /** every submit path funnels through here: unanswered questions get the
+   *  "you still have N left — are you sure?" popup; a complete quiz goes
+   *  straight in (one fewer click on the happy path). */
+  function requestSubmit() {
+    if (unansweredCount > 0) setConfirmOpen(true);
+    else void doSubmit();
   }
 
   /* ----- effects (after all declarations) ----- */
@@ -500,7 +523,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
           if ((answers[q.id] ?? '').toString().trim() && !checking) void checkAnswer();
         } else if (qChecked) {
           if (idx < total - 1) goto(idx + 1);
-          else setConfirmOpen(true);
+          else requestSubmit();
         } else if (idx < total - 1) {
           goto(idx + 1); // blank answer: Enter still moves on
         }
@@ -594,7 +617,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
   ).length;
   const answeredCount = checkedCount + writtenAnswered;
   const progress = total ? (answeredCount / total) * 100 : 0;
-  const unanswered = total - answeredCount;
+  const unanswered = unansweredCount;
   const givenDisplay = (s: string) =>
     q.type === 'mcq' && q.options ? q.options[Number(s)] ?? s : q.type === 'truefalse' ? (s === 'true' ? 'True' : 'False') : s;
 
@@ -607,7 +630,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
         <div className="rounded-xl border border-white/50 bg-card/75 backdrop-blur-2xl backdrop-saturate-150 px-4 py-3 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.6),0_12px_36px_-12px_rgb(13_92_70/0.2)]">
           <div className="flex items-center gap-3 flex-wrap">
             <Badge variant={data.mode === 'practice' ? 'secondary' : 'default'} className="shrink-0">
-              {data.mode === 'practice' ? 'Practice' : 'Assignment'}
+              {data.selfTest ? 'Self-test' : data.mode === 'practice' ? 'Practice' : 'Assignment'}
             </Badge>
             <div className="font-semibold text-sm truncate flex-1 min-w-0">{data.title}</div>
             {timeStr !== null ? (
@@ -623,6 +646,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                 {timeStr}
               </span>
             ) : null}
+            <QuizTools attemptId={attemptId} question={q} questionNumber={idx + 1} />
             <AlertDialog open={exitOpen} onOpenChange={setExitOpen}>
               <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="sm">
@@ -665,10 +689,12 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
         </div>
       </div>
 
-      {/* extract first on mobile (read the case, then answer); left on desktop */}
-      <div className={cn('grid gap-4 md:gap-5', q.extract ? 'lg:grid-cols-[1fr_1.2fr]' : '')}>
+      {/* case study on the RIGHT for desktop (questions read left-to-right
+          first); on mobile it stays above the question — read the case,
+          then answer */}
+      <div className={cn('grid gap-4 md:gap-5', q.extract ? 'lg:grid-cols-[1.25fr_1fr]' : '')}>
         {q.extract ? (
-          <aside className="lg:sticky lg:top-24 self-start min-w-0 rounded-xl border border-white/40 bg-[var(--accent)]/20 backdrop-blur-xl backdrop-saturate-150 p-4 sm:p-5">
+          <aside className="lg:order-2 lg:sticky lg:top-24 self-start min-w-0 rounded-xl border border-white/40 bg-[var(--accent)]/20 backdrop-blur-xl backdrop-saturate-150 p-4 sm:p-5">
             <div className="flex items-center gap-2 text-xs font-semibold text-[var(--accent-foreground)] uppercase tracking-wide mb-2">
               <BookOpenText className="h-4 w-4 shrink-0" aria-hidden /> Case study · {q.extract.title}
             </div>
@@ -687,7 +713,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
         {/* question card — glides between questions: the current card dips
             out first, then the next one slides in from the side. mode="wait"
             keeps exactly one card on screen (no overlap flash, no height snap). */}
-        <section className={cn('min-w-0', !q.extract && 'mx-auto w-full max-w-2xl')}>
+        <section className={cn('min-w-0 lg:order-1', !q.extract && 'mx-auto w-full max-w-2xl')}>
           <div ref={cardRef} className="relative scroll-mt-32 md:scroll-mt-24">
             <AnimatePresence initial={false} custom={dir} mode="wait">
               <motion.div
@@ -842,11 +868,12 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                       aria-label="Your answer"
                     />
                   )}
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {q.type === 'numeric'
-                      ? `£, % and commas are fine — the marker reads the number.${q.dp ? ` Answer to ${q.dp} decimal place${q.dp === 1 ? '' : 's'}.` : ''}`
-                      : 'Capitals, extra spaces and small spelling slips don’t matter.'}
-                  </p>
+                  {q.type === 'numeric' ? (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      £, % and commas are fine — the marker reads the number.
+                      {q.dp ? ` Answer to ${q.dp} decimal place${q.dp === 1 ? '' : 's'}.` : ''}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -954,7 +981,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                       Next question <ChevronRight className="h-4 w-4" />
                     </Button>
                   ) : (
-                    <Button className="h-11 flex-1" onClick={() => void doSubmit()} disabled={submitting}>
+                    <Button className="h-11 flex-1" onClick={requestSubmit} disabled={submitting}>
                       <SendHorizonal className="h-4 w-4" />
                       {submitting ? 'Finishing…' : 'Finish & see results'}
                     </Button>
@@ -1010,42 +1037,48 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                 <ChevronRight className="h-4 w-4" />
               </Button>
             ) : (
-              <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-                <AlertDialogTrigger asChild>
-                  <Button variant={unanswered > 0 ? 'outline' : 'default'} className={cn(unanswered > 0 && 'text-[var(--warn)] border-[var(--warn)]/50')}>
-                    <SendHorizonal className="h-4 w-4" />
-                    <span className="hidden sm:inline">Submit</span>
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Finish and submit?</AlertDialogTitle>
-                    <AlertDialogDescription asChild>
-                      <div>
-                        {unanswered > 0 ? (
-                          <p className="flex items-center gap-2 text-[var(--warn)] mb-2">
-                            <AlertTriangle className="h-4 w-4" aria-hidden /> {unanswered} question{unanswered === 1 ? '' : 's'} still unanswered — these score zero.
+              <>
+                <Button
+                  variant={unanswered > 0 ? 'outline' : 'default'}
+                  className={cn(unanswered > 0 && 'text-[var(--warn)] border-[var(--warn)]/50')}
+                  onClick={requestSubmit}
+                >
+                  <SendHorizonal className="h-4 w-4" />
+                  <span className="hidden sm:inline">Submit</span>
+                </Button>
+                {/* confirmation popup — shown when questions are still unanswered */}
+                <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Finish and submit?</AlertDialogTitle>
+                      <AlertDialogDescription asChild>
+                        <div>
+                          {unanswered > 0 ? (
+                            <p className="flex items-center gap-2 text-[var(--warn)] mb-2">
+                              <AlertTriangle className="h-4 w-4" aria-hidden /> You still have {unanswered} question{unanswered === 1 ? '' : 's'} left — these score zero.
+                            </p>
+                          ) : (
+                            <p className="mb-2">Every question has been answered.</p>
+                          )}
+                          <p>
+                            Are you sure you want to hand it in? You’ll see your score, feedback and a full
+                            review straight away
+                            {questions.some((x) => x.type === 'written')
+                              ? '. Written answers are marked by the AI examiner — marks appear a minute or two later.'
+                              : '.'}
                           </p>
-                        ) : (
-                          <p className="mb-2">Every question has been answered.</p>
-                        )}
-                        <p>
-                          You’ll see your score, feedback and a full review straight away
-                          {questions.some((x) => x.type === 'written')
-                            ? '. Written answers are marked by the AI examiner — marks appear a minute or two later.'
-                            : '.'}
-                        </p>
-                      </div>
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Keep working</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => void doSubmit()} disabled={submitting}>
-                      {submitting ? 'Marking…' : 'Submit'}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Keep working</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => void doSubmit()} disabled={submitting}>
+                        {submitting ? 'Marking…' : 'Submit anyway'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
             )}
           </div>
 

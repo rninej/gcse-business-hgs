@@ -1,11 +1,11 @@
 'use client';
 
 // Application shell: desktop sidebar + mobile bottom nav + sticky footer.
-// Frosted-glass chrome over the site backdrop photo, with a sliding active
+// Frosted-glass chrome over the ambient aurora, with a sliding active
 // pill (framer-motion layoutId) and per-view transitions (AnimatePresence).
-// Light-mode only. Warms the API cache on mount so clicking around the app
-// is instant, and pings the AI health endpoint so model availability stays
-// fresh in the background on every visit.
+// Light + dark via the ThemeToggle. Warms the API cache on mount so clicking
+// around the app is instant, and pings the AI health endpoint so model
+// availability stays fresh in the background on every visit.
 import { useEffect, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LogOut } from 'lucide-react';
@@ -14,6 +14,7 @@ import { BrandLockup } from './Brand';
 import { PasswordDialog } from './PasswordDialog';
 import { ProfileDialog } from './ProfileDialog';
 import { StudentBell } from './student/StudentBell';
+import { ThemeToggle } from './ThemeToggle';
 import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
 import type { View } from '@/lib/store';
@@ -99,7 +100,7 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
     : [
         { label: 'Home', icon: HomeIcon, view: { name: 's-home' } },
         { label: 'Quizzes', icon: GraduationCapIcon, view: { name: 's-practice' } },
-        { label: 'Flashcards', icon: LayersIcon, view: { name: 's-revise' } },
+        { label: 'Revise', icon: LayersIcon, view: { name: 's-revise' } },
         { label: 'Results', icon: HistoryIcon, view: { name: 's-history' } },
       ];
 
@@ -156,6 +157,7 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
           {!isTeacher ? <StudentBell variant="row" /> : null}
           {/* same geometry as the nav rows above — icon and label sit on the
               identical left rail so the sidebar reads as one aligned column */}
+          <ThemeToggle variant="row" />
           <PasswordDialog variant="sidebar" />
           <button
             type="button"
@@ -173,6 +175,7 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
         <div className="flex items-center justify-between px-4 h-14">
           <BrandLockup compact />
           <div className="flex items-center gap-1">
+            <ThemeToggle />
             <ProfileDialog trigger="icon" />
             {!isTeacher ? <StudentBell variant="icon" /> : null}
             <PasswordDialog variant="ghost" />

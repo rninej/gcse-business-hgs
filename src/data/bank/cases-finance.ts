@@ -28,7 +28,7 @@ const casesfinance: QuizDef = {
       value: 3300,
       tol: 0.5,
       explain:
-        'Contribution = £2.50 − £1.00 = £1.50. New break-even = fixed costs ÷ contribution = £4,950 ÷ £1.50 = 3,300 loaves. Higher fixed costs push the break-even level up from 3,000 to 3,300 loaves.',
+        'Each loaf contributes £2.50 − £1.00 = £1.50 towards fixed costs. New break-even = fixed costs ÷ what each loaf contributes = £4,950 ÷ £1.50 = 3300 loaves. Higher fixed costs push the break-even level up from 3,000 to 3,300 loaves.',
     },
     {
       id: 'cf2',
@@ -45,7 +45,7 @@ const casesfinance: QuizDef = {
       value: 2250,
       tol: 0.5,
       explain:
-        'New contribution = £3.00 − £1.00 = £2.00. New break-even = £4,500 ÷ £2.00 = 2,250 loaves. A higher price means each loaf contributes more towards fixed costs, so the break-even level falls from 3,000 to 2,250.',
+        'At £3.00 a loaf, each loaf contributes £3.00 − £1.00 = £2.00 towards fixed costs. New break-even = £4,500 ÷ £2.00 = 2250 loaves. A higher price means each loaf contributes more towards fixed costs, so the break-even level falls from 3,000 to 2,250.',
     },
     {
       id: 'cf3',
@@ -62,7 +62,7 @@ const casesfinance: QuizDef = {
       value: 7500,
       tol: 0.5,
       explain:
-        'Break-even output = £4,500 ÷ (£2.50 − £1.00) = 3,000 loaves. Revenue at break-even = 3,000 × £2.50 = £7,500 — which exactly equals total costs (£4,500 + 3,000 × £1.00 = £7,500), as it must at break-even.',
+        'Break-even output = £4,500 ÷ (£2.50 − £1.00) = 3000 loaves. Revenue at break-even = 3000 × £2.50 = £7500 — which exactly equals total costs (£4,500 + 3,000 × £1.00 = £7,500), as it must at break-even.',
     },
     {
       id: 'cf4',
@@ -145,10 +145,10 @@ const casesfinance: QuizDef = {
         text: 'Vale Drinks Ltd made an operating profit of £240,000 last year on capital employed of £1.6m, giving a ROCE of 15%. This year operating profit was again £240,000, but the company borrowed to buy new bottling equipment, so capital employed rose to £2m and ROCE fell to 12%.',
       },
       options: [
-        'Operating profit fell from £240,000 to £200,000',
-        'Capital employed fell from £2m to £1.6m',
-        'The same operating profit is being earned from a larger amount of capital employed, so the money in the business is working less hard',
-        'The directors paid out too much of the profit in dividends',
+        'Operating profit fell from £240,000 to £200,000 this year',
+        'Capital employed fell from £2m down to just £1.6m',
+        'The same profit is earned from more capital, so the money works less hard',
+        'The directors paid out far too much of the year’s profit as dividends to the shareholders',
       ],
       correct: 2,
       explain:
@@ -160,7 +160,7 @@ const casesfinance: QuizDef = {
       topic: '2.4',
       difficulty: 1,
       marks: 1,
-      stem: 'Calculate the contribution per candle, in pounds.',
+      stem: 'Calculate how much each candle contributes towards fixed costs, in pounds.',
       extract: {
         title: 'Glow Candles',
         text: 'Glow Candles makes scented candles in a small workshop. Each candle sells for £12. The variable cost of the wax, wick, fragrance and jar is £4 per candle, and the workshop’s fixed costs are £1,600 a month. Glow Candles currently sells 350 candles a month.',
@@ -169,7 +169,7 @@ const casesfinance: QuizDef = {
       value: 8,
       tol: 0.05,
       explain:
-        'Contribution per candle = selling price − variable cost per candle = £12 − £4 = £8. Each candle contributes £8 towards paying the fixed costs — and then towards profit.',
+        'Each candle contributes selling price − variable cost per candle = £12 − £4 = £8. That £8 goes towards paying the fixed costs — and then towards profit.',
     },
     {
       id: 'cf10',
@@ -186,7 +186,7 @@ const casesfinance: QuizDef = {
       value: 200,
       tol: 0.5,
       explain:
-        'Contribution per candle = £12 − £4 = £8. Break-even output = fixed costs ÷ contribution = £1,600 ÷ £8 = 200 candles a month.',
+        'Each candle contributes £12 − £4 = £8. Break-even output = fixed costs ÷ what each candle contributes = £1,600 ÷ £8 = 200 candles a month.',
     },
     {
       id: 'cf11',
@@ -220,7 +220,7 @@ const casesfinance: QuizDef = {
       value: 450,
       tol: 0.5,
       explain:
-        'Sales must first cover the £1,600 fixed costs and then leave £2,000 profit — £3,600 in total. Candles needed = £3,600 ÷ contribution of £8 = 450 candles a month (100 more than the current 350).',
+        'Sales must first cover the £1,600 fixed costs and then leave £2,000 profit — £3,600 in total. Candles needed = £3,600 ÷ the £8 each candle contributes = 450 candles a month (100 more than the current 350).',
     },
     {
       id: 'cf13',
@@ -249,10 +249,10 @@ const casesfinance: QuizDef = {
         text: 'Brookfield Bikes’ results for last year: revenue £120,000; cost of sales £72,000; operating expenses £30,000. Its gross profit margin works out at 40%, but its net profit margin is only 15%.',
       },
       options: [
-        'The business must have paid £30,000 in income tax before calculating net profit',
-        'After paying for the bikes themselves, a further £30,000 of operating expenses such as rent, wages and insurance had to be deducted',
-        'Gross profit margin is always smaller than net profit margin',
-        'Cost of sales was counted twice by mistake',
+        'The business must have paid £30,000 in income tax before calculating its net profit',
+        'After the bikes, a further £30,000 of rent, wages and insurance was deducted',
+        'Gross profit margin is always smaller than the net profit margin',
+        'Cost of sales was counted twice by mistake in the accounts',
       ],
       correct: 1,
       explain:

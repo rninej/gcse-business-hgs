@@ -18,14 +18,14 @@ const opportunity: QuizDef = {
       marks: 1,
       stem: 'A corner shop stays open until 11pm every evening, including Sundays. Which customer need is this mainly meeting?',
       options: [
-        'Convenience — customers can buy what they need at a time that suits them',
+        'Convenience — customers can buy at a time that suits them',
         'Quality — the products are reliable and fit for purpose',
-        'Choice — the shop stocks a very wide range of products',
-        'Price — the shop is the cheapest in town',
+        'The shop stocks many different products, so customers can pick between them',
+        'Price — the shop is the cheapest option in the whole town',
       ],
       correct: 0,
       explain:
-        'Long opening hours make the shop easy to buy from whenever the customer wants — that is convenience, one of the four main customer needs, along with price, quality and choice.',
+        'Long opening hours make the shop easy to buy from whenever the customer wants — that is convenience, one of the four main customer needs, alongside price, quality and breadth of products.',
     },
     {
       id: 'o2',
@@ -61,10 +61,10 @@ const opportunity: QuizDef = {
       topic: '1.2',
       difficulty: 2,
       marks: 1,
-      stem: 'Primary market research is usually quicker and cheaper to carry out than secondary research.',
+      stem: 'Gathering brand-new data directly from customers is usually quicker and cheaper than using data that already exists.',
       answer: false,
       explain:
-        'False — it is the other way round. Secondary research uses data that already exists, so it is quick and cheap, while primary research means designing surveys or focus groups and paying to run them.',
+        'False — it is the other way round. Using existing data (secondary research) is quick and cheap, while gathering first-hand data means designing surveys or focus groups and paying to run them.',
     },
     {
       id: 'o5',
@@ -86,13 +86,13 @@ const opportunity: QuizDef = {
       stem: 'A smoothie start-up surveys 200 people and finds that 64% would buy its new flavour. What type of market research data is this?',
       options: [
         'Quantitative — it is numerical, so it can be counted and compared',
-        'Qualitative — it explores customers’ opinions in depth',
+        'Non-numerical — it explores customers’ opinions in depth',
         'Secondary — it was published by another organisation',
-        'Demographic — it records customers’ ages and incomes',
+        'Grouped by customers’ ages and incomes — data about who they are',
       ],
       correct: 0,
       explain:
-        'Percentages and counts are quantitative data: they measure how many. Qualitative data would explain why people would (or would not) buy the new flavour.',
+        'Percentages and counts are quantitative data: they measure how many. Opinion-based, non-numerical data would instead explain why people would (or would not) buy the new flavour.',
     },
     {
       id: 'o7',
@@ -103,7 +103,7 @@ const opportunity: QuizDef = {
       stem: 'What is the term for splitting a market into groups of customers with similar characteristics, so products can be targeted at them?',
       accept: ['market segmentation', 'segmentation', 'segmenting', 'market segmenting', 'segmenting the market'],
       explain:
-        'Market segmentation divides customers into groups — for example by age, income, lifestyle or where they live — so the business can design products and promotion that fit each group precisely.',
+        'Market segmentation divides customers into groups — for example by age, income or where they live — so the business can design products and promotion that fit each group precisely.',
     },
     {
       id: 'o8',
@@ -111,10 +111,10 @@ const opportunity: QuizDef = {
       topic: '1.2',
       difficulty: 2,
       marks: 1,
-      stem: 'A gym offers a discounted student membership and a separate membership for over-60s. Splitting customers up by age like this is called ________ segmentation. What one word completes the sentence?',
+      stem: 'A gym offers discounted student memberships and separate memberships for over-60s. Age, gender and income are examples of ________ factors used to group customers. What one word completes the sentence?',
       accept: ['demographic', 'demographics'],
       explain:
-        'Demographic segmentation groups customers by characteristics such as age, gender, income, ethnicity and family size. The gym’s age-based memberships are a classic example.',
+        'Demographic factors — age, gender, income, ethnicity and family size — describe who customers are. The gym’s age-based memberships are a classic example of grouping customers this way.',
     },
     {
       id: 'o9',
@@ -122,10 +122,10 @@ const opportunity: QuizDef = {
       topic: '1.2',
       difficulty: 2,
       marks: 1,
-      stem: 'Around 1.2 million people in the UK are vegetarian, and food companies now launch products aimed at them. Grouping customers by their interests, opinions and way of life is called ________ segmentation. What one word completes the sentence?',
+      stem: 'Around 1.2 million people in the UK are vegetarian, and food companies now launch products aimed at them. Interests, opinions and a person’s way of life make up their ________. What one word completes the sentence?',
       accept: ['lifestyle', 'life style', 'lifestyles'],
       explain:
-        'Lifestyle segmentation groups customers by interests, opinions and habits — being vegetarian is a lifestyle choice, which is why food firms launch dedicated ranges aimed at vegetarians.',
+        'A lifestyle reflects a customer’s interests, opinions and habits — being vegetarian is one example, which is why food firms launch dedicated product lines aimed at vegetarians.',
     },
     {
       id: 'o10',
@@ -133,10 +133,10 @@ const opportunity: QuizDef = {
       topic: '1.2',
       difficulty: 3,
       marks: 1,
-      stem: 'Using the market map in the case study, where is the clearest GAP in the Mill Lane coffee-shop market?',
+      stem: 'Using the case study, where is the clearest GAP in the Mill Lane coffee-shop market?',
       extract: {
         title: 'Coffee on Mill Lane',
-        text: 'Mill Lane is a street with three coffee shops. The Daily Grind sells cheap, basic coffee, mostly takeaway. Café Verde charges high prices for premium, organic coffee in a smart interior. Bean There sits in between, with average prices and average quality. A market map plotting price (low to high) against quality (basic to premium) places The Daily Grind bottom-left, Café Verde top-right and Bean There in the centre — leaving the bottom-right corner of the map empty.',
+        text: 'Mill Lane is a street with three coffee shops. The Daily Grind sells cheap, basic coffee, mostly takeaway. Café Verde charges high prices for premium, organic coffee in a smart interior. Bean There sits in between, with average prices and average quality. A diagram plotting price (low to high) against quality (basic to premium) places The Daily Grind bottom-left, Café Verde top-right and Bean There in the centre — leaving the bottom-right corner empty.',
       },
       options: [
         'High quality at low prices — no shop currently offers this combination',
@@ -146,7 +146,7 @@ const opportunity: QuizDef = {
       ],
       correct: 0,
       explain:
-        'The map shows three occupied positions: cheap-and-basic (The Daily Grind), mid-price-and-mid-quality (Bean There) and expensive-and-premium (Café Verde). The bottom-right — high quality at low prices — is empty, so that is the gap in the market.',
+        'The diagram shows three occupied positions: cheap-and-basic (The Daily Grind), mid-price-and-mid-quality (Bean There) and expensive-and-premium (Café Verde). The bottom-right — high quality at low prices — is empty, so that is the gap in the market.',
     },
     {
       id: 'o11',
@@ -203,14 +203,14 @@ const opportunity: QuizDef = {
       stem: 'Using the diagram, which strategy best explains how small independent grocers survive in a grocery market dominated by the big chains?',
       diagram: 'marketshare',
       options: [
-        'Differentiating — for example stocking local or specialist products the big chains do not offer',
-        'Matching Tesco’s prices on every single product',
-        'Copying exactly the same product range as the big chains',
-        'Outspending the big chains on national television advertising',
+        'Stocking local or specialist products the big chains do not offer',
+        'Matching Tesco’s prices on every single product it sells',
+        'Copying exactly the same products as the big chains stock',
+        'Trying to outspend the big chains on national television advertising',
       ],
       correct: 0,
       explain:
-        'A market with several strong competitors is hard to enter, so small shops must stand out. They cannot win a price war or an advertising war against giants like Tesco, but they can differentiate — local produce, specialist ranges, personal service — giving customers a reason to shop there.',
+        'A market with several strong competitors is hard to enter, so small shops must stand out. They cannot win a price war or an advertising war against giants like Tesco, but they can differentiate — local produce, specialist product lines, personal service — giving customers a reason to shop there.',
     },
   ],
 };

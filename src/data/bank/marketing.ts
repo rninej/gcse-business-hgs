@@ -22,9 +22,9 @@ const marketing: QuizDef = {
         text: 'Innocent was started in 1999 by three friends who tested their smoothies on customers at a music festival. Innocent is known for smoothies made from natural ingredients, with nothing artificial added — one reason customers choose Innocent over cheaper own-brand smoothies.',
       },
       options: [
-        'The lowest price charged by any business in the market',
-        'A feature of the product that makes it stand out from those of competitors',
-        'A short-term special offer designed to boost sales',
+        'The lowest price charged by any business in the whole market',
+        'A feature of the product that makes it stand out from competitors',
+        'A short-term special offer designed to boost sales quickly',
         'The stage of the product life cycle immediately after launch',
       ],
       correct: 1,
@@ -39,10 +39,10 @@ const marketing: QuizDef = {
       marks: 1,
       stem: 'Apple’s iPhone is one of the most recognised brands in the world. Which statement best explains how this helps Apple charge higher prices than many of its rivals?',
       options: [
-        'Customers trust and value the brand, so many are willing to pay more than for similar phones',
-        'A strong brand lowers the cost of making each phone',
+        'Customers trust and value the brand, so will pay more than for similar phones',
+        'A strong brand lowers the cost of making each individual phone',
         'A strong brand forces rival phone makers to raise their own prices',
-        'Branding only affects advertising and never affects pricing',
+        'Branding only affects advertising and never affects pricing at all',
       ],
       correct: 0,
       explain:
@@ -87,12 +87,13 @@ const marketing: QuizDef = {
     },
     {
       id: 'mk6',
-      type: 'term',
+      type: 'mcq',
       topic: '2.2',
       difficulty: 2,
       marks: 1,
       stem: 'In the Boston Matrix, what name is given to a product with a HIGH market share in a HIGH-growth market?',
-      accept: ['star', 'stars'],
+      options: ['Star', 'Cash cow', 'Question mark (problem child)', 'Dog'],
+      correct: 0,
       explain:
         'A star sells strongly in a fast-growing market. It absorbs plenty of cash to keep growing, but if it holds its share as the market matures it becomes a cash cow.',
     },
@@ -109,7 +110,7 @@ const marketing: QuizDef = {
       },
       accept: ['price skimming', 'skimming', 'skimming pricing', 'market skimming'],
       explain:
-        'Price skimming "skims" the highest price from customers who want the product first, then cuts the price later to win more price-sensitive buyers. It suits new technology like the iPhone — and it is the opposite of penetration pricing, which starts low.',
+        'Price skimming "skims" the highest price from customers who want the product first, then cuts the price later to win more price-sensitive buyers. It suits new technology like the iPhone — and it is the opposite of the strategy that starts with a low launch price and raises it later.',
     },
     {
       id: 'mk8',
@@ -120,7 +121,7 @@ const marketing: QuizDef = {
       stem: '__________ pricing means setting a LOW launch price to win customers from rivals quickly, then raising the price once the product is established. What one word completes the sentence?',
       accept: ['penetration', 'penetration pricing'],
       explain:
-        'Penetration pricing starts with a low price to attract customers quickly and build market share, then raises it once the product is established. It is the opposite of price skimming, which starts high.',
+        'Penetration pricing starts with a low price to attract customers quickly and build market share, then raises it once the product is established. It is the mirror image of the strategy that launches high and cuts the price later.',
     },
     {
       id: 'mk9',
@@ -167,14 +168,14 @@ const marketing: QuizDef = {
         text: 'Uber’s app matches passengers with drivers. When far more people than usual want a ride — on New Year’s Eve, for example — the app automatically raises fares until enough extra drivers log on. Uber calls this surge pricing.',
       },
       options: [
-        'Cost-plus pricing',
-        'Penetration pricing',
+        'Mark-up pricing',
+        'Competitive pricing',
         'Dynamic pricing',
-        'Psychological pricing',
+        'Loss leader pricing',
       ],
       correct: 2,
       explain:
-        'Dynamic pricing means prices move up or down with demand: Uber raises fares at busy times, and airlines raise fares as a plane fills up. Cost-plus is based on costs, penetration on a low launch price, and psychological on prices such as £9.99.',
+        'Dynamic pricing means prices move up or down with demand: Uber raises fares at busy times, and airlines raise fares as a plane fills up. Mark-up pricing is based on costs, competitive pricing follows what rivals charge, and the £9.99 trick works on customer perception.',
     },
     {
       id: 'mk13',
@@ -187,7 +188,7 @@ const marketing: QuizDef = {
         'Google displays the adverts in alphabetical order of business name',
         'Google picks advertisers at random and charges them all the same flat fee',
         'The photographer must buy the keyword outright and keep it for a year',
-        'Advertisers bid against each other for the keyword, and the top bidders’ adverts are shown',
+        'Advertisers bid for the keyword, and the top bidders’ adverts are shown',
       ],
       correct: 3,
       explain:
@@ -222,8 +223,8 @@ const marketing: QuizDef = {
         text: 'Ryanair is one of Europe’s largest airlines and is known for its low fares. It offers a no-frills service, gets each aircraft back in the air quickly with very fast turnarounds, flies to secondary airports with lower charges, and charges extra for add-ons such as checked bags and priority boarding.',
       },
       options: [
-        'Free meals, seat selection and extra legroom on every flight',
-        'No-frills flying, very fast aircraft turnarounds and secondary airports with lower charges',
+        'Free meals, seat selection and extra legroom on every single flight',
+        'No-frills flying, fast turnarounds and cheaper secondary airports',
         'Flying only to the biggest hub airports, with long waits between flights',
         'Charging the highest fares in Europe so that each passenger pays more',
       ],

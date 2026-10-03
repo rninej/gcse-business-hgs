@@ -25,7 +25,7 @@ const finance: QuizDef = {
       tol: 0.5,
       unit: 'loaves',
       explain:
-        'Break-even output = fixed costs ÷ contribution per unit. Contribution = £2.50 − £1.00 = £1.50. So break-even = £4,500 ÷ £1.50 = 3,000 loaves.',
+        'Break-even output = fixed costs ÷ contribution per unit. Contribution = £2.50 − £1.00 = £1.50. So break-even = £4,500 ÷ £1.50 = 3000 loaves a month.',
     },
     {
       id: 'f2',
@@ -33,7 +33,7 @@ const finance: QuizDef = {
       topic: '2.4',
       difficulty: 2,
       marks: 1,
-      stem: 'The Dough House currently sells 4,200 loaves a month. Calculate its margin of safety in loaves.',
+      stem: 'The Dough House currently sells 4,200 loaves a month. Calculate how many loaves sales could fall by each month before the business starts making a loss.',
       extract: {
         title: 'The Dough House — reminder',
         text: 'Selling price £2.50 per loaf; variable cost £1.00 per loaf; fixed costs £4,500 per month; current sales 4,200 loaves a month.',
@@ -41,17 +41,23 @@ const finance: QuizDef = {
       value: 1200,
       tol: 0.5,
       unit: 'loaves',
-      explain: 'Margin of safety = current output − break-even output = 4,200 − 3,000 = 1,200 loaves. Sales could fall by 1,200 loaves before the business starts making a loss.',
+      explain: 'Break-even output is £4,500 ÷ £1.50 = 3,000 loaves. The gap between current output and break-even is 4200 − 3000 = 1200 loaves. Sales could fall by that many before the business starts making a loss.',
     },
     {
       id: 'f3',
-      type: 'fib',
+      type: 'mcq',
       topic: '2.4',
       difficulty: 2,
       marks: 1,
-      stem: 'Gross profit margin = (gross profit ÷ ________) × 100. What one word completes the formula?',
-      accept: ['revenue', 'sales', 'turnover', 'sales revenue'],
-      explain: 'Both profit margins are calculated as a percentage of REVENUE (sales). A margin can never be read on its own — you compare it with last year or with competitors.',
+      stem: 'Which figure does the gross profit margin express gross profit as a percentage of?',
+      options: [
+        'Revenue (money taken from sales)',
+        'Total costs for the whole year',
+        'The total number of units sold',
+        'The owner’s savings put into the business',
+      ],
+      correct: 0,
+      explain: 'Both profit margins are calculated as a percentage of revenue (sales). A margin can never be read on its own — you compare it with last year or with competitors.',
     },
     {
       id: 'f4',
@@ -77,12 +83,12 @@ const finance: QuizDef = {
       topic: '2.4',
       difficulty: 3,
       marks: 3,
-      stem: 'Vale Drinks Ltd made an operating profit of £240,000 last year on capital employed of £1.6m. Calculate its ROCE. Give your answer to the nearest whole number.',
+      stem: 'Vale Drinks Ltd made an operating profit of £240,000 last year, with £1.6m of long-term money invested in the business. Calculate its ROCE. Give your answer to the nearest whole number.',
       value: 15,
       tol: 0.5,
       unit: '%',
       dp: 0,
-      explain: 'ROCE = operating profit ÷ capital employed × 100 = £240,000 ÷ £1,600,000 × 100 = 15%. ROCE shows how efficiently the business uses the money invested in it.',
+      explain: 'ROCE = operating profit ÷ the long-term money invested in the business × 100 = £240,000 ÷ £1,600,000 × 100 = 15%. ROCE shows how efficiently the business uses the money invested in it.',
     },
     {
       id: 'f6',
@@ -110,15 +116,21 @@ const finance: QuizDef = {
     },
     {
       id: 'f8',
-      type: 'term',
+      type: 'mcq',
       topic: '2.4',
       difficulty: 2,
       marks: 1,
-      stem: 'On the break-even chart, what is the name of the level of output at which the total revenue line crosses the total costs line?',
+      stem: 'Using the chart, which statement best describes the point where the total revenue line crosses the total costs line?',
       diagram: 'breakeven',
-      accept: ['break-even point', 'break even point', 'break-even output', 'break-even level', 'break-even'],
+      options: [
+        'Output exactly covers total costs — neither profit nor loss',
+        'Revenue is at its highest possible level for the whole business',
+        'Fixed costs are finally paid off and become zero for good',
+        'The business has reached its maximum possible monthly output',
+      ],
+      correct: 0,
       explain:
-        'The break-even point is where total revenue = total costs. Below it the business makes a loss; above it, a profit. On the chart it sits at 3,000 loaves for The Dough House.',
+        'At the crossing point, total revenue exactly equals total costs, so profit is zero — that is the break-even point. Below it the business makes a loss; above it, a profit. On the chart it sits at 3,000 loaves for The Dough House.',
     },
     {
       id: 'f9',
@@ -131,7 +143,7 @@ const finance: QuizDef = {
       tol: 0.5,
       unit: 'loaves',
       explain:
-        'New contribution = £2.00 − £1.00 = £1.00. Break-even = £4,500 ÷ £1.00 = 4,500 loaves. A lower price means each loaf contributes less towards fixed costs — so the break-even level RISES from 3,000 to 4,500.',
+        'New contribution = £2.00 − £1.00 = £1.00. Break-even = £4,500 ÷ £1.00 = 4500 loaves. A lower price means each loaf contributes less towards fixed costs — so the break-even level RISES from 3,000 to 4,500.',
     },
     {
       id: 'f10',
@@ -144,7 +156,7 @@ const finance: QuizDef = {
       tol: 1,
       unit: '£',
       explain:
-        'Revenue = 5,000 × £2.50 = £12,500. Total costs = fixed £4,500 + variable (5,000 × £1.00 = £5,000) = £9,500. Profit = £12,500 − £9,500 = £3,000.',
+        'Revenue = 5,000 × £2.50 = £12,500. Total costs = fixed £4,500 + variable (5,000 × £1.00 = £5,000) = £9,500. Profit = £12,500 − £9,500 = £3000.',
     },
     {
       id: 'f11',
@@ -161,7 +173,7 @@ const finance: QuizDef = {
       tol: 1,
       unit: '£',
       explain:
-        'Revenue = 4,200 × £2.50 = £10,500. Cost of sales = 4,200 × £1.00 = £4,200. Gross profit = £10,500 − £4,200 = £6,300 per month.',
+        'Revenue = 4,200 × £2.50 = £10,500. Cost of sales = 4,200 × £1.00 = £4,200. Gross profit = £10,500 − £4,200 = £6300 per month.',
     },
     {
       id: 'f12',
@@ -171,9 +183,9 @@ const finance: QuizDef = {
       marks: 1,
       stem: 'A rival bakery’s gross profit margin fell from 62% to 55%, but its total profit rose. Which statement is the MOST accurate interpretation?',
       options: [
-        'Profit can rise even when the margin falls, provided revenue grows faster than costs',
-        'The fall in margin proves the rival is about to fail',
-        'Rising profit means the margin must also have risen',
+        'Profit can rise while the margin falls, if revenue grows faster than costs',
+        'The fall in the margin proves that the rival bakery is about to fail',
+        'Rising profit means the margin must also have risen too',
         'Gross profit margin and profit measure exactly the same thing',
       ],
       correct: 0,
@@ -211,7 +223,7 @@ const finance: QuizDef = {
       value: 7800,
       tol: 0.5,
       unit: 'loaves',
-      explain: 'Contribution = £2.50 − £1.00 = £1.50. Break-even = £11,700 ÷ £1.50 = 7,800 loaves across both branches. Buying a second site raises fixed costs, so the break-even level rises with it.',
+      explain: 'Contribution = £2.50 − £1.00 = £1.50. Break-even = £11,700 ÷ £1.50 = 7800 loaves across both branches. Buying a second site raises fixed costs, so the break-even level rises with it.',
     },
     {
       id: 'f16',
@@ -228,7 +240,7 @@ const finance: QuizDef = {
       ],
       correct: 2,
       explain:
-        'Break-even analysis is a planning tool — it cannot guarantee anything. It shows the sales needed to cover costs and the margin of safety, which helps the judge risk, not remove it.',
+        'Break-even analysis is a planning tool — it cannot guarantee anything. It shows the sales needed to cover costs and how far current sales sit above that level, which helps the bank judge risk, not remove it.',
     },
   ],
 };

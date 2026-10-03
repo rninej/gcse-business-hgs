@@ -25,13 +25,13 @@ const examt1: QuizDef = {
       },
       options: [
         'The bakery is certain to fail in its first year',
-        'She is guaranteed a steady wage from the bakery from the first month',
-        'She could lose her £9,000 savings and her secure salary if the bakery fails',
+        'She is guaranteed a steady wage from the bakery from the very first month',
+        'She could lose her £9,000 savings and salary if the bakery fails',
         'She no longer has to make any business decisions herself',
       ],
       correct: 2,
       explain:
-        'Entrepreneurs risk their own money and give up secure wages; nothing is guaranteed, and if the business fails she can lose both. The other options describe certainty — the opposite of risk.',
+        'Starting a business means risking your own money and giving up secure wages; nothing is guaranteed, and if the business fails she can lose both. The other options describe certainty — the opposite of risk.',
     },
     {
       id: 'x2',
@@ -125,9 +125,9 @@ const examt1: QuizDef = {
       },
       options: [
         'Price — it is by far the cheapest hairdresser in the area',
-        'Convenience — the salon comes to the customer at a time that suits them',
+        'Convenience — the salon comes to the customer at a suitable time',
         'Choice — clients can have any treatment free of charge',
-        'Quality — home visits always give a better haircut',
+        'Quality — home visits always give a much better haircut',
       ],
       correct: 1,
       explain:
@@ -173,10 +173,10 @@ const examt1: QuizDef = {
       topic: '1.3',
       difficulty: 2,
       marks: 1,
-      stem: 'Which source of finance is designed to cover a small, short-term cash gap like this?',
+      stem: 'Which source of finance is designed to cover a small, short-term cash shortage like this?',
       extract: {
         title: 'Style on Wheels — a cash gap',
-        text: 'In February, £400 of supplier bills fall due a few weeks before several large wedding-party bookings are due to pay. Priya needs to bridge the gap for a short time.',
+        text: 'In February, £400 of supplier bills fall due a few weeks before several large wedding-party bookings are due to pay. Priya needs to bridge the shortfall for a short time.',
       },
       options: [
         'A mortgage on her home',
@@ -186,7 +186,7 @@ const examt1: QuizDef = {
       ],
       correct: 3,
       explain:
-        'An overdraft lets a business spend slightly more than is in its account for a short period — ideal for small, temporary gaps. Long-term loans and mortgages are for big purchases over years, and a sole trader cannot sell shares on the stock exchange.',
+        'An overdraft lets a business spend slightly more than is in its account for a short period — ideal for a small, temporary shortage. Long-term loans and mortgages are for big purchases over years, and a sole trader cannot sell shares on the stock exchange.',
     },
     {
       id: 'x11',
@@ -200,8 +200,8 @@ const examt1: QuizDef = {
         text: 'Three months after opening, Crumb & Craft’s sales are growing slowly. The bakery is only just covering its costs each month, and Nadia still has £5,500 of her savings left.',
       },
       options: [
-        'Paying dividends to thousands of shareholders',
-        'Survival — covering its costs and keeping the business trading',
+        'Paying dividends to thousands of shareholders at once',
+        'Survival — covering costs and keeping trading',
         'Growing into a multinational chain within a year',
         'Charging the highest bread prices in the country',
       ],
@@ -221,10 +221,10 @@ const examt1: QuizDef = {
         text: 'Priya runs Style on Wheels as a sole trader. After a quiet winter the business owes suppliers £3,000. Priya also has £5,000 in a personal savings account.',
       },
       options: [
-        'She can only lose the money she spent buying the van',
-        'The suppliers must simply write off the debt',
-        'She is personally responsible — she could have to use her own savings and assets to pay the £3,000',
-        'The government will pay the £3,000 on her behalf',
+        'She can only lose the money she spent on buying the van',
+        'The suppliers must simply write off the unpaid debt',
+        'She is personally responsible, and could pay from her own savings',
+        'The government will pay the £3,000 debt on her behalf',
       ],
       correct: 2,
       explain:
@@ -257,10 +257,10 @@ const examt1: QuizDef = {
         text: 'When Rise & Shine chose its first pitch, the founders compared two options: the town square, which costs £60 for a Saturday and attracts hundreds of shoppers, and a quiet industrial estate, which costs £15 but sees few visitors at weekends. They chose the town square.',
       },
       options: [
-        'The lowest possible pitch fee',
-        'Footfall — the number of potential customers walking past',
-        'Being close to the coffee bean roastery',
-        'Free parking for staff',
+        'The lowest possible fee for the market pitch',
+        'Footfall — potential customers walking past',
+        'Being close to the coffee bean roastery she uses',
+        'Free parking spaces for all of the staff',
       ],
       correct: 1,
       explain:

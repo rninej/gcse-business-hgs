@@ -14,8 +14,10 @@ import {
   Brain,
   CalendarClock,
   Check,
+  CheckCheck,
   Coins,
   FileText,
+  Flag,
   Gavel,
   Minus,
   PenLine,
@@ -380,6 +382,7 @@ function DebugDashboardInner({ onLock }: { onLock: () => void | Promise<void> })
           </p>
         </section>
 
+        <ReportsSection />
         <ComparisonSection />
         <UspSection />
         <AiCapacitySection />
@@ -396,6 +399,126 @@ function DebugDashboardInner({ onLock }: { onLock: () => void | Promise<void> })
         </div>
       </footer>
     </div>
+  );
+}
+
+// ---------- 0. problem reports from inside quizzes ----------
+
+interface Report {
+  id: string;
+  at: number;
+  byName: string;
+  role: 'teacher' | 'student';
+  kind: 'answer' | 'typo' | 'unclear' | 'unfair' | 'other';
+  message: string;
+  quizTitle?: string;
+  qNumber?: number;
+  qid?: string;
+  topic?: string;
+  stemSnippet?: string;
+}
+
+const KIND_LABEL: Record<Report['kind'], string> = {
+  answer: 'Answer looks wrong',
+  typo: 'Typo / wording',
+  unclear: 'Doesn’t understand it',
+  unfair: 'Gives away an answer',
+  other: 'Something else',
+};
+
+function ReportsSection() {
+  const [reports, setReports] = useState<Report[] | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function load() {
+    try {
+      const d = await api.get<{ reports: Report[] }>('/api/owner/reports');
+      setReports(d.reports);
+    } catch {
+      setReports([]);
+    }
+  }
+
+  useEffect(() => {
+    void load();
+    const t = setInterval(() => void load(), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  async function resolve(id: string) {
+    setBusyId(id);
+    try {
+      await api.del(`/api/owner/reports?id=${id}`);
+      setReports((prev) => (prev ? prev.filter((r) => r.id !== id) : prev));
+    } catch {
+      /* keep it in the list */
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <section aria-labelledby="rep-h" id="reports-section">
+      <h2 id="rep-h" className="text-lg font-semibold flex items-center gap-2">
+        <Flag className="h-5 w-5 text-primary" aria-hidden /> Problem reports
+        {reports !== null && reports.length > 0 ? (
+          <Badge className="bg-[var(--danger)] text-white tabular-nums">{reports.length} open</Badge>
+        ) : null}
+      </h2>
+      <p className="text-sm text-muted-foreground mt-1.5 max-w-3xl">
+        Sent from the ⋯ menu inside any quiz (“Report a problem”). Newest first — resolving
+        removes it from the list.
+      </p>
+
+      <div className="mt-4 space-y-3">
+        {reports === null ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : reports.length === 0 ? (
+          <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+            <CheckCheck className="h-6 w-6 mx-auto mb-2 text-[var(--success)]" aria-hidden />
+            Nothing reported — either the questions are perfect or nobody has
+            found the ⋯ menu yet.
+          </div>
+        ) : (
+          reports.map((r) => (
+            <Card key={r.id} className="border-[var(--danger)]/25">
+              <CardContent className="p-4 sm:p-5">
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <Badge variant="destructive">{KIND_LABEL[r.kind]}</Badge>
+                  <span className="text-muted-foreground">
+                    {r.role === 'student' ? 'Student' : 'Teacher'} · {r.byName} ·{' '}
+                    {new Date(r.at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
+                  </span>
+                  {r.topic ? <Badge variant="outline">{r.topic}</Badge> : null}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="ml-auto"
+                    disabled={busyId === r.id}
+                    onClick={() => void resolve(r.id)}
+                  >
+                    <Check className="h-3.5 w-3.5" /> Resolve
+                  </Button>
+                </div>
+                {r.quizTitle || r.qNumber ? (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {r.quizTitle ? <>Quiz: <span className="font-medium text-foreground">{r.quizTitle}</span></> : null}
+                    {r.qNumber ? <> · Question {r.qNumber}</> : null}
+                    {r.qid ? <span className="font-mono"> ({r.qid})</span> : null}
+                  </p>
+                ) : null}
+                {r.stemSnippet ? (
+                  <p className="text-sm mt-2 italic text-muted-foreground border-l-2 border-border pl-3">
+                    “{r.stemSnippet}”
+                  </p>
+                ) : null}
+                <p className="text-sm mt-2.5 leading-relaxed">{r.message}</p>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+    </section>
   );
 }
 

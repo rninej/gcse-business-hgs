@@ -22,14 +22,14 @@ const casesgrowth: QuizDef = {
       stem: 'Purplebricks was once a well-known brand worth hundreds of millions of pounds on the stock market. Which statement best explains why it sold for just £1?',
       extract: {
         title: 'Purplebricks sold for £1',
-        text: 'In May 2023 the online estate agent Purplebricks was sold to its rival Strike for just £1. Only a year earlier, in May 2022, its share price had peaked at £1.89. The business had been losing money, and years of falling sales had destroyed most of its value.',
+        text: 'In May 2023 the online estate agent Purplebricks was sold to competing estate agent Strike for just £1. Only a year earlier, in May 2022, its share price had peaked at £1.89. The business had been losing money, and years of falling sales had destroyed most of its value.',
       },
       diagram: 'shareprice',
       options: [
-        'Shares in a PLC can never be sold for more than £1 each',
-        'It was losing money and its value had collapsed — the buyer also inherits its problems and costs',
+        'A PLC can never be worth more than £1 in total',
+        'It was losing money and its value had collapsed',
         'It had too many high-street branches, which made the business worthless',
-        'Brands become less valuable the better known they are',
+        'Brands become less valuable the better known they become',
       ],
       correct: 1,
       explain:
@@ -82,8 +82,8 @@ const casesgrowth: QuizDef = {
       options: [
         'It can close its own website and stop selling directly to customers',
         'Dior will pay all of Biscuiteers’ running costs forever',
-        'Access to Dior’s customers, plus the prestige of being linked to a famous luxury brand',
-        'Hand-icing the biscuits will become cheaper to do',
+        'Access to Dior’s customers and the prestige of a famous brand link-up',
+        'Hand-icing the biscuits will suddenly become cheaper to do',
       ],
       correct: 2,
       explain:
@@ -116,14 +116,14 @@ const casesgrowth: QuizDef = {
         text: 'Biscuiteers is a private limited company (Ltd). Its founders want to keep growing but have decided not to float the business on a stock exchange, even though selling shares to the public would raise money for expansion.',
       },
       options: [
-        'Selling shares to the public always makes a business smaller',
-        'A PLC is not allowed to sell luxury products',
+        'Selling ownership to the public always makes a business smaller',
+        'A PLC is not allowed to sell luxury products at all',
         'Once floated, the founders would be forced to sell all of their own shares',
-        'Floating would dilute the founders’ control and leave the company open to a takeover by anyone who buys enough shares',
+        'Floating would dilute the founders’ control and invite a takeover',
       ],
       correct: 3,
       explain:
-        'Selling shares to the public means the founders own a smaller slice, must answer to outside shareholders — and a rival could buy enough shares to seize control. Staying private keeps control and avoids takeover risk, at the cost of slower funding.',
+        'Selling shares to the public means the founders own a smaller slice, must answer to outside shareholders — and an outsider could buy enough shares to seize control. Staying private keeps control and avoids takeover risk, at the cost of slower funding.',
     },
     {
       id: 'cg7',
@@ -134,14 +134,14 @@ const casesgrowth: QuizDef = {
       stem: 'Which statement gives the most likely reason why Primark sells almost entirely through its shops?',
       extract: {
         title: 'Primark — no online store',
-        text: 'Primark is owned by Associated British Foods (ABF), which also owns food brands such as Ryvita, Patak’s and Kingsmill. In 2022 Primark had 408 stores worldwide, including 197 in the UK. Unlike most fashion rivals, Primark has no online store — almost all sales happen in its shops, where prices are famously low.',
+        text: 'Primark is owned by Associated British Foods (ABF), which also owns food brands such as Ryvita, Patak’s and Kingsmill. In 2022 Primark had 408 stores worldwide, including 197 in the UK. Unlike most competing fashion chains, Primark has no online store — almost all sales happen in its shops, where prices are famously low.',
       },
       diagram: 'primarkstores',
       options: [
         'Selling online would force Primark to close all 408 of its shops first',
-        'Picking, packing and posting individual online orders would add costs that its very low prices would struggle to cover',
-        'Clothes bought online cannot legally be returned to a shop',
-        'ABF bans every brand it owns from using the internet',
+        'Picking and posting individual orders adds costs its low prices cannot cover',
+        'Clothes bought online can never legally be returned to a shop',
+        'ABF bans every single brand it owns from using the internet',
       ],
       correct: 1,
       explain:
@@ -174,10 +174,10 @@ const casesgrowth: QuizDef = {
         text: 'Primark opens dozens of new stores around the world each year. Because it is part of ABF, these openings can be funded from the profits of the whole group, not just from Primark’s own cash.',
       },
       options: [
-        'Investment can come from the group’s pooled profits, so new stores can open without Primark borrowing on its own',
-        'Primark no longer needs to win customers',
-        'ABF guarantees Primark will never face a competitor',
-        'Primark can ignore the running costs of its shops',
+        'New stores can be funded from the group’s pooled profits',
+        'Primark no longer needs to win any customers at all',
+        'ABF guarantees Primark will never face any competition',
+        'Primark can ignore the running costs of all of its shops',
       ],
       correct: 0,
       explain:
@@ -196,10 +196,10 @@ const casesgrowth: QuizDef = {
       },
       diagram: 'growpaths',
       options: [
-        'Buying a rival is always cheaper than opening a new shop',
+        'Buying another bakery is always cheaper than opening a new shop',
         'Speed — the shops, trained staff and existing customers come on day one',
         'The retiring owners must keep working for free for five years',
-        'A takeover removes the need to pay any legal fees',
+        'A takeover removes the need to pay any legal fees at all',
       ],
       correct: 1,
       explain:
@@ -235,22 +235,28 @@ const casesgrowth: QuizDef = {
       value: 2000,
       tol: 0.5,
       explain:
-        'Contribution per loaf = selling price − variable cost = £2.00 − £0.75 = £1.25. Extra loaves needed to cover the new fixed costs = £2,500 ÷ £1.25 = 2,000 loaves a month.',
+        'Contribution per loaf = selling price − variable cost = £2.00 − £0.75 = £1.25. Extra loaves needed to cover the new fixed costs = £2,500 ÷ £1.25 = 2000 loaves a month.',
     },
     {
       id: 'cg13',
-      type: 'fib',
+      type: 'mcq',
       topic: '2.1',
       difficulty: 1,
       marks: 1,
-      stem: 'The proportion of total sales in a market made by one business is called its market ________. What one word completes this sentence?',
+      stem: 'The proportion of total sales in a market made by one business is known as what?',
       extract: {
         title: 'The Old Mill Bakery — a bigger slice',
         text: 'Today the Old Mill Bakery sells about a quarter of all the craft bread bought in Ludlow. If it takes over The Bread Basket, it will also supply Shrewsbury, and its slice of the regional bread market will grow.',
       },
-      accept: ['share', 'shares'],
+      options: [
+        'Its market share',
+        'Its market size',
+        'Its market growth',
+        'Its market segment',
+      ],
+      correct: 0,
       explain:
-        'Market share is the proportion (percentage) of total sales in a market that one business makes. Takeovers often aim to increase market share — removing a rival and adding its sales in one step.',
+        'Market share is the proportion (percentage) of total sales in a market that one business makes. Takeovers often aim to increase market share — removing one competing business and adding its sales in one step.',
     },
     {
       id: 'cg14',

@@ -24,9 +24,9 @@ const def: QuizDef = {
         text: 'Wilko was a family-owned homeware chain founded in Leicester in 1930. For more than 90 years it sold household goods from hundreds of stores, with sales of over £1 billion a year. But in August 2023 it collapsed into administration after running short of cash, and around 12,000 people lost their jobs.',
       },
       options: [
-        'Even a long-established business with sales of over £1 billion can fail if it runs out of cash to pay its bills',
-        'Cash flow only matters for businesses less than a year old',
-        'Profit and cash are two words for exactly the same thing',
+        'Even a long-established giant can fail if it runs out of cash to pay its bills',
+        'Cash flow only matters for businesses that are less than a year old',
+        'Profit and cash are two different words for exactly the same thing',
         'A business with hundreds of stores can never run out of cash',
       ],
       correct: 0,
@@ -42,7 +42,7 @@ const def: QuizDef = {
       stem: 'What is the term for money coming INTO a business — for example from cash sales, loans received, or capital the owner pays in?',
       accept: ['cash inflow', 'a cash inflow', 'inflow', 'inflows', 'cash inflows'],
       explain:
-        'A cash inflow is money entering the business: cash sales, a loan received, or capital paid in by the owner. Money leaving the business — wages, rent, supplier bills — consists of cash outflows, and inflows minus outflows give the net cash flow.',
+        'A cash inflow is money entering the business: cash sales, a loan received, or capital paid in by the owner. The opposite — money leaving to pay wages, rent and supplier bills — drains the bank balance, and money in minus money out gives the net cash flow.',
     },
     {
       id: 'cb3',
@@ -64,7 +64,7 @@ const def: QuizDef = {
       stem: 'Using the case study, calculate Oak & Ember’s monthly break-even output in pizzas. Give your answer as a whole number of pizzas.',
       extract: {
         title: 'Oak & Ember — a wood-fired pizza van',
-        text: 'Oak & Ember sells wood-fired pizzas from a converted van at markets and festivals. Each pizza sells for £6.00. The variable cost per pizza — dough, toppings, fuel and the box — is £3.50. Fixed costs (the van loan, insurance, market pitch fees and licences) come to £2,100 a month.',
+        text: 'Oak & Ember sells wood-fired pizzas from a converted van at markets and festivals. Each pizza sells for £6.00. The cost of making each pizza — dough, toppings, fuel and the box — is £3.50. Fixed costs (the van loan, insurance, market pitch fees and licences) come to £2,100 a month.',
       },
       value: 840,
       tol: 0.5,
@@ -81,7 +81,7 @@ const def: QuizDef = {
       stem: 'Using the case study figures, calculate Oak & Ember’s monthly margin of safety in pizzas. Give your answer as a whole number of pizzas.',
       extract: {
         title: 'Oak & Ember — current sales',
-        text: 'Each pizza sells for £6.00 and the variable cost per pizza is £3.50. Fixed costs are £2,100 a month, and Oak & Ember currently sells 1,150 pizzas a month. Remember: margin of safety = current output − break-even output.',
+        text: 'Each pizza sells for £6.00 and each pizza costs £3.50 to make. Fixed costs are £2,100 a month, and Oak & Ember currently sells 1,150 pizzas a month. Remember: margin of safety = current output − break-even output.',
       },
       value: 310,
       tol: 0.5,
@@ -99,8 +99,8 @@ const def: QuizDef = {
       options: [
         'Ignore the forecast and hope March turns out better',
         'Arrange an overdraft facility with the bank to cover the shortfall',
-        'Pay supplier bills even earlier than usual',
-        'Take extra money out of the business for the owner’s own use',
+        'Pay all of its supplier bills even earlier than usual',
+        'Take even more money out of the business for the owner’s own use',
       ],
       correct: 1,
       explain:
@@ -115,13 +115,13 @@ const def: QuizDef = {
       stem: 'Using the case study, calculate Clover & Cart’s CLOSING BALANCE at the end of March. Give your answer in pounds.',
       extract: {
         title: 'Clover & Cart — a flower stall',
-        text: 'Clover & Cart runs a flower stall at a city-centre market. At the start of March the business had £850 in the bank (its opening balance). During March, cash inflows from market sales and a small wedding contract came to £6,400, while cash outflows — stock, pitch fees, van costs and wages — came to £7,150.',
+        text: 'Clover & Cart runs a flower stall at a city-centre market. At the start of March the business had £850 in the bank. During March, money received from market sales and a small wedding contract came to £6,400, while payments out — stock, pitch fees, van costs and wages — came to £7,150.',
       },
       value: 100,
       tol: 1,
       unit: '£',
       explain:
-        'Net cash flow = inflows − outflows = £6,400 − £7,150 = −£750. Closing balance = opening balance + net cash flow = £850 − £750 = £100. The stall ends March with only £100 in the bank — a warning sign for April.',
+        'Net cash flow = money received − payments out = £6,400 − £7,150 = −£750. Closing balance = the cash at the start + net cash flow = £850 − £750 = £100. The stall ends March with only £100 in the bank — a warning sign for April.',
     },
     {
       id: 'cb8',
@@ -132,7 +132,7 @@ const def: QuizDef = {
       stem: 'Using the case study figures, calculate Oak & Ember’s total profit for a month in which it sells exactly 1,000 pizzas. Give your answer in pounds.',
       extract: {
         title: 'Oak & Ember — festival month',
-        text: 'Each pizza sells for £6.00; the variable cost per pizza is £3.50; fixed costs are £2,100 a month. A big festival weekend means Oak & Ember expects to sell 1,000 pizzas during the month.',
+        text: 'Each pizza sells for £6.00; each pizza costs £3.50 to make; fixed costs are £2,100 a month. A big festival weekend means Oak & Ember expects to sell 1,000 pizzas during the month.',
       },
       value: 400,
       tol: 1,
@@ -152,7 +152,7 @@ const def: QuizDef = {
       tol: 0.05,
       dp: 1,
       explain:
-        'Net cash flow = total inflows − total outflows. In May, inflows were £11.0k and outflows were £10.5k, so net cash flow = 11.0 − 10.5 = +0.5 (£000s) — £500 more flowed in than flowed out that month.',
+        'Net cash flow = money coming in − money going out. In May, receipts were £11.0k and payments were £10.5k, so net cash flow = 11.0 − 10.5 = +0.5 (£000s) — £500 more came in than went out that month.',
     },
     {
       id: 'cb10',
@@ -174,20 +174,20 @@ const def: QuizDef = {
     },
     {
       id: 'cb11',
-      type: 'term',
+      type: 'mcq',
       topic: '1.3',
       difficulty: 1,
       marks: 1,
-      stem: 'What is the name of the month-by-month prediction of the cash a business expects to receive and pay out, used to spot shortages before they happen?',
-      accept: [
-        'cash flow forecast',
-        'a cash flow forecast',
-        'cashflow forecast',
-        'cash-flow forecast',
-        'cash flow prediction',
+      stem: 'Which of the following best describes a CASH FLOW FORECAST?',
+      options: [
+        'A month-by-month prediction of the cash a business expects to receive and pay out',
+        'A record of the profit the business made during the last financial year',
+        'A plan for recruiting new staff members over the next five years',
+        'A list of the assets the business owns and what they cost to buy',
       ],
+      correct: 0,
       explain:
-        'A cash flow forecast sets out expected inflows and outflows month by month, with each month’s closing balance carried forward. It warns a business in advance when cash may run short, so it can arrange an overdraft or delay spending before trouble arrives.',
+        'A cash flow forecast sets out the cash expected each month, with each month’s closing balance carried forward. It warns a business in advance when cash may run short, so it can arrange an overdraft or delay spending before trouble arrives.',
     },
     {
       id: 'cb12',
@@ -212,14 +212,14 @@ const def: QuizDef = {
         text: 'Card Factory sells greetings cards and gifts through around 1,000 shops in the UK. Christmas is its biggest selling season by far — yet the cards, wrapping paper and gifts must be bought from suppliers months before December, with much of the stock arriving in shops during the summer.',
       },
       options: [
-        'Christmas sales are automatically recorded as profit rather than cash',
-        'Customers stop buying cards once the festive period begins',
+        'Christmas sales are automatically recorded as profit rather than as cash',
+        'Customers stop buying cards altogether once the festive period begins',
         'Cash flow forecasts are only allowed to cover the month of December',
-        'The business must pay for its Christmas stock months before customers buy it, so cash flows out long before it flows back in',
+        'It pays for stock months before customers buy it, so cash leaves before it returns',
       ],
       correct: 3,
       explain:
-        'Seasonal stock must be bought in advance, so cash leaves the business in summer and autumn while the inflows arrive concentrated in December. A cash flow forecast shows whether the business can bridge that gap — and how the January quiet spell will feel afterwards.',
+        'Seasonal stock must be bought in advance, so cash leaves the business in summer and autumn while the receipts arrive concentrated in December. A cash flow forecast shows whether the business can bridge that gap — and how the January quiet spell will feel afterwards.',
     },
     {
       id: 'cb14',
@@ -252,7 +252,7 @@ const def: QuizDef = {
       stem: 'In a cash flow forecast, money leaving the business — wages, rent and payments to suppliers — is recorded as cash ________. What one word completes the sentence?',
       accept: ['outflows', 'outflow', 'the outflows', 'outgoings'],
       explain:
-        'Cash outflows are the payments a business makes: wages, rent, bills and supplier invoices. Net cash flow = total inflows − total outflows, and it is outflows arriving before inflows that causes cash-flow trouble for so many businesses.',
+        'Cash outflows are the payments a business makes: wages, rent, bills and supplier invoices. Net cash flow = money coming in minus money going out, and it is payments arriving before receipts that causes cash-flow trouble for so many businesses.',
     },
   ],
 };

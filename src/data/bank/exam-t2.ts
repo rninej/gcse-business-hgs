@@ -26,8 +26,8 @@ const examt2: QuizDef = {
       },
       options: [
         'Guaranteed profit — any business bought out of administration always succeeds',
-        'Speed — Morrisons gained an established chain of shops straight away instead of opening them one by one',
-        'Zero cost — Morrisons paid nothing at all for McColl’s',
+        'Speed — Morrisons gained an established chain of shops straight away',
+        'Zero cost — Morrisons paid nothing whatsoever for McColl’s',
         'Low risk — buying a struggling chain never creates problems for the buyer',
       ],
       correct: 1,
@@ -63,7 +63,7 @@ const examt2: QuizDef = {
       options: [
         'Backward vertical integration — buying a supplier of raw materials',
         'Forward vertical integration — buying a distributor or retailer',
-        'Horizontal integration — combining two businesses at the same stage of the same industry',
+        'Horizontal integration — two businesses at the same stage of the same industry',
         'Diversification — moving into a completely unrelated industry',
       ],
       correct: 2,
@@ -83,9 +83,9 @@ const examt2: QuizDef = {
       },
       diagram: 'economies',
       options: [
-        'Purchasing economy — a bulk discount for ordering materials in large quantities',
+        'Purchasing economy — a bulk discount for ordering in large quantities',
         'Technical economy — using larger, more efficient machines',
-        'Managerial economy — hiring specialist managers',
+        'Managerial economy — hiring specialist managers for each function',
         'Financial economy — borrowing money at a lower interest rate',
       ],
       correct: 0,
@@ -104,10 +104,10 @@ const examt2: QuizDef = {
         text: 'Jaguar Land Rover (JLR) has been owned by India’s Tata Motors since 2008. In 2023 JLR announced plans to invest £15bn in electric vehicles over the following five years, upgrading its own factories and developing new electric models.',
       },
       options: [
-        'Inorganic growth — JLR is buying another carmaker',
+        'Inorganic growth — JLR is buying up another carmaker',
         'A merger — JLR is combining with Tata Motors as equals',
         'Backward vertical integration — JLR is buying a supplier',
-        'Organic (internal) growth — JLR is investing in its own factories, technology and models',
+        'Organic (internal) growth — investing in its own factories',
       ],
       correct: 3,
       explain:
@@ -115,16 +115,17 @@ const examt2: QuizDef = {
     },
     {
       id: 'y6',
-      type: 'fib',
+      type: 'mcq',
       topic: '2.2',
       difficulty: 2,
       marks: 1,
-      stem: 'The cans are in the ________ stage of the product life cycle. What one word completes this sentence?',
+      stem: 'The cans are in which stage of the product life cycle?',
       extract: {
         title: 'Rise & Shine — cold brew cans',
         text: 'Two years ago Rise & Shine launched a range of ready-to-drink cold brew cans. Sales have risen quickly every quarter since launch, and rival brands have now started launching their own canned coffees.',
       },
-      accept: ['growth', 'the growth stage', 'growth stage'],
+      options: ['Introduction', 'Growth', 'Maturity', 'Decline'],
+      correct: 1,
       explain:
         'Rising sales quarter after quarter, with profits improving and competitors piling in, is the growth stage — after introduction and before maturity.',
     },
@@ -141,9 +142,9 @@ const examt2: QuizDef = {
       },
       options: [
         'Price skimming — a high launch price that falls over time',
-        'Penetration pricing — a low launch price to win market share, raised later',
+        'Penetration pricing — a low launch price to win market share',
         'Cost-plus pricing — adding a fixed markup to the unit cost',
-        'Dynamic pricing — prices that change with demand',
+        'Dynamic pricing — prices that change automatically with demand',
       ],
       correct: 1,
       explain:
@@ -337,9 +338,9 @@ const examt2: QuizDef = {
         text: 'Fernfield Foods wants to cut absenteeism on its production line. Managers are considering four ideas: a small pay rise, a bonus for good attendance, piece rates (pay per jar produced), and rotating staff between different tasks each week.',
       },
       options: [
-        'The pay rise',
-        'The attendance bonus',
-        'Job rotation — swapping between tasks for variety',
+        'The small pay rise for all production staff',
+        'The bonus paid for good attendance',
+        'Job rotation — swapping tasks for variety',
         'Piece rates — pay per jar produced',
       ],
       correct: 2,

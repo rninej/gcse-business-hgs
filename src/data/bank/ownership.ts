@@ -16,16 +16,16 @@ const ownership: QuizDef = {
       topic: '1.4',
       difficulty: 1,
       marks: 1,
-      stem: 'What does UNLIMITED LIABILITY mean for a sole trader whose business fails while owing money?',
+      stem: 'What does UNLIMITED LIABILITY mean for a business owner whose business fails while owing money?',
       options: [
-        'The owner is personally responsible for all the business’s debts — their own savings and home can be at risk',
+        'The owner is personally responsible for all the business’s debts',
         'The owner can only lose the money they originally invested in the business',
-        'The government steps in and pays off the business’s debts',
-        'The owner automatically loses nothing when the business fails',
+        'The government steps in and settles the business’s unpaid debts',
+        'The owner automatically loses nothing at all if the business fails',
       ],
       correct: 0,
       explain:
-        'With unlimited liability there is no legal separation between the owner and the business: if it fails, the owner must settle the debts personally. Losing only the amount invested is limited liability, which belongs to companies.',
+        'With unlimited liability there is no legal separation between the owner and the business: if it fails, the owner must settle the debts personally. Losing only the amount invested is the position for companies, which are separate legal entities.',
     },
     {
       id: 'ow2',
@@ -33,7 +33,7 @@ const ownership: QuizDef = {
       topic: '1.4',
       difficulty: 2,
       marks: 1,
-      stem: 'What is the term for the protection that means the owners of a limited company can only lose the money they invested, not their personal possessions?',
+      stem: 'What is the term for the protection that means the owners of a company can only lose the money they invested, not their personal possessions?',
       accept: ['limited liability', 'limited', 'limited liability protection'],
       explain:
         'Limited liability protects the owners of a company: the business is a separate legal entity, so if it fails, the owners lose at most what they paid for their shares — not their homes or savings.',
@@ -46,14 +46,14 @@ const ownership: QuizDef = {
       marks: 1,
       stem: 'Two partners in a successful design agency are worried that the firm’s debts could put their houses at risk. What change would protect their personal assets?',
       options: [
-        'Converting the business into a private limited company (Ltd), giving the owners limited liability',
-        'Staying exactly as they are, because partners already have limited liability',
-        'Becoming a sole trader by removing one partner from the business',
+        'Converting into a private company (Ltd), so each owner risks only what they invested',
+        'Staying exactly as they are, because partners’ personal assets are already protected',
+        'One partner buying the other out and continuing alone as a one-person business',
         'Borrowing more money so that the existing debts are repaid',
       ],
       correct: 0,
       explain:
-        'Ordinary partners have unlimited liability, so their personal assets are exposed. Forming a limited company makes the business a separate legal entity, so the owners’ liability is limited to what they invested.',
+        'Ordinary partners have unlimited liability, so their personal assets are exposed. Incorporating makes the business a separate legal entity, so the owners risk at most what they invested.',
     },
     {
       id: 'ow4',
@@ -72,16 +72,16 @@ const ownership: QuizDef = {
       topic: '1.4',
       difficulty: 2,
       marks: 1,
-      stem: 'Many McDonald’s restaurants in the UK are run by franchisees rather than by the company itself. Which of the following is an advantage for a franchisee?',
+      stem: 'Many McDonald’s restaurants in the UK are run as franchises by local business people rather than by the company itself. Which of the following is an advantage for someone who buys the right to run one?',
       options: [
-        'Trading under a globally recognised brand, with training and national marketing campaigns provided',
-        'Keeping every pound of revenue, with nothing paid to McDonald’s',
-        'Complete freedom to change the menu and redesign the brand',
-        'A guarantee from the franchisor that the outlet cannot fail',
+        'Trading under a globally recognised brand, with training and marketing provided',
+        'Keeping every pound of revenue, with nothing at all paid to McDonald’s',
+        'Complete freedom to change the menu and redesign the brand image',
+        'A written guarantee from the franchisor that the outlet cannot fail',
       ],
       correct: 0,
       explain:
-        'A franchisee buys the right to trade under an established brand such as McDonald’s, benefiting from instant recognition, training and national marketing. In return they pay a fee and a share of revenue, and must follow the franchisor’s rules.',
+        'Buying a franchise gives the right to trade under an established brand such as McDonald’s, benefiting from instant recognition, training and national marketing. In return the buyer pays a fee and a share of revenue, and must follow the franchisor’s rules.',
     },
     {
       id: 'ow6',
@@ -91,14 +91,14 @@ const ownership: QuizDef = {
       marks: 1,
       stem: 'Which of the following is a DRAWBACK of running a franchise, such as a Krispy Kreme outlet?',
       options: [
-        'The franchisee must follow the franchisor’s rules and pays a fee plus a continuing share of revenue',
-        'The franchisee has to build up brand recognition completely from scratch',
-        'The franchisee receives no training or support from the franchisor',
+        'You must follow the franchisor’s rules and pay a fee plus a share of revenue',
+        'You have to build up brand recognition for the outlet completely from scratch',
+        'You receive no training or support at all from the franchisor',
         'The franchisor invents all the products but keeps none of the profits',
       ],
       correct: 0,
       explain:
-        'Franchisees buy a proven system, but the price is independence: they pay an initial fee plus a share of revenue (a royalty), and the franchisor controls pricing, products and branding. Brand recognition, training and support are the advantages, not the drawbacks.',
+        'Franchising buys a proven system, but the price is independence: the buyer pays an initial fee plus a share of revenue (a royalty), and the franchisor controls pricing, products and branding. Brand recognition, training and support are the advantages, not the drawbacks.',
     },
     {
       id: 'ow7',
@@ -117,7 +117,7 @@ const ownership: QuizDef = {
       topic: '1.4',
       difficulty: 2,
       marks: 1,
-      stem: 'In an ordinary partnership, the partners usually enjoy limited liability.',
+      stem: 'In an ordinary partnership, the partners’ personal possessions are usually protected from the firm’s debts.',
       answer: false,
       explain:
         'False. In an ordinary partnership each partner usually has unlimited liability — personally responsible for the firm’s debts, including debts run up by the other partners on the business’s behalf. Partnerships do bring shared skills and capital, but that protection is not one of the benefits.',
@@ -156,10 +156,10 @@ const ownership: QuizDef = {
       topic: '1.4',
       difficulty: 2,
       marks: 1,
-      stem: 'What is the collective name for the four elements — product, price, promotion and place — that a business combines to meet the needs of its target market?',
+      stem: 'What is the collective name for the four elements a business blends together to meet the needs of its target market?',
       accept: ['marketing mix', 'the marketing mix', '4ps', 'the 4ps', 'four ps'],
       explain:
-        'The marketing mix is the combination of product, price, promotion and place (the 4Ps). The elements must work together — a premium product needs a premium price, quality promotion and the right place.',
+        'The marketing mix is the combination of the four elements (the 4Ps). They must work together — a premium product needs a premium price, quality promotion and the right way of reaching customers.',
     },
     {
       id: 'ow12',
@@ -167,7 +167,7 @@ const ownership: QuizDef = {
       topic: '1.4',
       difficulty: 1,
       marks: 1,
-      stem: 'The four elements of the marketing mix are product, price, promotion and ________. What one word completes the sentence?',
+      stem: 'Product, price, promotion and ________ are the four elements a business combines to meet the needs of its customers. What one word completes the sentence?',
       accept: ['place', 'distribution', 'the place'],
       explain:
         'Place is how and where the product reaches the customer — in shops, online, by mail order or through wholesalers. ASOS’s ‘place’ is entirely online, with no stores.',
@@ -178,16 +178,16 @@ const ownership: QuizDef = {
       topic: '1.4',
       difficulty: 2,
       marks: 1,
-      stem: 'Which of the following is an example of PROMOTION in the marketing mix?',
+      stem: 'Which of the following is an example of PROMOTION?',
       options: [
-        'Paying for a sponsored post on Instagram aimed at 16–24 year olds',
-        'Setting the list price at £9.99',
+        'A sponsored post on Instagram aimed at 16–24 year olds',
+        'Setting the list price of the product at £9.99',
         'Selling the product only through the business’s own website',
-        'Improving the durability of the product',
+        'Improving how long the product lasts before it wears out',
       ],
       correct: 0,
       explain:
-        'Promotion is how a business communicates with customers to persuade them to buy — advertising, social media, sponsorship and special offers. The £9.99 price is price, the website is place, and durability is product.',
+        'Promotion is how a business communicates with customers to persuade them to buy — advertising, social media, sponsorship and special offers. The £9.99 list price is a pricing decision, the website is about how the product reaches customers, and durability is a product decision.',
     },
     {
       id: 'ow14',
@@ -206,10 +206,10 @@ const ownership: QuizDef = {
       topic: '1.4',
       difficulty: 1,
       marks: 1,
-      stem: 'One purpose of writing a business plan is to persuade lenders, such as banks, to provide finance to a start-up.',
+      stem: 'One purpose of writing down the business idea, its market research and its financial forecasts is to persuade lenders, such as banks, to provide finance to a start-up.',
       answer: true,
       explain:
-        'True. A plan shows the bank the idea, the market research and the financial forecasts, reducing the lender’s uncertainty. A poor or missing business plan is a common cause of start-up failure.',
+        'True. A plan shows the bank the idea, the market research and the financial forecasts, reducing the lender’s uncertainty. A poor or missing plan is a common cause of start-up failure.',
     },
     {
       id: 'ow16',
@@ -223,9 +223,9 @@ const ownership: QuizDef = {
         text: 'Hallam Supermarkets, a large chain, has planning permission to open a new superstore on the edge of Brompton Falls, a small market town. The store will create around 120 full- and part-time jobs. The town’s independent traders say the new store will take their customers, and some residents are unhappy about the extra traffic and lorry deliveries it will bring.',
       },
       options: [
-        'The town’s existing independent traders, who fear losing customers, versus many local shoppers, who want lower prices and more choice',
+        'The town’s independent traders, who fear losing customers, versus shoppers who want lower prices',
         'The store’s future employees and local jobseekers — two groups who both want the store to open',
-        'The franchisor and the franchisee, who are arguing over royalty payments',
+        'A franchisor and one of its outlet managers, who are arguing over royalty payments',
         'The store’s owners and its shareholders — because shareholders are not stakeholders',
       ],
       correct: 0,

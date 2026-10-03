@@ -18,8 +18,8 @@ const external: QuizDef = {
       marks: 1,
       stem: 'Blockbuster, the video-rental chain, collapsed after customers switched to online streaming services such as Netflix. What is the main lesson for businesses?',
       options: [
-        'Businesses that fail to adapt to new technology risk failure — however big they are',
-        'Technology has no real effect on how customers shop',
+        'Businesses that fail to adapt to new technology risk failure',
+        'New technology has no real effect on how customers shop',
         'Only small businesses are threatened by new technology',
         'Online streaming was a short-lived fashion that has now ended',
       ],
@@ -35,10 +35,10 @@ const external: QuizDef = {
       marks: 1,
       stem: 'With no physical stores, ASOS sells fashion online only. Which of the following describes how e-commerce has changed the ‘place’ element of its retailing?',
       options: [
-        'Products reach customers through a website and app instead of high-street shops',
+        'Products reach customers via a website and app, not high-street shops',
         'Customers must visit a shop to try items on before ordering',
-        'The business can only sell to customers in its own town',
-        'Selling online removes the need for delivery services',
+        'The business can only sell to customers in its own home town',
+        'Selling online removes the need for any delivery services',
       ],
       correct: 0,
       explain:
@@ -65,12 +65,12 @@ const external: QuizDef = {
       options: [
         'Some customers boycott the brand and sales fall',
         'Sales rise because customers admire the low costs',
-        'Nothing happens, because ethics never influence buying decisions',
+        'Nothing happens, because moral issues never influence buying decisions',
         'The government pays the brand a subsidy for the publicity',
       ],
       correct: 0,
       explain:
-        'Unethical behaviour can trigger customer boycotts, pressure-group campaigns and lasting damage to reputation — so sales fall. Ethical behaviour may cost more, but unethical behaviour can cost far more.',
+        'Behaviour seen as wrong can trigger customer boycotts, pressure-group campaigns and lasting damage to reputation — so sales fall. Doing the right thing may cost more, but doing wrong can cost far more.',
     },
     {
       id: 'x5',
@@ -91,10 +91,10 @@ const external: QuizDef = {
       marks: 1,
       stem: 'The Bank of England raises interest rates. What is the most likely effect on a car dealer that sells most of its cars on credit?',
       options: [
-        'Demand falls, because monthly repayments become more expensive for customers',
-        'Demand rises, because borrowing becomes cheaper',
+        'Demand falls, because monthly repayments become dearer',
+        'Demand rises, because borrowing becomes cheaper for customers',
         'No effect — interest rates do not influence credit sales',
-        'The dealer must immediately cut all employees’ wages',
+        'The dealer must immediately cut all of its employees’ wages',
       ],
       correct: 0,
       explain:
@@ -119,10 +119,10 @@ const external: QuizDef = {
       marks: 1,
       stem: 'Unemployment in a town rises sharply. Which of the following describes the most likely impact on the town’s restaurants?',
       options: [
-        'Sales may fall because fewer local people have income to spend — although recruiting staff becomes easier',
-        'Sales definitely rise, because unemployed people eat out more often',
-        'Wages must rise sharply, because workers have become scarce',
-        'There is no impact on restaurants whatsoever',
+        'Sales may fall as local incomes drop, though recruiting becomes easier',
+        'Sales definitely rise, because unemployed people eat out far more often',
+        'Wages must rise sharply, because suitable workers have become scarce',
+        'There is no impact on the town’s restaurants whatsoever',
       ],
       correct: 0,
       explain:
@@ -136,10 +136,10 @@ const external: QuizDef = {
       marks: 1,
       stem: 'The exchange rate moves from £1 = $1.20 to £1 = $1.60. What does this mean for a UK business that IMPORTS goods from the USA and pays in dollars?',
       options: [
-        'Imports become cheaper, because each pound now buys more dollars — so the same dollar bill costs fewer pounds',
-        'Imports become dearer, because the pound has weakened',
-        'Nothing changes, because exchange rates only affect exports',
-        'The business must stop trading with American suppliers',
+        'Imports become cheaper, because each pound now buys more dollars',
+        'Imports become dearer, because the pound has weakened against the dollar',
+        'Nothing changes, because exchange rates only affect exports, not imports',
+        'The business must stop trading with American suppliers immediately',
       ],
       correct: 0,
       explain:
@@ -182,7 +182,7 @@ const external: QuizDef = {
       ],
       correct: 0,
       explain:
-        'The Health and Safety at Work Act 1974 makes employers responsible for a safe workplace, training and protective equipment. Refunds come under consumer law, and equal treatment under the Equality Act 2010.',
+        'The Health and Safety at Work Act 1974 makes employers responsible for a safe workplace, training and protective equipment. Refunds come under consumer law, and fair treatment at work under separate anti-discrimination legislation.',
     },
     {
       id: 'x13',

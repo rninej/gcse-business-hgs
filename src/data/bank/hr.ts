@@ -34,17 +34,17 @@ const hr: QuizDef = {
       topic: '2.5',
       difficulty: 2,
       marks: 1,
-      stem: 'Using the diagram, what is the span of control of the Managing Director at Fernfield Foods?',
+      stem: 'Using the diagram, how many employees report directly to the Managing Director at Fernfield Foods?',
       diagram: 'orgchart',
       options: [
-        '1 — only the Operations Director',
-        '4 — one for each layer of the structure',
-        '3 — three directors report directly to the Managing Director',
-        '7 — every manager in the business',
+        '1 — only the Operations Director reports to them',
+        '4 — one for each layer of the whole structure',
+        '3 — three directors report directly to them',
+        '7 — every single manager in the business',
       ],
       correct: 2,
       explain:
-        'Span of control counts the people who report directly to one manager. The Managing Director has three direct reports: the Operations Director, the Marketing Director and the Finance Director.',
+        'The Managing Director has three direct reports: the Operations Director, the Marketing Director and the Finance Director. The number of people reporting directly to one manager is a key feature of an organisation’s structure.',
     },
     {
       id: 'hr3',
@@ -55,14 +55,14 @@ const hr: QuizDef = {
       stem: 'The diagram shows that Fernfield Foods has four layers of management. Which of the following is characteristic of a structure like this?',
       diagram: 'orgchart',
       options: [
-        'It is a flat structure: few layers with very wide spans of control',
-        'It is a tall structure: messages pass through more layers, so communication is slower and supervision is close',
+        'It is a flat structure: few layers, with each manager supervising many people',
+        'It is a tall structure: messages pass through more layers, slowing communication',
         'Layers make decisions faster because more managers must approve them',
-        'A four-layer structure has no chain of command at all',
+        'A four-layer structure has no chain of command whatsoever',
       ],
       correct: 1,
       explain:
-        'Four layers make Fernfield a tall structure: messages travel through several levels, so communication is slower, but supervision is close and control is tight. Flat structures have few layers and wide spans of control.',
+        'Four layers make Fernfield a tall structure: messages travel through several levels, so communication is slower, but supervision is close and control is tight. Flat structures have few layers, with each manager supervising many more people directly.',
     },
     {
       id: 'hr4',
@@ -73,7 +73,7 @@ const hr: QuizDef = {
       stem: 'What is the term for removing one or more layers of management from an organisational structure?',
       accept: ['delayering', 'de-layering', 'de layering'],
       explain:
-        'Delayering removes layers of management, cutting the wage bill and shortening lines of communication. The risks are that remaining managers get wider spans of control, and job losses can demotivate the staff who stay.',
+        'Delayering removes layers of management, cutting the wage bill and shortening lines of communication. The risks are that each remaining manager must supervise more people, and job losses can demotivate the staff who stay.',
     },
     {
       id: 'hr5',
@@ -84,13 +84,13 @@ const hr: QuizDef = {
       stem: 'A supervisor retires, and the business fills the vacancy by promoting one of its existing shop-floor workers. Which of the following is an advantage of filling the vacancy this way?',
       options: [
         'It is always slower than advertising outside the business',
-        'It brings in completely fresh ideas from outside',
-        'The candidate is already known to the business and understands how it works',
-        'It creates no extra vacancy anywhere in the business',
+        'It brings in completely fresh ideas from outside the business',
+        'The candidate is already known and understands how the business works',
+        'It creates no extra vacancy anywhere in the whole business',
       ],
       correct: 2,
       explain:
-        'Internal recruitment (promotion or transfer) is quicker and cheaper, and the person’s ability is already known. The drawbacks are that no new ideas arrive from outside — and promoting someone leaves another vacancy to fill.',
+        'Internal recruitment (promotion or transfer) is quicker and cheaper, and the candidate’s ability is already known. The drawbacks are that no new ideas arrive from outside — and promoting someone leaves another vacancy to fill.',
     },
     {
       id: 'hr6',
@@ -101,7 +101,7 @@ const hr: QuizDef = {
       stem: 'What is the name of the document that lists the duties and responsibilities of the job being advertised?',
       accept: ['job description', 'job descriptions'],
       explain:
-        'A job description sets out the duties and responsibilities of the role. Do not confuse it with a person specification, which lists the skills, experience and qualities the ideal candidate needs.',
+        'A job description sets out the duties and responsibilities of the role. Do not confuse it with the document that lists the skills, experience and qualities the ideal candidate needs.',
     },
     {
       id: 'hr7',
@@ -112,7 +112,7 @@ const hr: QuizDef = {
       stem: 'A __________ specification lists the skills, qualifications and personal qualities the ideal candidate needs for a job. What one word completes the term?',
       accept: ['person', 'personal'],
       explain:
-        'The person specification describes the ideal candidate — their skills, qualifications and qualities. It gives the business clear criteria to score applicants against, and it is different from the job description, which describes the job itself.',
+        'The person specification describes the ideal candidate — their skills, qualifications and qualities. It gives the business clear criteria to score applicants against, and it is different from the document that describes the duties of the job itself.',
     },
     {
       id: 'hr8',
@@ -122,10 +122,10 @@ const hr: QuizDef = {
       marks: 1,
       stem: 'To choose between final candidates, a business invites them to spend a day completing group tasks, presentations and written tests so they can be compared directly. What is this selection method called?',
       options: [
-        'An induction day',
-        'A job fair',
+        'An appraisal meeting',
+        'A local job fair',
         'An assessment centre',
-        'A training course',
+        'A staff training course',
       ],
       correct: 2,
       explain:
@@ -182,7 +182,7 @@ const hr: QuizDef = {
         text: 'Deliveroo delivers restaurant meals using riders on bicycles and scooters. Riders choose when to work by switching on the app, and they are paid for each delivery they complete. Deliveroo treats its riders as self-employed.',
       },
       options: [
-        'A zero-hours contract',
+        'A contract with no guaranteed hours',
         'Full-time employment',
         'A job share',
         'The gig economy',
@@ -233,13 +233,13 @@ const hr: QuizDef = {
       stem: 'Which of the following is a FINANCIAL method of motivation?',
       options: [
         'Piece rates — paying workers a fixed amount for each item they produce',
-        'Job rotation — moving staff between tasks to add variety',
+        'Job enrichment — making the work itself more challenging',
         'Empowerment — giving staff more control over their own decisions',
         'Teamworking — organising staff into teams with shared goals',
       ],
       correct: 0,
       explain:
-        'Piece rates, pay rises, bonuses and promotion are financial motivators. Job rotation, enrichment, empowerment and teamworking are non-financial — they motivate through the work itself rather than through money.',
+        'Piece rates, pay rises, bonuses and promotion are financial motivators. Moving staff between tasks, enrichment, empowerment and teamworking are non-financial — they motivate through the work itself rather than through money.',
     },
     {
       id: 'hr17',

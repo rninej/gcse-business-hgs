@@ -24,14 +24,14 @@ const def: QuizDef = {
         text: 'In 2021 Etsy — the online marketplace for handmade and vintage goods — bought Depop, the fashion resale app popular with Generation Z, in a deal reported at around $1.6 billion. Depop kept its app and its brand, but ownership passed to Etsy.',
       },
       options: [
-        'Organic (internal) growth',
-        'A merger of two equals',
-        'Inorganic growth by takeover (acquisition)',
-        'Growth by franchising',
+        'Organic (internal) growth from within',
+        'A merger of two equal partners',
+        'External growth by buying a business',
+        'Growth by franchising the brand',
       ],
       correct: 2,
       explain:
-        'Buying another business is inorganic (external) growth: Etsy acquired Depop rather than building its own resale app from scratch. A merger would have combined the two as equals, and no franchise was involved.',
+        'Buying another business is external growth: Etsy acquired Depop rather than building its own resale app from scratch. A merger would have combined the two as equals, and no franchise was involved.',
     },
     {
       id: 'gs2',
@@ -45,10 +45,10 @@ const def: QuizDef = {
         text: 'In 2018 The Restaurant Group — which already owned chains such as Frankie & Benny’s — bought Wagamama, the fast-growing Asian noodle restaurant chain, for around £560 million. Wagamama was famous for the queues outside its restaurants.',
       },
       options: [
-        'Buying Wagamama delivered an instantly successful, growing brand with existing restaurants, staff and loyal customers — far faster than building one from scratch',
-        'Takeovers are always cheaper than organic growth in every case',
-        'Wagamama’s restaurants had to be closed down for legal reasons',
-        'The group wanted to reduce the number of brands it owned',
+        'It gained a proven, growing brand with restaurants, staff and customers at once',
+        'Takeovers are always cheaper than organic growth in every single case',
+        'All of Wagamama’s restaurants had to be closed down for legal reasons',
+        'The group wanted to reduce the total number of brands it owned',
       ],
       correct: 0,
       explain:
@@ -67,8 +67,8 @@ const def: QuizDef = {
       },
       options: [
         'Organic (internal) growth',
-        'Inorganic growth by merger',
-        'Inorganic growth by takeover',
+        'External growth by merger',
+        'External growth by takeover',
         'Growth by franchising its brand',
       ],
       correct: 0,
@@ -85,13 +85,13 @@ const def: QuizDef = {
       diagram: 'economies',
       options: [
         'Average cost per unit falls continuously, however big the business becomes',
-        'Average cost per unit is constant at every level of output',
-        'Average cost per unit falls at first, flattens, then rises again once the business becomes too big to manage',
-        'Average cost per unit rises at first and then falls',
+        'Average cost per unit stays constant at every level of output',
+        'Average cost per unit falls, flattens, then rises as the business gets too big',
+        'Average cost per unit rises at first and then falls later on',
       ],
       correct: 2,
       explain:
-        'The curve falls as economies of scale take hold — bulk buying, bigger machines, cheaper borrowing — then flattens at its minimum point, where cost per unit is lowest. Beyond that, diseconomies of scale (typically poor communication and weak coordination) push average costs back up.',
+        'The curve falls as the cost advantages of large-scale production take hold — bulk buying, bigger machines, cheaper borrowing — then flattens at its minimum point, where cost per unit is lowest. Beyond that, diseconomies of scale (typically poor communication and weak coordination) push average costs back up.',
     },
     {
       id: 'gs5',
@@ -99,20 +99,20 @@ const def: QuizDef = {
       topic: '2.1',
       difficulty: 2,
       marks: 1,
-      stem: 'Using the case study, which benefit of globalisation does the MINI plant most clearly show?',
+      stem: 'Using the case study, which benefit of trading worldwide does the MINI plant most clearly show?',
       extract: {
         title: 'MINI — made in Oxford, sold worldwide',
         text: 'BMW, the German carmaker, builds the MINI at its plant in Oxford and exports it to customers in more than 100 countries. Cars roll off the line and are shipped to markets from Japan to the United States.',
       },
       options: [
-        'Globalisation guarantees profits for every exporter',
-        'Export markets give a business access to far more customers than its home country alone',
-        'Globalisation removes all competition from foreign rivals',
-        'Selling abroad removes the need to build quality cars',
+        'Trading worldwide guarantees high profits for every single exporter',
+        'Export markets reach far more customers than the home country alone',
+        'Trading worldwide removes all competition from foreign rivals',
+        'Selling abroad removes the need to build high-quality cars',
       ],
       correct: 1,
       explain:
-        'The UK car market alone is far too small to absorb everything Oxford produces, so selling to over 100 markets multiplies the customer base. Globalisation creates these export opportunities — though it also means competing with the whole world, not just local rivals.',
+        'The UK car market alone is far too small to absorb everything Oxford produces, so selling to over 100 markets multiplies the customer base. Selling across borders creates these export opportunities — though it also means competing with the whole world, not just local rivals.',
     },
     {
       id: 'gs6',
@@ -126,10 +126,10 @@ const def: QuizDef = {
         text: 'Ben & Jerry’s, the ice cream brand owned by Unilever, uses Fairtrade-certified ingredients wherever it can and campaigns openly on environmental and social issues. Fairtrade ingredients usually cost more than uncertified alternatives.',
       },
       options: [
-        'Fairtrade ingredients are always the cheapest available',
-        'Ethical sourcing guarantees the ice cream tastes better',
+        'Fairtrade ingredients are always the cheapest ingredients available',
+        'Ethical sourcing guarantees that the ice cream tastes better',
         'The law requires every ice cream brand to use Fairtrade ingredients',
-        'Its customers care about ethical sourcing, so the values behind the brand support the premium prices they happily pay',
+        'Its customers value ethical sourcing, so the brand can charge premium prices',
       ],
       correct: 3,
       explain:
@@ -141,14 +141,14 @@ const def: QuizDef = {
       topic: '2.1',
       difficulty: 3,
       marks: 1,
-      stem: 'In large PLCs, the shareholders own the company while directors and managers run it day to day. What is the term for this separation?',
+      stem: 'In large PLCs, the people who own the company are different from the directors and managers who run it day to day. What is the term for this separation?',
       accept: [
         'divorce of ownership and control',
         'separation of ownership and control',
         'divorce of ownership & control',
       ],
       explain:
-        'The divorce of ownership and control describes how ownership (the shareholders) is separated from control (the directors and managers). Managers may pursue their own goals — growth, perks, status — rather than maximising shareholder returns, which is why shareholders can vote directors out at the AGM.',
+        'The divorce of ownership and control describes how the owners are separated from control (the directors and managers). Managers may pursue their own goals — growth, perks, status — rather than maximising returns for the owners, who can still vote directors out at the AGM.',
     },
     {
       id: 'gs8',
@@ -216,7 +216,7 @@ const def: QuizDef = {
       unit: '%',
       dp: 0,
       explain:
-        'The fall is £5.20 − £3.90 = £1.30. As a percentage of the original cost: (£1.30 ÷ £5.20) × 100 = 25%. Each pie costs a quarter less to make at the higher output — economies of scale in action.',
+        'The fall is £5.20 − £3.90 = £1.30. As a percentage of the original cost: (£1.30 ÷ £5.20) × 100 = 25%. Each pie costs a quarter less to make at the higher output — the cost advantages of producing at scale in action.',
     },
     {
       id: 'gs13',

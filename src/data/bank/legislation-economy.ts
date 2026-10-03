@@ -24,7 +24,7 @@ const def: QuizDef = {
         text: 'Wagamama runs Asian-inspired restaurants across the UK, employing thousands of kitchen and front-of-house staff. Every April the government raises the legal minimum hourly rate, so Wagamama’s payroll costs rise for its lowest-paid staff, squeezing the margin on every bowl of ramen.',
       },
       options: [
-        'The Consumer Rights Act 2015',
+        'GDPR',
         'The Equality Act 2010',
         'The Health and Safety at Work Act 1974',
         'The National Minimum Wage legislation',
@@ -45,10 +45,10 @@ const def: QuizDef = {
         text: 'Go Ape runs high-ropes adventure courses in forests across the UK. Before every session, instructors check harnesses and helmets, customers receive a full safety briefing, and staff are trained in rescue procedures. Logs record each daily inspection of the equipment.',
       },
       options: [
-        'The Consumer Rights Act 2015',
+        'The National Minimum Wage legislation',
         'The Health and Safety at Work Act 1974',
-        'The Equality Act 2010',
-        'GDPR',
+        'The Equality Act 2010, on fair treatment',
+        'GDPR, the data protection law',
       ],
       correct: 1,
       explain:
@@ -68,8 +68,8 @@ const def: QuizDef = {
       options: [
         'The consequences were limited to a small fine that the company easily paid',
         'Nothing changed, because food labelling is not a legal requirement in the UK',
-        'A young customer lost her life, the company’s reputation was damaged, and the law itself was tightened for every food business',
-        'The company avoided any change to how it labelled its food',
+        'A customer died, the company’s reputation was damaged, and the law itself was tightened',
+        'The company avoided making any change to how it labelled its food',
       ],
       correct: 2,
       explain:
@@ -87,14 +87,14 @@ const def: QuizDef = {
         text: 'Vinted, founded in Lithuania in 2008, is now Europe’s largest online marketplace for second-hand fashion, with tens of millions of members. To run the service it stores members’ names, addresses, payment details and message history.',
       },
       options: [
-        'Sell it to whoever offers the most money',
-        'Collect and use it lawfully, keep it secure, and delete it when members ask',
+        'Sell it to whoever offers the most money for it',
+        'Use it lawfully, keep it secure, and delete it on request',
         'Keep it forever, even after members close their accounts',
-        'Publish it openly so buyers and sellers can check it',
+        'Publish it openly so any buyer or seller can check it',
       ],
       correct: 1,
       explain:
-        'GDPR requires personal data to be collected lawfully (normally with consent), kept secure and not held longer than needed — and members can ask to see or delete their data. Breaches bring heavy fines as well as lasting damage to trust.',
+        'GDPR requires personal data to be collected lawfully, kept secure and not held longer than needed — and members can ask to see or delete their data. Breaches bring heavy fines as well as lasting damage to trust.',
     },
     {
       id: 'le5',
@@ -110,7 +110,7 @@ const def: QuizDef = {
       options: [
         'It rises, because each pound is now worth more',
         'It stays exactly the same, because the price was fixed in dollars',
-        'It doubles, because the pound has strengthened',
+        'It doubles, because the pound is now stronger',
         'It falls, because each dollar now converts into fewer pounds',
       ],
       correct: 3,
@@ -129,10 +129,10 @@ const def: QuizDef = {
         text: 'In the summer of 2022, products such as Heinz baked beans and tomato ketchup briefly disappeared from Tesco shelves after the supermarket refused to accept the price rises Heinz was demanding. Heinz said the rising cost of ingredients was behind its demands.',
       },
       options: [
-        'Inflation — the rising cost of ingredients, which Heinz tried to pass on in higher prices',
-        'Unemployment, because Heinz had sacked its workforce',
+        'Inflation — the rising cost of ingredients, passed on in higher prices',
+        'Unemployment, because Heinz had sacked its whole workforce',
         'A fall in interest rates, which made beans cheaper to make',
-        'A weak pound, which had made UK beans worthless abroad',
+        'A weak pound, which had made UK beans worthless when sold abroad',
       ],
       correct: 0,
       explain:
@@ -144,7 +144,7 @@ const def: QuizDef = {
       topic: '1.5',
       difficulty: 1,
       marks: 1,
-      stem: 'When the Bank of England raises interest rates, demand for expensive items bought on credit — such as new cars and family short breaks like those sold by Center Parcs — tends to fall.',
+      stem: 'When the UK’s central bank raises interest rates, demand for expensive items bought on credit — such as new cars and family short breaks like those sold by Center Parcs — tends to fall.',
       answer: true,
       explain:
         'True. Higher rates make monthly repayments dearer and leave households with less spare income, so spending on big-ticket items tends to fall. Businesses that depend on that spending see demand drop — and their own borrowing becomes more expensive too.',
@@ -230,7 +230,7 @@ const def: QuizDef = {
       tol: 1,
       unit: '£',
       explain:
-        'At £1 = €1.20, divide the euro amount by the rate: €4,200 ÷ 1.20 = £3,500. If the pound strengthened to £1 = €1.50, the same order would bring in only €4,200 ÷ 1.50 = £2,800 — which is why exporters watch exchange rates so closely.',
+        'At £1 = €1.20, divide the euro amount by the rate: €4,200 ÷ 1.20 = £3500. If the pound became stronger, at £1 = €1.50, the same order would bring in only €4,200 ÷ 1.50 = £2,800 — which is why exporters watch exchange rates so closely.',
     },
     {
       id: 'le15',
@@ -241,13 +241,13 @@ const def: QuizDef = {
       stem: 'Using the case study, calculate the bistro’s NEW annual interest cost at 6.5%. Give your answer in pounds.',
       extract: {
         title: 'The Salt Marsh Kitchen — a variable-rate loan',
-        text: 'The Salt Marsh Kitchen, a bistro in Norfolk, borrowed £40,000 from its bank on a variable interest rate. The rate has just risen from 5% to 6.5% a year. Interest is charged on the full £40,000.',
+        text: 'The Salt Marsh Kitchen, a bistro in Norfolk, borrowed £40,000 from its bank on a variable interest rate. The rate has just been raised from 5% to 6.5% a year. Interest is charged on the full £40,000.',
       },
       value: 2600,
       tol: 2,
       unit: '£',
       explain:
-        'Annual interest = loan × interest rate = £40,000 × 6.5% = £2,600. The rise from 5% (which cost £2,000) adds £600 a year to the bistro’s costs — money that must come out of profit unless prices rise.',
+        'Annual interest = loan × interest rate = £40,000 × 6.5% = £2600. The rise from 5% (which cost £2,000) adds £600 a year to the bistro’s costs — money that must come out of profit unless prices rise.',
     },
     {
       id: 'le16',

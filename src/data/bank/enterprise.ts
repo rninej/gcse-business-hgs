@@ -44,7 +44,7 @@ const enterprise: QuizDef = {
       topic: '1.1',
       difficulty: 2,
       marks: 1,
-      stem: 'Which of the following is a potential REWARD for an entrepreneur who takes the risk of starting a business?',
+      stem: 'Which of the following is a potential REWARD for someone who takes the risk of starting their own business?',
       options: [
         'Keeping the profit the business makes if it succeeds',
         'A guaranteed wage paid by the government whether or not the business succeeds',
@@ -61,10 +61,10 @@ const enterprise: QuizDef = {
       topic: '1.1',
       difficulty: 2,
       marks: 1,
-      stem: 'An entrepreneur who works hard and creates a good product is guaranteed to make a profit.',
+      stem: 'A business founder who works hard and creates a good product is guaranteed to make a profit.',
       answer: false,
       explain:
-        'False. However hard someone works, a new business carries real risk: demand may be lower than expected, costs may rise, or rivals may be stronger. If the business fails, the entrepreneur can lose their savings and owe debts.',
+        'False. However hard someone works, a new business carries real risk: demand may be lower than expected, costs may rise, or rivals may be stronger. If the business fails, the founder can lose their savings and owe debts.',
     },
     {
       id: 'e5',
@@ -72,10 +72,10 @@ const enterprise: QuizDef = {
       topic: '1.1',
       difficulty: 1,
       marks: 1,
-      stem: 'Value added = selling price − the cost of bought-in ________. What one word completes the formula?',
+      stem: 'Selling price − the cost of bought-in ________ gives the extra worth a business creates on each unit it sells. What one word completes the formula?',
       accept: ['materials', 'material', 'raw materials', 'the materials', 'bought in materials'],
       explain:
-        'Value added = selling price − the cost of bought-in materials. It measures the extra worth a business creates by transforming materials into a finished product that customers will pay more for.',
+        'The completed formula reads: selling price − the cost of bought-in materials. It measures the extra worth a business creates by transforming materials into a finished product that customers will pay more for.',
     },
     {
       id: 'e6',
@@ -83,17 +83,17 @@ const enterprise: QuizDef = {
       topic: '1.1',
       difficulty: 2,
       marks: 2,
-      stem: 'Using the case study, calculate the value added on ONE candle. Give your answer in pounds to 2 decimal places.',
+      stem: 'Using the case study, calculate the extra worth Maya creates on ONE candle. Give your answer in pounds to 2 decimal places.',
       extract: {
         title: 'Maya’s Candles',
-        text: 'Maya makes scented candles in her garage and sells them at a local craft market and online. Each candle sells for £12.00. The bought-in materials — wax, wicks, fragrance oil and glass jars — cost £4.50 per candle. Maya wants to add more value so she can charge higher prices and increase her profit.',
+        text: 'Maya makes scented candles in her garage and sells them at a local craft market and online. Each candle sells for £12.00. The ingredients she buys in — wax, wicks, fragrance oil and glass jars — cost £4.50 per candle. Maya wants to add more value so she can charge higher prices and increase her profit.',
       },
       value: 7.5,
       tol: 0.05,
       unit: '£',
       dp: 2,
       explain:
-        'Value added = selling price − cost of bought-in materials = £12.00 − £4.50 = £7.50 per candle. This £7.50 is the extra worth Maya creates by turning wax, wicks and jars into a finished scented candle — it has to cover her other costs before she makes a profit.',
+        'Extra worth = selling price − the cost of the bought-in ingredients = £12.00 − £4.50 = £7.50 per candle. This £7.50 is what Maya creates by turning wax, wicks and jars into a finished scented candle — it has to cover her other costs before she makes a profit.',
     },
     {
       id: 'e7',
@@ -103,14 +103,14 @@ const enterprise: QuizDef = {
       marks: 1,
       stem: 'Which of the following is a way a small café could ADD VALUE to what it sells?',
       options: [
-        'Personalising the service — remembering regulars’ orders and writing customers’ names on their cups',
-        'Buying the cheapest ingredients it can find',
-        'Charging exactly the same price as every rival café',
-        'Making customers queue for longer at the till',
+        'Personalising the service, e.g. writing each customer’s name on their cup',
+        'Buying the cheapest ingredients it can find wherever possible',
+        'Charging exactly the same price as every rival café in town',
+        'Making customers queue for longer at the till before serving',
       ],
       correct: 0,
       explain:
-        'Excellent, personal service makes customers value the whole experience more than the materials cost, so they will happily pay a higher price. Cheap ingredients, copying rivals’ prices and longer queues cut costs or annoy customers — none of them adds value.',
+        'Excellent, personal service makes customers value the whole experience more than what the bought-in ingredients cost, so they will happily pay a higher price. Cheap ingredients, copying rivals’ prices and longer queues cut costs or annoy customers — none of them adds value.',
     },
     {
       id: 'e8',
@@ -120,10 +120,10 @@ const enterprise: QuizDef = {
       marks: 1,
       stem: 'Which of the following best describes the role of business enterprise in the economy?',
       options: [
-        'Taking risks to produce goods and services — creating jobs and wealth in the process',
-        'Guaranteeing that no business ever fails',
-        'Replacing the need for government and public services',
-        'Making sure every new start-up is instantly profitable',
+        'Taking risks to produce goods and services, creating jobs and wealth',
+        'Guaranteeing that no business anywhere ever fails',
+        'Replacing the need for government and public services entirely',
+        'Making sure that every new start-up is instantly profitable',
       ],
       correct: 0,
       explain:
@@ -141,10 +141,10 @@ const enterprise: QuizDef = {
         text: 'Innocent Drinks was started in 1999 by three friends — Richard Reed, Adam Balon and Jon Wright. They spent £500 on fruit and sold smoothies from a stall at a music festival, asking customers to vote with their empty bottles: put the bottle in the ‘yes’ bin if the three should quit their jobs to make smoothies, or the ‘no’ bin if they should not. The ‘yes’ bin filled up first — so they handed in their notices and launched the business. In 2013 Coca-Cola became the majority owner of Innocent.',
       },
       options: [
-        'To test whether customers actually wanted their smoothies before they risked quitting their jobs',
-        'To raise extra finance by charging customers a deposit on each bottle',
-        'To find out how much the fruit for the smoothies cost',
-        'To meet the festival’s rules on recycling packaging waste',
+        'To check customers really wanted the smoothies before they quit their jobs',
+        'To raise extra finance by charging customers a deposit on every bottle',
+        'To find out how much the fruit for the smoothies cost to buy',
+        'To comply with the festival’s rules on recycling packaging waste',
       ],
       correct: 0,
       explain:
@@ -159,7 +159,7 @@ const enterprise: QuizDef = {
       stem: 'What is the term for an unmet customer need that no existing business is satisfying — an opportunity for a new start-up?',
       accept: ['gap in the market', 'a gap in the market', 'market gap', 'niche', 'a niche', 'niche in the market'],
       explain:
-        'A gap in the market is a customer need that existing businesses are not meeting. Entrepreneurs who spot one — like the founders of Innocent — can build a whole business around filling it.',
+        'A gap in the market is a customer need that existing businesses are not meeting. Business founders who spot one — like the creators of Innocent — can build a whole business around filling it.',
     },
     {
       id: 'e11',
@@ -167,7 +167,7 @@ const enterprise: QuizDef = {
       topic: '1.1',
       difficulty: 2,
       marks: 1,
-      stem: 'Which quality of a successful entrepreneur is shown by someone who keeps going despite setbacks and rejection?',
+      stem: 'Which quality of a successful business founder is shown by someone who keeps going despite setbacks and rejection?',
       accept: ['determination', 'persistence', 'perseverance', 'resilience', 'drive', 'determined', 'tenacity', 'persistent', 'resilient'],
       explain:
         'Determination — sticking at the goal despite obstacles, also called persistence or resilience — is one of the key entrepreneurial qualities, along with initiative, willingness to take advice and the ability to learn from failure.',
@@ -221,10 +221,10 @@ const enterprise: QuizDef = {
       topic: '1.1',
       difficulty: 3,
       marks: 1,
-      stem: 'What is the term for the difference between the selling price of a product and the cost of the bought-in materials used to make it?',
+      stem: 'What is the term for the difference between the selling price of a product and the cost of the bought-in supplies used to make it?',
       accept: ['added value', 'value added', 'adding value', 'the added value', 'the value added'],
       explain:
-        'Added value = selling price − cost of bought-in materials. A business increases its added value through branding, quality, design, convenience and excellent service.',
+        'Added value = selling price − the cost of what is bought in to make the product. A business increases its added value through branding, quality, design, convenience and excellent service.',
     },
   ],
 };

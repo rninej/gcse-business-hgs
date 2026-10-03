@@ -18,14 +18,14 @@ const financesources: QuizDef = {
       marks: 1,
       stem: 'Which of the following is a SMART objective for a new sandwich shop?',
       options: [
-        'Increase sales revenue by 5% within the next six months',
-        'Become the best sandwich shop in the country',
-        'Sell more sandwiches soon',
-        'Make customers happier than before',
+        'Increase sales revenue by 5% within six months',
+        'Become the best sandwich shop in the whole country',
+        'Sell more sandwiches as soon as possible',
+        'Make customers happier than they were before',
       ],
       correct: 0,
       explain:
-        'SMART objectives are Specific, Measurable, Achievable, Relevant and Time-bound. ‘Increase sales revenue by 5% within the next six months’ ticks every letter — the others are vague wishes that cannot be measured or timed.',
+        'SMART objectives are Specific, expressed as a number, Achievable, Relevant and Time-bound. ‘Increase sales revenue by 5% within six months’ ticks every letter — the others are vague wishes with no number and no deadline.',
     },
     {
       id: 'c2',
@@ -40,14 +40,20 @@ const financesources: QuizDef = {
     },
     {
       id: 'c3',
-      type: 'fib',
+      type: 'mcq',
       topic: '1.3',
       difficulty: 1,
       marks: 1,
-      stem: 'Profit = total revenue − total ________. What one word completes the formula?',
-      accept: ['costs', 'total costs', 'cost', 'the costs'],
+      stem: 'Which of the following formulas gives PROFIT?',
+      options: [
+        'Total revenue − total costs',
+        'Total costs − total revenue',
+        'Total revenue + total costs',
+        'Total revenue × total costs',
+      ],
+      correct: 0,
       explain:
-        'Profit = total revenue − total costs. If total costs are bigger than total revenue, the result is negative and the business makes a loss instead.',
+        'Profit is what is left after all the business’s expenses are subtracted from its sales income: profit = total revenue − total costs. If expenses are bigger than income, the result is negative and the business makes a loss instead.',
     },
     {
       id: 'c4',
@@ -57,10 +63,10 @@ const financesources: QuizDef = {
       marks: 1,
       stem: 'Which of the following is most likely to be the MAIN aim of a brand-new sole trader business in its first year?',
       options: [
-        'Survival — getting through the risky first year of trading',
+        'Survival — getting through the risky first year',
         'Flotation on the London Stock Exchange',
-        'Paying dividends to its shareholders',
-        'Becoming the market leader straight away',
+        'Paying out dividends to all of its shareholders',
+        'Becoming the market leader straight after launch',
       ],
       correct: 0,
       explain:
@@ -74,9 +80,9 @@ const financesources: QuizDef = {
       marks: 1,
       stem: 'A business can be profitable on paper yet still run out of cash. Which of the following best explains how this happens?',
       options: [
-        'It pays for stock and wages now, but customers pay their invoices weeks later — so cash flows out before it flows in',
-        'Profit and cash are exactly the same thing, so this is impossible',
-        'The bank automatically converts profit into cash every month',
+        'It pays for stock and wages now, but customers pay their invoices weeks later',
+        'Profit and cash are exactly the same thing, so this could never happen',
+        'The bank automatically converts all profit into cash at each month end',
         'Customers always pay in advance, which drains the business’s cash',
       ],
       correct: 0,
@@ -148,7 +154,7 @@ const financesources: QuizDef = {
       difficulty: 2,
       marks: 1,
       stem: 'A board-game designer raises £20,000 by collecting small pledges from thousands of supporters through an online platform such as Kickstarter. What is this source of finance called?',
-      options: ['Crowdfunding', 'Trade credit', 'Leasing', 'A bank overdraft'],
+      options: ['Crowdfunding', 'A government grant', 'Leasing', 'A bank overdraft'],
       correct: 0,
       explain:
         'Crowdfunding raises finance in small amounts from a large number of people, usually via an online platform. It suits creative projects with a fan base, and supporters typically receive the product or a reward rather than interest payments.',
@@ -181,7 +187,7 @@ const financesources: QuizDef = {
       topic: '1.3',
       difficulty: 2,
       marks: 1,
-      stem: 'Which of the following is CAPITAL expenditure for a new bakery?',
+      stem: 'Which of the following is spending on LONG-LASTING FIXED ASSETS for a new bakery?',
       options: [
         'Buying ovens and paying for the shop refit',
         'Buying flour, butter and eggs each week',
@@ -190,7 +196,7 @@ const financesources: QuizDef = {
       ],
       correct: 0,
       explain:
-        'Capital expenditure is spending on fixed, long-lasting assets such as premises, machinery and equipment — the ovens and refit will be used for years. Ingredients, wages and electricity are revenue expenditure: day-to-day running costs.',
+        'Ovens and a shop refit are fixed assets, bought once and used for years — that is the capital kind of spending. Ingredients, wages and electricity are revenue expenditure: the day-to-day running costs of the business.',
     },
     {
       id: 'c14',

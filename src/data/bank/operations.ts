@@ -29,12 +29,18 @@ const operations: QuizDef = {
     },
     {
       id: 'op2',
-      type: 'term',
+      type: 'mcq',
       topic: '2.3',
       difficulty: 2,
       marks: 1,
       stem: 'A bakery makes 300 white loaves, then stops, cleans the mixers and re-sets the machines before making 300 wholemeal loaves. What production method is this?',
-      accept: ['batch production', 'batch'],
+      options: [
+        'Job production',
+        'Batch production',
+        'Flow (line) production',
+        'One-off production',
+      ],
+      correct: 1,
       explain:
         'Batch production makes identical items in groups, with a changeover (cleaning or re-setting machines) between each batch. It is more flexible than flow production but less productive, because production stops between batches.',
     },
@@ -50,7 +56,7 @@ const operations: QuizDef = {
         text: 'Cadbury and Mars each make millions of chocolate bars a year. The bars are identical, and they move continuously along production lines — mixing, moulding, wrapping and boxing happen without the line stopping.',
       },
       options: [
-        'Job production',
+        'Single-item job production',
         'Batch production',
         'Flow (line) production',
         'One-off production',
@@ -61,12 +67,18 @@ const operations: QuizDef = {
     },
     {
       id: 'op4',
-      type: 'fib',
+      type: 'mcq',
       topic: '2.3',
       difficulty: 1,
       marks: 1,
-      stem: 'Labour productivity = total __________ ÷ number of employees. What one word completes the formula?',
-      accept: ['output', 'total output', 'production', 'units produced'],
+      stem: 'Which formula gives LABOUR PRODUCTIVITY?',
+      options: [
+        'Total output ÷ number of employees',
+        'Number of employees ÷ total output',
+        'Total output × number of employees',
+        'Total revenue ÷ number of employees',
+      ],
+      correct: 0,
       explain:
         'Labour productivity = output ÷ number of employees. It measures how much each worker produces on average; higher productivity lowers the labour cost of each unit.',
     },
@@ -84,9 +96,9 @@ const operations: QuizDef = {
       diagram: 'automation',
       options: [
         'It means Amazon no longer needs any employees in its warehouses',
-        'Robots raise productivity and reliability, which cuts the cost of processing each order',
-        'Robots never break down or need maintenance',
-        'Robots can design and launch new products by themselves',
+        'Robots raise productivity and reliability, cutting the cost of each order',
+        'Robots never break down or need any maintenance at all',
+        'Robots can design and launch brand-new products by themselves',
       ],
       correct: 1,
       explain:
@@ -101,7 +113,7 @@ const operations: QuizDef = {
       stem: 'What is the name for the extra stock a business keeps in reserve, in case a delivery arrives late or demand suddenly rises?',
       accept: ['buffer stock', 'buffer', 'buffer stocks', 'safety stock'],
       explain:
-        'Buffer stock is a reserve kept above the normal stock level, protecting the business if a delivery is late or demand jumps. The cost is cash tied up, storage space, and the risk of damage or goods going out of date.',
+        'Buffer stock is a reserve kept above the normal amount of stock on hand, protecting the business if a delivery is late or demand jumps. The cost is cash tied up, storage space, and the risk of damage or goods going out of date.',
     },
     {
       id: 'op7',
@@ -109,10 +121,10 @@ const operations: QuizDef = {
       topic: '2.3',
       difficulty: 1,
       marks: 1,
-      stem: 'Holding a large buffer stock ties up cash that could be used elsewhere in the business.',
+      stem: 'Holding a large reserve of stock ties up cash that could be used elsewhere in the business.',
       answer: true,
       explain:
-        'True — stock sitting on shelves has already been paid for, so it ties up cash, needs space, and can be damaged, stolen or go out of date. That is the trade-off for the protection buffer stock provides.',
+        'True — stock sitting on shelves has already been paid for, so it ties up cash, needs space, and can be damaged, stolen or go out of date. That is the trade-off for the protection a reserve provides.',
     },
     {
       id: 'op8',
@@ -126,9 +138,9 @@ const operations: QuizDef = {
         text: 'Toyota pioneered just-in-time (JIT) stock control. Parts arrive at the factory only a short time before they are needed on the production line, so Toyota holds very little stock.',
       },
       options: [
-        'Storage costs become far higher than keeping buffer stock',
-        'The business builds up large amounts of unwanted stock',
-        'Products take months to reach customers',
+        'Storage costs become far higher than keeping a reserve of stock',
+        'The business builds up large amounts of unwanted stock instead',
+        'Products take months to reach customers after ordering',
         'A late delivery from a supplier can stop the whole production line',
       ],
       correct: 3,
@@ -154,10 +166,10 @@ const operations: QuizDef = {
       marks: 1,
       stem: 'Procurement means buying in the goods and services a business needs. Which of the following is a risk of depending on a single supplier?',
       options: [
-        'If that supplier suffers a problem such as a fire or a strike, the business may be unable to get what it needs',
-        'It is impossible to build a long-term relationship with one supplier',
-        'A single supplier can never offer discounts for bulk buying',
-        'Managing one supplier is always more expensive than managing five',
+        'A fire or strike at that supplier could leave the business unable to get what it needs',
+        'It is impossible to build a long-term relationship with one single supplier',
+        'A single supplier can never offer any discounts for bulk buying',
+        'Managing one supplier is always more expensive than managing five of them',
       ],
       correct: 0,
       explain:
@@ -173,8 +185,8 @@ const operations: QuizDef = {
       options: [
         'Quality control happens before production starts; quality assurance happens afterwards',
         'Quality control applies to services only; quality assurance applies to goods only',
-        'Quality control inspects products at the end of production; quality assurance checks quality at every stage',
-        'They are two names for exactly the same thing',
+        'Quality control inspects at the end; quality assurance checks every stage',
+        'They are simply two names for exactly the same thing',
       ],
       correct: 2,
       explain:
@@ -189,7 +201,7 @@ const operations: QuizDef = {
       stem: 'What is the name of the approach to quality in which every single employee is made responsible for quality, not just inspectors?',
       accept: ['total quality management', 'tqm'],
       explain:
-        'Total Quality Management (TQM) makes quality the responsibility of every employee, from the shop floor to the boardroom — not just inspectors. It goes with Kaizen: constant small improvements instead of catching faults at the end.',
+        'Total Quality Management (TQM) makes quality the responsibility of every employee, from the shop floor to the boardroom — not just inspectors. Everyone is encouraged to spot and prevent faults rather than catch them at the end.',
     },
     {
       id: 'op13',

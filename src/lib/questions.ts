@@ -26,7 +26,7 @@ export interface GenResult {
 }
 
 const SCHEMA_HINT = `Return ONLY a JSON array (no prose, no markdown fences). Each element:
-{"type":"mcq","topic":"<topic id>","difficulty":1|2|3,"marks":1,"stem":"...","extract":{"title":"...","text":"..."} (optional),"diagram":null,"options":["A","B","C","D"] (exactly 4, exactly ONE correct — put the correct option in a RANDOM position, never always first),"correct":0|1|2|3,"explain":"1-2 sentence explanation"}
+{"type":"mcq","topic":"<topic id>","difficulty":1|2|3,"marks":1,"stem":"...","extract":{"title":"...","text":"..."} (optional),"diagram":null,"options":["A","B","C","D"] (exactly 4, exactly ONE correct — put the correct option in a RANDOM position, never always first; all four options MUST be similar in length and detail — the correct one must never stand out as the longest or most qualified; make at least one distractor longer than the correct option),"correct":0|1|2|3,"explain":"1-2 sentence explanation"}
 {"type":"term","topic":"...","difficulty":...,"marks":1,"stem":"...","accept":["term","plural or common misspelling-free variant"],"explain":"..."}   // student types a word/term; list 2-4 accepted spellings incl. hyphen/space variants
 {"type":"fib","topic":"...","stem":"sentence with ________ blank asking for ONE word","accept":["word"],"explain":"..."}
 {"type":"truefalse","topic":"...","stem":"statement","answer":true|false,"explain":"..."}
@@ -76,6 +76,12 @@ function validateOne(raw: Record<string, unknown>, allowedTopics: Set<string>): 
     if (options.length !== 4 || !Number.isInteger(correct) || correct < 0 || correct > 3) return null;
     if (options.some((o) => !o || o.length > 120)) return null;
     if (new Set(options.map((o) => o.toLowerCase())).size !== 4) return null;
+    // length-parity guard: students quickly learn "pick the longest option" —
+    // reject questions where the correct option is conspicuously the longest
+    const cLen = options[correct].length;
+    const others = options.filter((_, i) => i !== correct).map((o) => o.length);
+    const avgOthers = others.reduce((a, b) => a + b, 0) / others.length;
+    if (cLen > Math.max(...others) && cLen > avgOthers * 1.75) return null;
     return { id: '', type: 'mcq', topic, difficulty, marks, stem, extract, explain, options, correct };
   }
   if (type === 'term' || type === 'fib') {
@@ -240,6 +246,8 @@ ${briefLine}
 
 Rules:
 - One correct answer only, no trick wording, no "all of the above".
+- MCQ length parity is CRITICAL: all four options must be comparable in length and specificity. The correct option must NOT be the longest or the most detailed — students exploit that. Write distractors that are just as specific and roughly as long as the correct option (make at least one distractor longer).
+- Never let one question give away another's answer: a term that one question asks the student to type must not appear in any other question's stem, options or explanation.
 - "term" questions ask for a key term (1-3 words) — provide accepted spellings including obvious spacing/hyphen variants and the plural.
 - "numeric" questions must state the rounding (e.g. "to 1 decimal place"); the value must be mathematically certain from the stem/extract; tolerance 0.05-0.5; include the full working in the explanation, ENDING with the final answer.
 - Topics use Edexcel spec ids: 1.1 1.2 1.3 1.4 1.5 2.1 2.2 2.3 2.4 2.5.

@@ -29,7 +29,7 @@ const def: QuizDef = {
       ],
       correct: 2,
       explain:
-        'The Digital Marketing Manager sits on the bottom layer, connected to the Marketing Director alongside the Sales Manager. Working out who reports to whom is exactly what an organisational chart is for — the chain of command runs downwards through it.',
+        'The Digital Marketing Manager sits on the bottom layer, connected to the Marketing Director alongside the Sales Manager. Working out who reports to whom is exactly what an organisational chart is for — the lines of authority run downwards through it.',
     },
     {
       id: 'pp2',
@@ -43,8 +43,8 @@ const def: QuizDef = {
         text: 'PGL runs residential activity centres for school groups across Britain, from adventure centres in Devon to outdoor education centres in Scotland. Each centre is run by its own on-site team, and regional managers each look after several centres near them.',
       },
       options: [
-        'By function, such as marketing and finance',
-        'By region or location, with managers responsible for the centres in their area',
+        'By function, such as marketing, finance and sales',
+        'By region, with managers responsible for their local centres',
         'By product, with a separate company for each activity',
         'By customer, with one team per individual school',
       ],
@@ -85,10 +85,10 @@ const def: QuizDef = {
         text: 'New team members at Pret A Manger learn to make the drinks and food on real shifts, working alongside experienced baristas who coach them as they go. Mistakes happen — but on real orders, with support close by.',
       },
       options: [
-        'Off-the-job training at a college',
-        'Induction only, with no further training',
-        'On-the-job training — learning while doing the real work',
-        'Job rotation between different branches',
+        'Off-the-job training at a local college',
+        'Induction only, with no further training at all',
+        'On-the-job training — learning by doing the work',
+        'Job rotation between different branches of Pret',
       ],
       correct: 2,
       explain:
@@ -102,10 +102,10 @@ const def: QuizDef = {
       marks: 1,
       stem: 'According to Herzberg, which of the following is a MOTIVATOR — a factor that genuinely creates job satisfaction?',
       options: [
-        'A comfortable temperature in the workplace',
-        'Basic pay at the market rate',
-        'Recognition for good work and a sense of achievement',
-        'A clean, safe working environment',
+        'A comfortably warm temperature in the workplace',
+        'Basic pay at the going market rate',
+        'Recognition for good work and achievement',
+        'A clean and safe working environment',
       ],
       correct: 2,
       explain:
@@ -117,12 +117,12 @@ const def: QuizDef = {
       topic: '2.5',
       difficulty: 3,
       marks: 1,
-      stem: 'Ade has a secure job and a comfortable salary, gets on well with her team, and enjoys the Friday social. Yet she feels unnoticed while others win praise for their projects. According to Maslow, which need is currently UNMET?',
+      stem: 'Ade has a secure job and a comfortable salary, gets on well with her team, and enjoys the Friday social. Yet she feels unnoticed while others win praise for their projects. In terms of the pyramid of human needs, which need is currently UNMET?',
       options: [
-        'Physiological needs — food and rest',
-        'Safety needs — security and shelter',
-        'Social needs — friendship and belonging',
-        'Esteem needs — recognition, status and respect from others',
+        'Physiological needs — food, water and rest',
+        'Safety needs — security, shelter and stability',
+        'Social needs — friendship, belonging and the team',
+        'Esteem needs — recognition and respect from others',
       ],
       correct: 3,
       explain:
@@ -228,17 +228,17 @@ const def: QuizDef = {
       topic: '2.5',
       difficulty: 2,
       marks: 2,
-      stem: 'Using the case study, calculate the Saltdean Bay Hotel’s staff turnover rate for last year. Give your answer as a percentage to the nearest whole number.',
+      stem: 'Using the case study, calculate the percentage of the Saltdean Bay Hotel’s workforce that left and had to be replaced last year. Give your answer as a percentage to the nearest whole number.',
       extract: {
         title: 'Saltdean Bay Hotel — a staff survey',
-        text: 'The Saltdean Bay Hotel employs 75 staff. Last year 15 of them left and had to be replaced. The HR manager wants to know the staff turnover rate, and what it says about morale at the hotel.',
+        text: 'The Saltdean Bay Hotel employs 75 staff. Last year 15 of them left and had to be replaced. The HR manager wants to know what percentage of the workforce left, and what it says about morale at the hotel.',
       },
       value: 20,
       tol: 0.5,
       unit: '%',
       dp: 0,
       explain:
-        'Staff turnover = (number of leavers ÷ total staff) × 100 = (15 ÷ 75) × 100 = 20%. One in five employees left — each one a recruitment cost and a loss of experience, and a warning sign about motivation.',
+        'Leavers as a percentage of the workforce = (number of leavers ÷ total staff) × 100 = (15 ÷ 75) × 100 = 20%. One in five employees left — each one a recruitment cost and a loss of experience, and a warning sign about motivation.',
     },
     {
       id: 'pp15',
@@ -255,7 +255,7 @@ const def: QuizDef = {
       tol: 5,
       unit: '£',
       explain:
-        'Agency fee = 20% × £28,000 = £5,600. Add the £1,500 training budget and filling the vacancy costs at least £7,100 before the designer has earned a penny — which is why many businesses try internal recruitment first.',
+        'Agency fee = 20% × £28,000 = £5600. Add the £1,500 training budget and filling the vacancy costs at least £7,100 before the designer has earned a penny — which is why many businesses try internal recruitment first.',
     },
     {
       id: 'pp16',
@@ -263,10 +263,10 @@ const def: QuizDef = {
       topic: '2.5',
       difficulty: 2,
       marks: 1,
-      stem: 'According to Maslow, once a level of need has been satisfied, it stops being a strong motivator — and the next level up becomes what drives the person.',
+      stem: 'Once a level of need has been satisfied, it stops being a strong motivator — and the next level up becomes what drives the person.',
       answer: true,
       explain:
-        'True. Maslow argued that satisfied needs lose their power to motivate: nobody is inspired for long by a salary that merely covers bills they can already pay. Effective managers therefore diagnose which level is unmet — because a pay rise will not fix a need for recognition.',
+        'True. The pyramid theory argues that satisfied needs lose their power to motivate: nobody is inspired for long by a salary that merely covers bills they can already pay. Effective managers therefore diagnose which level is unmet — because a pay rise will not fix a need for recognition.',
     },
   ],
 };

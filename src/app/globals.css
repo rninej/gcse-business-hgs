@@ -90,8 +90,8 @@
   --sidebar-ring: oklch(0.51 0.11 163);
 }
 
-/* gcsebusiness is a light-mode-only product — the .dark block is kept for
-   completeness but the class is never applied (see layout.tsx). */
+/* Dark palette — applied by the .dark class on <html> (ThemeToggle). The
+   inline boot script in layout.tsx sets it before first paint. */
 .dark {
   --background: oklch(0.17 0.015 250);
   --foreground: oklch(0.96 0.005 106);
@@ -151,7 +151,7 @@
   /* Ambient aurora backdrop — soft emerald/amber/teal light pools painted on
      the body itself (no image, no element). Every frosted-glass surface
      refracts these gradients, so the glass reads everywhere; during quizzes
-     the forest photo layer sits on top (-z-10) and covers it completely. */
+     the backdrop layer sits on top (-z-10) and covers it completely. */
   body {
     @apply bg-background text-foreground;
     background-image:
@@ -160,6 +160,20 @@
       radial-gradient(48rem 36rem at 50% 104%, oklch(0.88 0.06 185 / 0.56), transparent 68%),
       radial-gradient(34rem 24rem at 80% 78%, oklch(0.9 0.05 140 / 0.48), transparent 62%),
       radial-gradient(30rem 22rem at 18% 62%, oklch(0.92 0.045 95 / 0.34), transparent 60%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+  }
+
+  /* dark mode: the same aurora, but as deep jewel pools glowing up through
+     a near-black canvas — glass surfaces keep their light rims, so the
+     frosted system still reads */
+  .dark body {
+    background-image:
+      radial-gradient(46rem 32rem at 8% -10%, oklch(0.28 0.055 160 / 0.5), transparent 64%),
+      radial-gradient(40rem 28rem at 94% 0%, oklch(0.3 0.05 80 / 0.34), transparent 66%),
+      radial-gradient(48rem 36rem at 50% 104%, oklch(0.26 0.045 185 / 0.4), transparent 68%),
+      radial-gradient(34rem 24rem at 80% 78%, oklch(0.27 0.04 140 / 0.3), transparent 62%),
+      radial-gradient(30rem 22rem at 18% 62%, oklch(0.31 0.035 95 / 0.2), transparent 60%);
     background-attachment: fixed;
     background-repeat: no-repeat;
   }

@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { BrandLockup } from './Brand';
+import { ThemeToggle } from './ThemeToggle';
 import { CheckCircle2, Check } from 'lucide-react';
 import type { SessionInfo } from '@/lib/types';
 
@@ -23,7 +24,10 @@ export function AuthView() {
       <header className="border-b border-white/40 bg-background/60 backdrop-blur-xl backdrop-saturate-150">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 min-h-16 py-2.5 flex items-center justify-between gap-3">
           <BrandLockup />
-          <span className="text-xs text-muted-foreground hidden sm:block">Edexcel GCSE (9–1) Business · spec 1BS0</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground hidden sm:block">Edexcel GCSE (9–1) Business · spec 1BS0</span>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 

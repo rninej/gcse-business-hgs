@@ -59,13 +59,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, attemptId: existing.id, resumed: true });
   }
 
-  // fresh order + shuffled mcq options for practice variety
-  const questions = [...quiz.questions];
-  for (let i = questions.length - 1; i > 0; i--) {
+  // fresh order + shuffled mcq options for practice variety — but written
+  // questions always sink to the end (quickfire first, extended response last)
+  const quick = quiz.questions.filter((q) => q.type !== 'written');
+  const written = quiz.questions.filter((q) => q.type === 'written');
+  for (let i = quick.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [questions[i], questions[j]] = [questions[j], questions[i]];
+    [quick[i], quick[j]] = [quick[j], quick[i]];
   }
-  const shuffled = shuffleMcqOptions(questions);
+  const shuffled = shuffleMcqOptions([...quick, ...written]);
 
   const attemptId = `at_${randomUUID().replace(/-/g, '').slice(0, 10)}`;
   const attempt: Attempt = {
@@ -145,14 +147,21 @@ async function startCustomMix(
     );
   }
 
-  // fresh order (Fisher–Yates) then slice; fewer available than asked for is
-  // fine — the student gets everything there is
-  const arr = [...pool.values()];
-  for (let i = arr.length - 1; i > 0; i--) {
+  // fresh order (Fisher–Yates) among the quick questions; written ones are
+  // held back for the finale
+  const quick = [...pool.values()].filter((q) => q.type !== 'written');
+  const written = [...pool.values()].filter((q) => q.type === 'written');
+  for (let i = quick.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+    [quick[i], quick[j]] = [quick[j], quick[i]];
   }
-  const picked = shuffleMcqOptions(arr.slice(0, count));
+  // fresh order (Fisher–Yates); a short mix (under 8 questions) skips the
+  // written ones, longer mixes include exactly one as the finale
+  const wantWritten = count >= 8 && written.length > 0 ? 1 : 0;
+  const picked = shuffleMcqOptions([
+    ...quick.slice(0, count - wantWritten),
+    ...written.slice(0, wantWritten),
+  ]);
 
   const attemptId = `at_${randomUUID().replace(/-/g, '').slice(0, 10)}`;
   const attempt: Attempt = {

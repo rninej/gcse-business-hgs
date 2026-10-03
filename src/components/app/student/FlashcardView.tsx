@@ -1,28 +1,39 @@
 'use client';
 
-// Revise section — flashcard decks for every spec topic. Flip, shuffle and
-// self-mark "knew it / didn't know it"; a session summary shows progress at
-// the end. "Knew it" marks persist per deck in localStorage, so the library
-// shows how much of each deck the student has down, and a completion screen
-// offers to re-run just the cards they missed. Pure client-side, instant,
-// works on touch and keyboard.
+// Revise section — two modes behind a segmented toggle: flashcard decks for
+// every spec topic (flip, shuffle, self-mark "knew it / didn't know it";
+// marks persist per deck in localStorage, with a session summary and a
+// re-run-the-missed-cards screen — pure client-side, instant, touch and
+// keyboard), and Revision notes — structured per-topic notes (sections, key
+// terms, formulas, examiner tips) distilled from the endorsed textbook, each
+// ending in a "Practise this topic" quiz. The chosen mode persists in
+// localStorage, so returning students land where they left off.
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
   ArrowLeft,
+  BookMarked,
   Check,
+  ChevronRight,
+  Clock,
   Layers,
   Lightbulb,
+  Notebook,
+  PlayCircle,
   RotateCcw,
   Shuffle,
+  Sigma,
   Target,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useApp } from '@/lib/store';
+import { api } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 import { PageHeader, ThemedSkeleton, EmptyState } from '@/components/shared';
 import { FLASHCARD_DECKS } from '@/data/flashcards';
+import { TOPIC_NOTES, type TopicNote } from '@/data/notes';
 import { TOPIC_MAP } from '@/lib/topics';
 import type { FlashcardDeck } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -90,10 +101,36 @@ function getKnownServerSnapshot(): Record<string, number[]> {
   return EMPTY_KNOWN;
 }
 
+/* ---- persisted mode — which half of Revise the student lands on -------- */
+
+const MODE_KEY = 'hgs.revise.mode';
+type ReviseMode = 'cards' | 'notes';
+
+function readMode(): ReviseMode {
+  if (typeof window === 'undefined') return 'cards';
+  try {
+    return localStorage.getItem(MODE_KEY) === 'notes' ? 'notes' : 'cards';
+  } catch {
+    return 'cards';
+  }
+}
+
 export function FlashcardView() {
   const go = useApp((s) => s.go);
   const [deck, setDeck] = useState<FlashcardDeck | null>(null);
   const [onlyUnknown, setOnlyUnknown] = useState(false);
+  const [mode, setMode] = useState<ReviseMode>(readMode);
+  const [noteTopic, setNoteTopic] = useState<string | null>(null);
+
+  function changeMode(m: ReviseMode) {
+    setMode(m);
+    setNoteTopic(null); // detail pages are full takeovers — always return to a library
+    try {
+      localStorage.setItem(MODE_KEY, m);
+    } catch {
+      /* private mode — preference just won't persist */
+    }
+  }
 
   if (deck) {
     return (
@@ -108,14 +145,42 @@ export function FlashcardView() {
     );
   }
 
+  const note = noteTopic ? TOPIC_NOTES[noteTopic] : undefined;
+  if (mode === 'notes' && noteTopic) {
+    return note ? (
+      <NoteTopicPage note={note} onBack={() => setNoteTopic(null)} />
+    ) : (
+      // unknown topic id — never trap the student on a dead page
+      <>
+        <PageHeader title="Revision notes" />
+        <EmptyState
+          icon={Notebook}
+          title="Notes not found"
+          body="That topic doesn’t have notes yet — pick another from the list."
+          action={
+            <Button size="sm" onClick={() => setNoteTopic(null)}>
+              All topics
+            </Button>
+          }
+        />
+      </>
+    );
+  }
+
   const t1 = FLASHCARD_DECKS.filter((d) => TOPIC_MAP[d.topic]?.theme === 1);
   const t2 = FLASHCARD_DECKS.filter((d) => TOPIC_MAP[d.topic]?.theme === 2);
+  const n1 = Object.keys(TOPIC_NOTES).filter((id) => TOPIC_MAP[id]?.theme === 1);
+  const n2 = Object.keys(TOPIC_NOTES).filter((id) => TOPIC_MAP[id]?.theme === 2);
 
   return (
     <>
       <PageHeader
-        title="Flashcards"
-        sub="Flip through the key terms for every topic — definitions, formulas and facts from the spec."
+        title={mode === 'notes' ? 'Revision notes' : 'Flashcards'}
+        sub={
+          mode === 'notes'
+            ? 'Condensed notes for every spec topic — sections, key terms, formulas and examiner tips.'
+            : 'Flip through the key terms for every topic — definitions, formulas and facts from the spec.'
+        }
         actions={
           <Button variant="outline" size="sm" onClick={() => go({ name: 's-practice' })}>
             Quizzes
@@ -123,24 +188,262 @@ export function FlashcardView() {
         }
       />
 
-      {[
-        { title: 'Theme 1 · Investigating small business', rows: t1 },
-        { title: 'Theme 2 · Building a business', rows: t2 },
-      ].map((group) => (
-        <section key={group.title} className="mb-8">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-            <Layers className="h-4 w-4" /> {group.title}
-          </h2>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {group.rows.map((d) => (
-              <DeckCard key={d.topic} deck={d} onOpen={(focus) => {
-                setOnlyUnknown(focus);
-                setDeck(d);
-              }} />
-            ))}
+      {/* mode toggle — segmented, remembered for next time */}
+      <div
+        className="glass-soft rounded-xl p-1 inline-flex gap-1 mb-6"
+        role="group"
+        aria-label="Revision mode"
+      >
+        <button
+          type="button"
+          onClick={() => changeMode('cards')}
+          aria-pressed={mode === 'cards'}
+          className={cn(
+            'rounded-lg h-9 px-4 text-sm font-medium inline-flex items-center gap-2 press transition-colors',
+            mode === 'cards'
+              ? 'glass-selected font-semibold text-primary'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <Layers className="h-4 w-4" aria-hidden /> Flashcards
+        </button>
+        <button
+          type="button"
+          onClick={() => changeMode('notes')}
+          aria-pressed={mode === 'notes'}
+          className={cn(
+            'rounded-lg h-9 px-4 text-sm font-medium inline-flex items-center gap-2 press transition-colors',
+            mode === 'notes'
+              ? 'glass-selected font-semibold text-primary'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <Notebook className="h-4 w-4" aria-hidden /> Notes
+        </button>
+      </div>
+
+      {mode === 'notes'
+        ? [
+            { title: 'Theme 1 · Investigating small business', rows: n1 },
+            { title: 'Theme 2 · Building a business', rows: n2 },
+          ].map((group) => (
+            <section key={group.title} className="mb-8">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                <Notebook className="h-4 w-4" aria-hidden /> {group.title}
+              </h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {group.rows.map((id) => (
+                  <NoteCard key={id} note={TOPIC_NOTES[id]} onOpen={setNoteTopic} />
+                ))}
+              </div>
+            </section>
+          ))
+        : [
+            { title: 'Theme 1 · Investigating small business', rows: t1 },
+            { title: 'Theme 2 · Building a business', rows: t2 },
+          ].map((group) => (
+            <section key={group.title} className="mb-8">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                <Layers className="h-4 w-4" /> {group.title}
+              </h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {group.rows.map((d) => (
+                  <DeckCard key={d.topic} deck={d} onOpen={(focus) => {
+                    setOnlyUnknown(focus);
+                    setDeck(d);
+                  }} />
+                ))}
+              </div>
+            </section>
+          ))}
+    </>
+  );
+}
+
+/* ---------------- notes library card ---------------- */
+
+function NoteCard({ note, onOpen }: { note: TopicNote; onOpen: (topic: string) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(note.topic)}
+      aria-label={`Read revision notes for ${note.topic} ${note.title} — ${note.readMins} minute read`}
+      className="rounded-xl border bg-card p-5 text-left transition-all hover:border-primary/40 hover:shadow-sm outline-offset-2"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-semibold">
+            <span className="text-primary tabular-nums">{note.topic}</span> {note.title}
           </div>
+          <p className="text-xs text-muted-foreground mt-1">{note.blurb}</p>
+        </div>
+        <Badge variant="secondary" className="tabular-nums shrink-0 inline-flex items-center gap-1">
+          <Clock className="h-3 w-3" aria-hidden /> {note.readMins} min
+        </Badge>
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground">
+          {note.keyTerms.length} key terms{note.formulas ? ` · ${note.formulas.length} formulas` : ''}
+        </span>
+        <span className="text-xs font-medium text-primary inline-flex items-center gap-0.5">
+          Read <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+        </span>
+      </div>
+    </button>
+  );
+}
+
+/* ---------------- single-topic notes page ---------------- */
+
+function NoteTopicPage({ note, onBack }: { note: TopicNote; onBack: () => void }) {
+  const go = useApp((s) => s.go);
+  const { toast } = useToast();
+  const [starting, setStarting] = useState(false);
+
+  async function practise() {
+    if (starting) return;
+    setStarting(true);
+    try {
+      const res = await api.post<{ attemptId: string; questionCount: number }>('/api/student/practice', {
+        topics: [note.topic],
+      });
+      go({ name: 'quiz', attemptId: res.attemptId });
+    } catch (e) {
+      toast({ title: 'Could not start the quiz', description: (e as Error).message });
+      setStarting(false);
+    }
+  }
+
+  const termsId = `note-terms-${note.topic}`;
+  const formulasId = `note-formulas-${note.topic}`;
+  const tipsId = `note-tips-${note.topic}`;
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <Button variant="ghost" size="sm" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4" /> All topics
+        </Button>
+        <Badge variant="secondary" className="inline-flex items-center gap-1">
+          <Clock className="h-3 w-3" aria-hidden /> {note.readMins} min read
+        </Badge>
+      </div>
+
+      <article className="max-w-3xl">
+        <h1 className="text-2xl font-semibold tracking-tight mb-1">
+          <span className="text-primary tabular-nums">{note.topic}</span> {note.title}
+        </h1>
+        <p className="text-sm text-muted-foreground">{note.blurb}</p>
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          <Badge variant="outline">{note.sections.length} sections</Badge>
+          <Badge variant="outline">{note.keyTerms.length} key terms</Badge>
+          {note.formulas ? <Badge variant="outline">{note.formulas.length} formulas</Badge> : null}
+        </div>
+
+        {/* main notes */}
+        <div className="mt-6 space-y-4">
+          {note.sections.map((s) => (
+            <section key={s.heading} className="rounded-xl border bg-card p-5 sm:p-6">
+              <h2 className="text-base font-semibold">{s.heading}</h2>
+              <ul className="mt-3 space-y-2">
+                {s.points.map((p, i) => (
+                  <li key={i} className="flex gap-2.5 text-sm leading-relaxed">
+                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-primary/55 shrink-0" aria-hidden />
+                    <span>{p}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+
+        {/* key terms */}
+        <section className="mt-8" aria-labelledby={termsId}>
+          <h2
+            id={termsId}
+            className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3"
+          >
+            <BookMarked className="h-4 w-4" aria-hidden /> Key terms
+          </h2>
+          <dl className="grid sm:grid-cols-2 gap-3">
+            {note.keyTerms.map((kt) => (
+              <div key={kt.term} className="rounded-xl border bg-card p-4">
+                <dt className="text-sm font-semibold">{kt.term}</dt>
+                <dd className="text-sm text-muted-foreground mt-1 leading-relaxed">{kt.def}</dd>
+              </div>
+            ))}
+          </dl>
         </section>
-      ))}
+
+        {/* formulas — mono, kbd-style, each with a worked example */}
+        {note.formulas?.length ? (
+          <section className="mt-8" aria-labelledby={formulasId}>
+            <h2
+              id={formulasId}
+              className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3"
+            >
+              <Sigma className="h-4 w-4" aria-hidden /> Formulas
+            </h2>
+            <div className="space-y-3">
+              {note.formulas.map((f) => (
+                <div key={f.name} className="rounded-xl border bg-card p-4 sm:p-5">
+                  <div className="text-sm font-semibold">{f.name}</div>
+                  <div className="mt-2 rounded-lg border border-black/5 bg-secondary/80 px-3.5 py-2.5 font-mono text-[13px] leading-relaxed shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)]">
+                    {f.formula}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                    <span className="font-semibold">e.g.</span> {f.example}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {/* examiner tips — accent callout */}
+        <section
+          className="mt-8 rounded-xl border bg-[var(--accent)]/25 p-5 sm:p-6"
+          aria-labelledby={tipsId}
+        >
+          <h2
+            id={tipsId}
+            className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[var(--accent-foreground)]"
+          >
+            <Lightbulb className="h-4 w-4" aria-hidden /> Examiner tips
+          </h2>
+          <ul className="mt-3 space-y-2.5">
+            {note.examTips.map((tip, i) => (
+              <li key={i} className="flex gap-2.5 text-sm leading-relaxed">
+                <span
+                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent-foreground)]/10 text-[11px] font-bold tabular-nums text-[var(--accent-foreground)]"
+                  aria-hidden
+                >
+                  {i + 1}
+                </span>
+                <span>{tip}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* straight into practice */}
+        <div className="glass rounded-2xl p-5 sm:p-6 mt-8 flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex-1 text-center sm:text-left min-w-0">
+            <p className="font-semibold">Test yourself on this topic</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              An untimed practice quiz on {note.topic} — unlimited goes, instant marking.
+            </p>
+          </div>
+          <Button
+            onClick={() => void practise()}
+            disabled={starting}
+            className="w-full sm:w-auto shrink-0 shadow-[0_8px_24px_-8px_var(--primary)]"
+          >
+            <PlayCircle className="h-4 w-4" />
+            {starting ? 'Loading…' : 'Practise this topic'}
+          </Button>
+        </div>
+      </article>
     </>
   );
 }

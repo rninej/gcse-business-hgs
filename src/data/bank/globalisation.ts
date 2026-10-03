@@ -18,9 +18,9 @@ const globalisation: QuizDef = {
       marks: 1,
       stem: 'Which statement best describes globalisation?',
       options: [
-        'A tax charged on goods brought into a country',
-        'The increasing integration of the world’s economies, as businesses trade, invest and operate across national borders',
-        'An agreement to fix the same price for a product in every country',
+        'A tax charged on goods brought into a country from abroad',
+        'The growing integration of the world’s economies across national borders',
+        'An agreement to fix the same price for a product in every single country',
         'A rule that businesses may only sell to customers in their own country',
       ],
       correct: 1,
@@ -55,10 +55,10 @@ const globalisation: QuizDef = {
       difficulty: 1,
       marks: 1,
       stem: 'A UK café chain buys coffee beans from growers in Brazil to use in its British shops. From the point of view of the UK, the coffee beans are…',
-      options: ['An export', 'A trade bloc', 'An import', 'A subsidy'],
+      options: ['A tariff', 'A quota', 'An import', 'A subsidy'],
       correct: 2,
       explain:
-        'An import is a good or service bought from another country. If the chain later sold bottled coffee drinks to customers in France, those sales would be UK exports.',
+        'An import is a good or service bought from another country. If the chain later sold bottled coffee drinks to customers in France, those sales would count the other way round — goods sold abroad by a UK business.',
     },
     {
       id: 'gl4',
@@ -88,16 +88,16 @@ const globalisation: QuizDef = {
       topic: '2.1',
       difficulty: 3,
       marks: 1,
-      stem: 'The European Union (EU) single market lets goods, services, money and people move between member countries without trade barriers; the UK left the single market at the end of 2020. What is the main benefit to businesses of a trade bloc such as this?',
+      stem: 'The European Union (EU) single market lets goods, services, money and people move between member countries without trade barriers; the UK left the single market at the end of 2020. What is the main benefit to businesses of an arrangement such as this?',
       options: [
-        'Businesses in member countries can sell to each other without tariffs or quotas',
-        'Members must charge each other higher prices',
-        'It bans all trade with countries outside the bloc',
-        'Every member country must give up its own currency',
+        'Member businesses can sell to each other without tariffs or quotas',
+        'Members must charge each other much higher prices',
+        'It bans all trade with every country outside the bloc',
+        'Every member country must give up its own national currency',
       ],
       correct: 0,
       explain:
-        'A trade bloc removes barriers such as tariffs (import taxes) and quotas between its members, making it easier and cheaper for their businesses to trade with each other. Blocs do not ban trade with the rest of the world, and EU members keep their own currencies unless they choose the euro.',
+        'This kind of grouping removes barriers such as tariffs (import taxes) and quotas between its members, making it easier and cheaper for their businesses to trade with each other. Such groups do not ban trade with the rest of the world, and EU members keep their own currencies unless they choose the euro.',
     },
     {
       id: 'gl7',
@@ -158,7 +158,7 @@ const globalisation: QuizDef = {
       stem: 'Environmental measures such as cutting packaging and using less energy can reduce a business’s costs as well as helping the planet.',
       answer: true,
       explain:
-        'True. Less packaging means less material to buy and less waste to dispose of, and using less energy cuts bills. Some green changes cost more at first, but many pay for themselves — so growth and sustainability can support each other.',
+        'True. Less packaging means less material to buy and less waste to dispose of, and using less energy cuts bills. Some environmentally friendly changes cost more at first, but many pay for themselves — so growth and sustainability can support each other.',
     },
     {
       id: 'gl12',

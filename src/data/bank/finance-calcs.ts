@@ -82,7 +82,7 @@ const def: QuizDef = {
       tol: 0.5,
       unit: 'sessions',
       explain:
-        'Contribution per session = £15.00 − £6.00 = £9.00. Break-even output = fixed costs ÷ contribution = £10,800 ÷ £9.00 = 1,200 sessions a month. Below 1,200 sessions the centre makes a loss; every session beyond it adds £9.00 of profit.',
+        'Contribution per session = £15.00 − £6.00 = £9.00. Break-even output = fixed costs ÷ contribution = £10,800 ÷ £9.00 = 1200 sessions a month. Below 1,200 sessions the centre makes a loss; every session beyond it adds £9.00 of profit.',
     },
     {
       id: 'fc5',
@@ -116,7 +116,7 @@ const def: QuizDef = {
       tol: 5,
       unit: '£',
       explain:
-        'Total contribution = 2,000 × (£15.00 − £6.00) = 2,000 × £9.00 = £18,000. Profit = total contribution − fixed costs = £18,000 − £10,800 = £7,200. Once break-even (1,200 sessions) is passed, each extra session contributes £9.00 straight to profit.',
+        'Total contribution = 2,000 × (£15.00 − £6.00) = 2,000 × £9.00 = £18,000. Profit = total contribution − fixed costs = £18,000 − £10,800 = £7200. Once break-even (1,200 sessions) is passed, each extra session contributes £9.00 straight to profit.',
     },
     {
       id: 'fc7',
@@ -133,7 +133,7 @@ const def: QuizDef = {
       tol: 5,
       unit: '£',
       explain:
-        'Net cash flow = inflows − outflows = £9,850 − £13,250 = −£3,400. Closing balance = opening balance + net cash flow = £2,400 − £3,400 = −£1,000, so the shop expects to be £1,000 overdrawn. The bulk fabric buy is the culprit — delaying it, or arranging an overdraft in advance, would close the gap.',
+        'Net cash flow = inflows − outflows = £9,850 − £13,250 = −£3,400. Closing balance = opening balance + net cash flow = £2,400 − £3,400 = −£1000, so the shop expects to be £1,000 overdrawn. The bulk fabric buy is the culprit — delaying it, or arranging an overdraft in advance, would close the gap.',
     },
     {
       id: 'fc8',
@@ -161,9 +161,9 @@ const def: QuizDef = {
       marks: 1,
       stem: 'Halfords reports a gross profit margin of 42% this year. Which additional comparison would MOST help an investor judge whether 42% is good?',
       options: [
-        'The margin in previous years, and the margins of rival bike and motoring retailers',
-        'The number of letters in the company’s name',
-        'The weather on the day the accounts were published',
+        'Previous years’ margins, and the margins of rival retailers',
+        'The number of letters in the company’s trading name',
+        'The weather on the day the annual accounts were published',
         'Nothing — a margin can only ever be judged on its own',
       ],
       correct: 0,
@@ -178,10 +178,10 @@ const def: QuizDef = {
       marks: 1,
       stem: 'A project has a calculated ARR of 14%, while the business’s bank offers 6% interest on savings. Which conclusion is most reasonable?',
       options: [
-        'The project should be rejected because 14% is lower than 6%',
-        'The project earns more than double the return of leaving the money in the bank, so it is attractive — provided the profit forecasts are realistic',
-        'An ARR above 6% guarantees the project cannot fail',
-        'The bank’s rate is irrelevant to business decisions',
+        'The project should be rejected, because a 14% return is lower than 6%',
+        'It earns more than double the bank rate, so it is attractive if forecasts hold',
+        'An ARR above the bank rate guarantees that the project cannot fail',
+        'The bank’s interest rate is irrelevant to all business decisions',
       ],
       correct: 1,
       explain:
@@ -189,45 +189,69 @@ const def: QuizDef = {
     },
     {
       id: 'fc11',
-      type: 'term',
+      type: 'mcq',
       topic: '2.4',
       difficulty: 1,
       marks: 1,
-      stem: 'What is the term for the direct costs of the goods a business has sold — for a bike retailer, the price it paid for the very bikes it sold this year?',
-      accept: ['cost of sales', 'the cost of sales', 'costs of sales', 'cost of goods sold', 'cogs'],
+      stem: 'For a bike retailer, which of the following is its COST OF SALES?',
+      options: [
+        'The price it paid for the very bikes it sold this year',
+        'The rent on its showroom and its warehouse',
+        'The wages of its sales staff and repair technicians',
+        'Its spending on advertising and social media campaigns',
+      ],
+      correct: 0,
       explain:
         'Cost of sales is the direct cost of whatever was sold — the bikes themselves for a retailer, or the flour and fillings for a bakery. Revenue minus cost of sales gives gross profit, and dividing gross profit by revenue gives the gross profit margin.',
     },
     {
       id: 'fc12',
-      type: 'term',
+      type: 'mcq',
       topic: '2.4',
       difficulty: 2,
       marks: 1,
-      stem: 'What is the term for the profit left after the cost of sales AND all the operating expenses — such as rent, wages and marketing — have been deducted?',
-      accept: ['operating profit', 'net profit', 'the operating profit', 'the net profit'],
+      stem: 'Which of the following best describes NET PROFIT?',
+      options: [
+        'What remains after the cost of sales and operating expenses are deducted',
+        'The money taken from sales before any costs at all are deducted',
+        'The cash left sitting in the business bank account at the year end',
+        'The money the owner takes out of the business for themselves',
+      ],
+      correct: 0,
       explain:
         'Operating (net) profit is what survives after every cost of trading: cost of sales plus overheads. It is the figure behind the net profit margin and ROCE — the key measures of overall profitability and efficiency.',
     },
     {
       id: 'fc13',
-      type: 'fib',
+      type: 'mcq',
       topic: '2.4',
       difficulty: 1,
       marks: 1,
-      stem: 'Average rate of return = (average annual ________ ÷ cost of investment) × 100. What one word completes the formula?',
-      accept: ['profit', 'profits', 'the profit', 'annual profit'],
+      stem: 'Which formula gives the AVERAGE RATE OF RETURN (ARR)?',
+      options: [
+        '(Average annual profit ÷ cost of investment) × 100',
+        '(Average annual revenue ÷ cost of investment) × 100',
+        '(Cost of investment ÷ average annual profit) × 100',
+        '(Total profit ÷ total revenue) × 100',
+      ],
+      correct: 0,
       explain:
         'ARR divides the average yearly profit a project generates by what it cost to invest. A higher percentage means the investment rewards its cost faster — and can be compared with the return on alternatives such as leaving the money in the bank.',
     },
     {
       id: 'fc14',
-      type: 'fib',
+      type: 'mcq',
       topic: '2.4',
       difficulty: 1,
       marks: 1,
-      stem: 'Net profit = gross profit − operating ________. What one word completes the formula?',
-      accept: ['expenses', 'expense', 'costs', 'overheads'],
+      stem: 'Net profit = gross profit − which figure?',
+      options: [
+        'Operating expenses — rent, wages, marketing and utilities',
+        'The cost of the goods that were actually sold to customers',
+        'The money the owner withdraws for personal use',
+        'The interest the business earns on its savings',
+      ],
+      correct: 0,
       explain:
         'Gross profit must also cover operating expenses — rent, wages, insurance, marketing and utilities — before net profit appears. That is why a healthy gross margin can still leave a business barely profitable if overheads balloon.',
     },

@@ -27,6 +27,7 @@ import {
   Zap,
   CalendarClock,
   Check,
+  FlaskConical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -97,8 +98,9 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
   const [dueLocal, setDueLocal] = useState('');
   const [timed, setTimed] = useState(false);
   const [timeLimit, setTimeLimit] = useState(20);
-  // step 2
-  const [mode, setMode] = useState<Mode>(presetQuizId ? 'library' : 'library');
+  // step 2 — Generate is the default: it is the fastest path to a great quiz
+  const [mode, setMode] = useState<Mode>(presetQuizId ? 'library' : 'ai');
+  const [tryingSelf, setTryingSelf] = useState(false);
   const [quizzes, setQuizzes] = useState<QuizRow[]>([]);
   const [quizId, setQuizId] = useState(presetQuizId ?? '');
   // ai
@@ -270,6 +272,23 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
       setError((e as Error).message);
     } finally {
       setAiBusy(false);
+    }
+  }
+
+  /** dry-run the current question set as a private self-test — exactly what
+   *  students would experience, without assigning anything */
+  async function tryItYourself() {
+    if (!finalQuestions || tryingSelf) return;
+    setTryingSelf(true);
+    try {
+      const res = await api.post<{ attemptId: string }>('/api/teacher/selftest', {
+        title: title.trim() || 'Draft quiz',
+        questions: finalQuestions,
+      });
+      go({ name: 'quiz', attemptId: res.attemptId });
+    } catch (e) {
+      setTryingSelf(false);
+      toast({ title: 'Could not start the self-test', description: (e as Error).message, variant: 'destructive' });
     }
   }
 
@@ -513,9 +532,9 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
       {step === 2 ? (
         <div className="space-y-5">
           <RadioGroup value={mode} onValueChange={(v) => setMode(v as Mode)} className="grid gap-3 sm:grid-cols-3">
-            {[
-              { v: 'library' as Mode, icon: BookOpen, t: 'Quiz library', d: 'Hand-written banks, ready to go' },
+            {[  
               { v: 'ai' as Mode, icon: Sparkles, t: 'Generate', d: 'Type what you want, or pick topics' },
+              { v: 'library' as Mode, icon: BookOpen, t: 'Quiz library', d: 'Hand-written banks, ready to go' },
               { v: 'custom' as Mode, icon: PenLine, t: 'My questions', d: 'Type your own — any style' },
             ].map((o) => (
               <label key={o.v} className={cn('cursor-pointer glass-soft rounded-xl p-4 flex gap-3 items-start transition-all', mode === o.v ? 'glass-selected' : 'hover:border-primary/30')}>
@@ -733,11 +752,19 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
             <WrittenSection list={extraWritten} setList={setExtraWritten} />
           ) : null}
 
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-3">
             <Button variant="outline" onClick={() => setStep(1)}><ArrowLeft className="h-4 w-4" /> Details</Button>
-            <Button disabled={!canStep3} onClick={() => setStep(3)}>
-              Review <ArrowRight className="h-4 w-4" />
-            </Button>
+            <div className="flex flex-wrap justify-end gap-2">
+              {(finalQuestions?.length ?? 0) > 0 ? (
+                <Button variant="outline" onClick={() => void tryItYourself()} disabled={tryingSelf} className="border-primary/40 text-primary hover:bg-primary/5" title="Do this quiz yourself — exactly as students see it — without assigning it">
+                  <FlaskConical className={tryingSelf ? 'h-4 w-4 animate-pulse' : 'h-4 w-4'} />
+                  {tryingSelf ? 'Starting…' : 'Test it yourself'}
+                </Button>
+              ) : null}
+              <Button disabled={!canStep3} onClick={() => setStep(3)}>
+                Review <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -842,6 +869,16 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
           <div className="flex flex-col-reverse sm:flex-row justify-between gap-3">
             <Button variant="outline" onClick={() => setStep(2)}><ArrowLeft className="h-4 w-4" /> Questions</Button>
             <div className="flex flex-col-reverse sm:flex-row gap-3">
+              <Button
+                variant="outline"
+                onClick={() => void tryItYourself()}
+                disabled={creating || tryingSelf || !finalQuestions || finalQuestions.length === 0}
+                className="border-primary/40 text-primary hover:bg-primary/5"
+                title="Do this quiz yourself — exactly as students see it — without assigning it"
+              >
+                <FlaskConical className={tryingSelf ? 'h-4 w-4 animate-pulse' : 'h-4 w-4'} />
+                {tryingSelf ? 'Starting…' : 'Test it yourself'}
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => void assign(true)}

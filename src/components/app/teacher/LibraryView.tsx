@@ -1,10 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BookOpen, Layers3, ArrowRight, Eye, SendHorizonal, Search, X } from 'lucide-react';
+import { BookOpen, Layers3, ArrowRight, Eye, SendHorizonal, Search, X, FlaskConical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 import {
   Collapsible,
   CollapsibleContent,
@@ -166,9 +167,26 @@ export function LibraryView() {
 }
 
 function QuizPreview({ quizId, load }: { quizId: string; load: (quizId: string) => Promise<Question[]> }) {
+  const go = useApp((s) => s.go);
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [qs, setQs] = useState<Question[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [trying, setTrying] = useState(false);
+
+  /** play the whole quiz yourself — exactly like a student sees it, without
+   *  assigning anything (a private self-test that never touches class stats) */
+  async function tryIt() {
+    if (trying) return;
+    setTrying(true);
+    try {
+      const res = await api.post<{ attemptId: string }>('/api/teacher/selftest', { quizId });
+      go({ name: 'quiz', attemptId: res.attemptId });
+    } catch (e) {
+      setTrying(false);
+      toast({ title: 'Could not start the self-test', description: (e as Error).message, variant: 'destructive' });
+    }
+  }
 
   async function toggle() {
     const next = !open;
@@ -193,7 +211,8 @@ function QuizPreview({ quizId, load }: { quizId: string; load: (quizId: string) 
         {err ? <p className="text-sm text-[var(--danger)]">{err}</p> : null}
         {!qs && !err ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
         {qs ? (
-          <ol className="space-y-3 max-h-96 overflow-y-auto scroll-slim pr-1">
+          <>
+            <ol className="space-y-3 max-h-96 overflow-y-auto scroll-slim pr-1">
             {qs.map((q, i) => (
               <li key={q.id} className="rounded-lg border p-3 text-sm">
                 <div className="flex items-center gap-2 mb-1">
@@ -234,6 +253,13 @@ function QuizPreview({ quizId, load }: { quizId: string; load: (quizId: string) 
               </li>
             ))}
           </ol>
+            <div className="mt-3 pt-3 border-t border-white/40">
+              <Button size="sm" variant="outline" onClick={() => void tryIt()} disabled={trying} className="border-primary/40 text-primary hover:bg-primary/5">
+                <FlaskConical className={trying ? 'h-3.5 w-3.5 animate-pulse' : 'h-3.5 w-3.5'} />
+                {trying ? 'Starting…' : 'Try it yourself'}
+              </Button>
+            </div>
+          </>
         ) : null}
       </CollapsibleContent>
     </Collapsible>

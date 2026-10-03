@@ -23,7 +23,7 @@ const def: QuizDef = {
         title: 'Gymshark — built on social media',
         text: 'Gymshark was founded in 2012 by Ben Francis, a teenager who screen-printed gym vests in his parents’ garage in Birmingham. In the early days the company could not afford TV adverts, so it sent free clothing to popular fitness YouTubers, who wore the brand in training videos seen by millions of viewers.',
       },
-      options: ['Product', 'Price', 'Place', 'Promotion'],
+      options: ['The product', 'The price', 'The place', 'Promotion'],
       correct: 3,
       explain:
         'Sending kit to YouTubers is promotion — communicating with potential customers to persuade them to buy. For a young brand with little money it was cheaper and better targeted than traditional advertising, reaching gym fans directly through people they already trusted.',
@@ -40,10 +40,10 @@ const def: QuizDef = {
         text: 'Aston Martin, the British maker of luxury sports cars, launches models at prices above £200,000 and sells them through a small, carefully chosen network of dealerships. Owners are also invited to exclusive brand events.',
       },
       options: [
-        'A luxury, exclusive product needs a premium price and selective, upmarket outlets that protect the brand’s image',
+        'A luxury product needs a premium price and upmarket outlets that protect its image',
         'The high price is a mistake, because every business should charge the lowest price possible',
         'Selling through as many discount retailers as possible would strengthen an exclusive brand',
-        'Price and place have no connection with the image of the product',
+        'Price and place have no connection at all with the image of the product',
       ],
       correct: 0,
       explain:
@@ -93,10 +93,10 @@ const def: QuizDef = {
         text: 'Unilever owns more than 400 brands, from Dove soap to Ben & Jerry’s ice cream, sold in over 190 countries. Some brands grow quickly, some generate steady cash for years, and a few struggle and are eventually sold off or closed.',
       },
       options: [
-        'It spreads risk — weak performance in one brand or market can be offset by stronger performance elsewhere',
-        'It guarantees that every single brand will succeed',
-        'It removes the need to research what customers want',
-        'It makes the company too small to compete abroad',
+        'It spreads risk — a weak brand can be offset by stronger ones',
+        'It guarantees that every single brand will always succeed',
+        'It removes the need to research what customers actually want',
+        'It makes the company far too small to compete abroad',
       ],
       correct: 0,
       explain:
@@ -116,8 +116,8 @@ const def: QuizDef = {
       options: [
         'Price skimming — charging a high launch price that falls later',
         'Penetration pricing — charging a low price to win market share',
-        'An extension strategy — updating the product to prolong sales and delay decline',
-        'Delayering — removing layers of management',
+        'An extension strategy — updating the product to prolong sales',
+        'Delayering — removing layers of middle management',
       ],
       correct: 2,
       explain:
@@ -157,7 +157,7 @@ const def: QuizDef = {
       topic: '2.2',
       difficulty: 2,
       marks: 1,
-      stem: 'What is the general term for a business that sits between the producer and the customer in a distribution channel — such as a wholesaler, a retailer or an online marketplace?',
+      stem: 'What is the general term for a business that sits between the producer and the customer — such as a wholesaler, a retailer or an online marketplace?',
       accept: ['intermediary', 'an intermediary', 'intermediaries', 'middleman', 'middlemen'],
       explain:
         'Intermediaries such as wholesalers, retailers and marketplaces connect producers with customers. They provide reach and convenience in exchange for a share of the price — which is why some businesses prefer to sell direct instead.',
