@@ -17,6 +17,7 @@ import {
   Droplet,
   Eye,
   Hand,
+  ImagePlus,
   Loader2,
   Lock,
   Palette,
@@ -59,6 +60,7 @@ import {
   accessoryUnlocked,
   buildAvatarString,
   defaultBuild,
+  defaultHairIndex,
   parseBuild,
 } from '@/lib/avatarBuilder';
 import { useToast } from '@/hooks/use-toast';
@@ -324,6 +326,7 @@ export function ProfileDialog({ trigger }: { trigger: 'row' | 'icon' }) {
   const setMyAvatar = useApp((s) => s.setMyAvatar);
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
   const [open, setOpen] = useState(false);
   /** the staged choice — null = keep initials; saved on Save */
@@ -416,6 +419,7 @@ export function ProfileDialog({ trigger }: { trigger: 'row' | 'icon' }) {
     } finally {
       setProcessing(false);
       if (fileRef.current) fileRef.current.value = '';
+      if (cameraRef.current) cameraRef.current.value = '';
     }
   }
 
@@ -599,10 +603,12 @@ export function ProfileDialog({ trigger }: { trigger: 'row' | 'icon' }) {
                   {GENDERS.map((g) => (
                     <OptionTile
                       key={g.id}
-                      build={withOpt({ g: g.id })}
+                      build={withOpt({ g: g.id, h: defaultHairIndex(g.id, draft.h) })}
                       label={g.name}
                       selected={draft.g === g.id}
-                      onClick={() => patch({ g: g.id })}
+                      onClick={() =>
+                        patch({ g: g.id, h: defaultHairIndex(g.id, draft.h) })
+                      }
                     />
                   ))}
                 </div>
@@ -903,7 +909,7 @@ export function ProfileDialog({ trigger }: { trigger: 'row' | 'icon' }) {
                 </button>
               </div>
 
-              {/* upload */}
+              {/* upload + camera */}
               <input
                 ref={fileRef}
                 type="file"
@@ -912,11 +918,30 @@ export function ProfileDialog({ trigger }: { trigger: 'row' | 'icon' }) {
                 aria-label="Upload a picture"
                 onChange={(e) => void pickFile(e.target.files?.[0])}
               />
-              <Button variant="outline" className="w-full" onClick={() => fileRef.current?.click()} disabled={processing}>
-                <Camera className="h-4 w-4" aria-hidden /> Upload a picture
-              </Button>
+              <input
+                ref={cameraRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="sr-only"
+                aria-label="Take a photo"
+                onChange={(e) => void pickFile(e.target.files?.[0])}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={processing}>
+                  <ImagePlus className="h-4 w-4" aria-hidden /> Upload a picture
+                </Button>
+                <Button variant="outline" onClick={() => cameraRef.current?.click()} disabled={processing}>
+                  {processing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Camera className="h-4 w-4" aria-hidden />
+                  )}
+                  Take a photo
+                </Button>
+              </div>
               <p className="text-[11px] text-muted-foreground -mt-2 px-1">
-                It is cropped to a square and shrunk on your device before it is saved.
+                Pick one from your device or snap a new one — it is cropped to a square and shrunk before it is saved.
               </p>
 
               {/* emoji picks */}

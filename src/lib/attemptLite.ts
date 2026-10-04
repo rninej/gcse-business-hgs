@@ -75,8 +75,8 @@ export function toLite(a: Attempt): AttemptLite {
 }
 
 /** Write (or overwrite) one attempt's feed entry. */
-export async function upsertLite(a: Attempt): Promise<void> {
-  await fb.set(`attemptLite/${a.studentId}/${a.id}`, toLite(a));
+export async function upsertLite(a: Attempt, opts?: { bg?: boolean }): Promise<void> {
+  await fb.set(`attemptLite/${a.studentId}/${a.id}`, toLite(a), opts);
 }
 
 /** Patch selected feed fields (e.g. hasTeacherFeedback after a note lands). */

@@ -79,11 +79,12 @@ function Head({ skin, shade }: { skin: string; shade?: string }) {
   );
 }
 
-/** a simple hair cap hugging the top of the head */
+/** a simple hair cap hugging the top of the head — the outer dome rises a
+ * little ABOVE the scalp (head top is y=17) so the crown is always covered */
 function Hair({ color, lift = 1 }: { color: string; lift?: number }) {
   return (
     <path
-      d={`M18.5 ${33 - lift} C17.5 15.5 46.5 15.5 45.5 ${33 - lift} C43.5 24 20.5 24 18.5 ${33 - lift} Z`}
+      d={`M18.5 ${33 - lift} C17.5 9 46.5 9 45.5 ${33 - lift} C43.5 24 20.5 24 18.5 ${33 - lift} Z`}
       fill={color}
     />
   );
@@ -149,7 +150,7 @@ const ART: Record<string, () => ReactNode> = {
         <circle cx={39.5} cy={34} r={0.8} />
       </g>
       <Face blush={false} />
-      <path d="M18.5 31 C17.5 16 46.5 16 45.5 31 C41 26.5 23 26.5 18.5 31 Z" fill="#14b8a6" />
+      <path d="M18.5 31 C17.5 9 46.5 9 45.5 31 C41 26.5 23 26.5 18.5 31 Z" fill="#14b8a6" />
       <rect x={9.5} y={27.5} width={11} height={4.4} rx={2.2} fill="#0d9488" />
       <circle cx={32} cy={15.5} r={1.6} fill="#0d9488" />
     </g>
@@ -382,14 +383,14 @@ function hairBack(id: string, color: string): ReactNode | null {
     case 'long':
       return (
         <path
-          d="M18.5 30 C18.5 15 45.5 15 45.5 30 L47.5 50 C42 53 22 53 16.5 50 Z"
+          d="M18.5 30 C18.5 8 45.5 8 45.5 30 L47.5 50 C42 53 22 53 16.5 50 Z"
           fill={color}
         />
       );
     case 'bob':
       return (
         <path
-          d="M18.5 30 C18.5 15 45.5 15 45.5 30 L46.5 40.5 C41 43 23 43 17.5 40.5 Z"
+          d="M18.5 30 C18.5 8 45.5 8 45.5 30 L46.5 40.5 C41 43 23 43 17.5 40.5 Z"
           fill={color}
         />
       );
@@ -418,38 +419,38 @@ function hairFront(id: string, color: string): ReactNode | null {
   switch (id) {
     case 'buzz':
       return (
-        <path d="M19.8 28.5 C19.2 17.5 44.8 17.5 44.2 28.5 C39 24.8 25 24.8 19.8 28.5 Z" fill={color} />
+        <path d="M19.8 28.5 C19.2 12 44.8 12 44.2 28.5 C39 24.8 25 24.8 19.8 28.5 Z" fill={color} />
       );
     case 'short':
       return <Hair color={color} />;
     case 'sidepart':
       return (
         <path
-          d="M18.5 31 C17.5 16 40 14.5 45.5 31 C42.5 22.5 34 20.5 28.5 23.5 C24.5 25.5 20.8 27.5 18.5 31 Z"
+          d="M18.5 31 C17.5 10 40 8.5 45.5 31 C42.5 22.5 34 20.5 28.5 23.5 C24.5 25.5 20.8 27.5 18.5 31 Z"
           fill={color}
         />
       );
     case 'fringe':
       return (
         <path
-          d="M18.5 32 C17.5 15.5 46.5 15.5 45.5 32 C44.5 28 42.5 26.3 41.4 27.6 C41.8 24.2 38.2 22.6 36.2 24.8 C35.2 21.8 28.8 21.8 27.8 24.8 C25.8 22.6 22.2 24.2 22.6 27.6 C21.5 26.3 19.5 28 18.5 32 Z"
+          d="M18.5 32 C17.5 9 46.5 9 45.5 32 C44.5 28 42.5 26.3 41.4 27.6 C41.8 24.2 38.2 22.6 36.2 24.8 C35.2 21.8 28.8 21.8 27.8 24.8 C25.8 22.6 22.2 24.2 22.6 27.6 C21.5 26.3 19.5 28 18.5 32 Z"
           fill={color}
         />
       );
     case 'curly':
       return (
         <g fill={color}>
-          <path d="M19 29 C18.5 18 45.5 18 45 29 C40 25.5 24 25.5 19 29 Z" />
-          <circle cx={24} cy={19.5} r={4.1} />
-          <circle cx={32} cy={16.8} r={4.6} />
-          <circle cx={40} cy={19.5} r={4.1} />
-          <circle cx={20.2} cy={25.5} r={3.2} />
-          <circle cx={43.8} cy={25.5} r={3.2} />
+          <path d="M19 29 C18.5 11 45.5 11 45 29 C40 25.5 24 25.5 19 29 Z" />
+          <circle cx={24} cy={17} r={4.1} />
+          <circle cx={32} cy={14.5} r={4.6} />
+          <circle cx={40} cy={17} r={4.1} />
+          <circle cx={20.2} cy={24.5} r={3.2} />
+          <circle cx={43.8} cy={24.5} r={3.2} />
         </g>
       );
     case 'afro':
       return (
-        <path d="M19.5 27 C19.5 17 44.5 17 44.5 27 C39 23.5 25 23.5 19.5 27 Z" fill={color} />
+        <path d="M19.5 27 C19.5 11.5 44.5 11.5 44.5 27 C39 23.5 25 23.5 19.5 27 Z" fill={color} />
       );
     case 'buns':
       return (
@@ -468,7 +469,7 @@ function hairFront(id: string, color: string): ReactNode | null {
     case 'spiky':
       return (
         <path
-          d="M19 27.5 L21.5 16 L25.5 24 L29.5 13.5 L33.5 23 L37.5 14.5 L41 24 L44.8 17 L45.5 28.5 C40 25 24 25 19 28.5 Z"
+          d="M19 27.5 L22 12 L26 18 L30 10.5 L34 16.5 L38 11 L42 16.5 L44.8 13.5 L45.5 28.5 C40 25 24 25 19 28.5 Z"
           fill={color}
         />
       );

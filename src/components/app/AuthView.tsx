@@ -13,7 +13,7 @@ import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { BrandLockup } from './Brand';
 import { ThemeToggle } from './ThemeToggle';
-import { CheckCircle2, Check } from 'lucide-react';
+import { CheckCircle2, Check, Loader2 } from 'lucide-react';
 import type { SessionInfo } from '@/lib/types';
 
 export function AuthView() {
@@ -188,6 +188,7 @@ function AuthCard() {
               <PasswordInput id="t-pw" autoComplete="current-password" value={tPw} onChange={(e) => setTPw(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit('teacher')} placeholder="••••••••" />
             </div>
             <Button className="w-full" disabled={busy || !tId || !tPw} onClick={() => submit('teacher')}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
               {busy ? 'Signing in…' : 'Sign in as teacher'}
             </Button>
           </TabsContent>
@@ -205,6 +206,7 @@ function AuthCard() {
               <PasswordInput id="s-pw" autoComplete="current-password" value={sPw} onChange={(e) => setSPw(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit('student')} placeholder="e.g. braveotter23" />
             </div>
             <Button className="w-full" disabled={busy || !sId || !sPw} onClick={() => submit('student')}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
               {busy ? 'Signing in…' : 'Sign in as student'}
             </Button>
           </TabsContent>
@@ -226,6 +228,7 @@ function AuthCard() {
               <PasswordInput id="r-pw" autoComplete="new-password" value={rPw} onChange={(e) => setRPw(e.target.value)} placeholder="••••••••" />
             </div>
             <Button className="w-full" disabled={busy || !rName || !rEmail || rPw.length < 6} onClick={() => submit('register')}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
               {busy ? 'Creating…' : 'Create teacher account'}
             </Button>
           </TabsContent>

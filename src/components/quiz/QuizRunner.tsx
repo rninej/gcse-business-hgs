@@ -216,6 +216,12 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
   const seenExtractRef = useRef<string | null>(null);
   const outcomeRef = useRef<HTMLDivElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
+  /** top of the case-study + question area — on mobile the extract sits above
+   * the question, so "next question" must scroll HERE (not just to the card)
+   * or the student never sees the reading exists */
+  const topRef = useRef<HTMLDivElement | null>(null);
+  /** the question palette strip — keeps the active number centered */
+  const paletteRef = useRef<HTMLDivElement | null>(null);
 
   const lsKey = `hgs_run_${attemptId}`;
 
@@ -296,7 +302,11 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
     }
     setDir(newIdx >= idx ? 1 : -1);
     setIdx(Math.max(0, Math.min(newIdx, total - 1)));
-    if (cardRef.current) cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // scroll the WHOLE area into view — on mobile the case study sits above
+    // the question, so scrolling only to the card would hide it off-screen
+    // and the next question would look like it has no reading at all
+    const target = topRef.current ?? cardRef.current;
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function pickOption(qid: string, value: string) {
@@ -603,6 +613,15 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
      
   }, [now, deadline, data, submitting]);
 
+  // keep the active question number centred in the palette strip (only when
+  // it actually overflows — short quizzes never scroll)
+  useEffect(() => {
+    const strip = paletteRef.current;
+    if (!strip || strip.scrollWidth <= strip.clientWidth) return;
+    const active = strip.querySelector<HTMLButtonElement>(`[data-pal="${idx}"]`);
+    active?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [idx, data]);
+
   /* ----- render ----- */
 
   if (error)
@@ -732,7 +751,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
             drawer (default) — a slide-over reading panel opened from a bar
               above the question, so the question itself keeps full width;
             side — the classic sticky column beside the question. */}
-      <div className={cn('grid gap-4 md:gap-5', q.extract && !drawerMode ? 'lg:grid-cols-[1.25fr_1fr]' : '')}>
+      <div ref={topRef} className={cn('grid gap-4 md:gap-5 scroll-mt-36 md:scroll-mt-24', q.extract && !drawerMode ? 'lg:grid-cols-[1.25fr_1fr]' : '')}>
         {q.extract ? (
           <aside
             className={cn(
@@ -1069,33 +1088,39 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
               <ChevronLeft className="h-4 w-4" />
               <span className="hidden sm:inline">Prev</span>
             </Button>
-            <div className="flex-1 min-w-0 flex gap-1.5 justify-center overflow-x-auto scroll-slim py-1" aria-label="Question palette">
-              {questions.map((x, i) => {
-                const st = checked[x.id];
-                const writtenSaved = x.type === 'written' && (answers[x.id] ?? '').toString().trim().length > 0;
-                return (
-                  <button
-                    key={x.id}
-                    onClick={() => goto(i)}
-                    aria-label={`Go to question ${i + 1}${st ? (st.correct ? ' — correct' : ' — incorrect') : writtenSaved ? ' — saved' : ''}`}
-                    aria-current={i === idx ? 'true' : undefined}
-                    className={cn(
-                      'h-8 w-8 shrink-0 rounded-md text-xs font-semibold tabular-nums transition-[color,transform] active:scale-90',
-                      i === idx
-                        ? 'bg-primary text-primary-foreground ring-2 ring-primary/30'
-                        : st
-                          ? st.correct
-                            ? 'bg-[var(--success)]/15 text-[var(--success)] hover:bg-[var(--success)]/25'
-                            : 'bg-[var(--danger)]/15 text-[var(--danger)] hover:bg-[var(--danger)]/25'
-                          : writtenSaved
-                            ? 'bg-primary/15 text-primary hover:bg-primary/25'
-                            : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
-                    )}
-                  >
-                    {i + 1}
-                  </button>
-                );
-              })}
+            {/* palette — inner wrapper centres when it fits and scrolls from
+                the FIRST question when it doesn't (justify-center on an
+                overflow container clips the left end off-screen) */}
+            <div ref={paletteRef} className="flex-1 min-w-0 overflow-x-auto scroll-slim py-1" aria-label="Question palette">
+              <div className="mx-auto flex w-max gap-1.5">
+                {questions.map((x, i) => {
+                  const st = checked[x.id];
+                  const writtenSaved = x.type === 'written' && (answers[x.id] ?? '').toString().trim().length > 0;
+                  return (
+                    <button
+                      key={x.id}
+                      data-pal={i}
+                      onClick={() => goto(i)}
+                      aria-label={`Go to question ${i + 1}${st ? (st.correct ? ' — correct' : ' — incorrect') : writtenSaved ? ' — saved' : ''}`}
+                      aria-current={i === idx ? 'true' : undefined}
+                      className={cn(
+                        'h-8 w-8 shrink-0 rounded-md text-xs font-semibold tabular-nums transition-[color,transform] active:scale-90',
+                        i === idx
+                          ? 'bg-primary text-primary-foreground ring-2 ring-primary/30'
+                          : st
+                            ? st.correct
+                              ? 'bg-[var(--success)]/15 text-[var(--success)] hover:bg-[var(--success)]/25'
+                              : 'bg-[var(--danger)]/15 text-[var(--danger)] hover:bg-[var(--danger)]/25'
+                            : writtenSaved
+                              ? 'bg-primary/15 text-primary hover:bg-primary/25'
+                              : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
+                      )}
+                    >
+                      {i + 1}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             {idx < total - 1 ? (
               <Button variant="outline" onClick={() => goto(idx + 1)} aria-label="Next question" className="px-3">

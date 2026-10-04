@@ -161,6 +161,15 @@ export function defaultBuild(): AvatarBuild {
   return { g: 'x', sz: 'a', sk: 1, h: 1, hc: 0, e: 0, c: 0, cc: 0, bg: 0, ac: [] };
 }
 
+/** Sensible default hair the moment a gender is picked — boys get a short
+ * cut, girls get long hair (still changeable in the Hair tab any time).
+ * 'Either' keeps whatever hair is already selected. */
+export function defaultHairIndex(g: AvatarBuild['g'], current: number): number {
+  if (g === 'f') return Math.max(0, HAIRS.findIndex((h) => h.id === 'long'));
+  if (g === 'm') return Math.max(0, HAIRS.findIndex((h) => h.id === 'short'));
+  return current;
+}
+
 /** Total cumulative points needed to wear every equipped accessory. */
 export function accessoriesCost(ac: string[]): number {
   return ac.reduce((sum, id) => sum + (ACCESSORIES.find((a) => a.id === id)?.cost ?? 0), 0);

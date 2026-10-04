@@ -15,6 +15,7 @@ import { PasswordDialog } from './PasswordDialog';
 import { ProfileDialog } from './ProfileDialog';
 import { StudentBell } from './student/StudentBell';
 import { ThemeToggle } from './ThemeToggle';
+import { ApiProgressBar } from './ApiProgressBar';
 import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
 import type { View } from '@/lib/store';
@@ -116,6 +117,8 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
     // no bg-background here: the body provides it, which lets the quiz
     // backdrop photo (fixed, -z-10) show through behind the content
     <div className="min-h-screen flex flex-col">
+      {/* global activity strip — any in-flight request animates it */}
+      <ApiProgressBar />
       {/* Desktop sidebar — frosted glass over the backdrop photo */}
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col z-40 border-r border-white/50 bg-[var(--sidebar)]/70 backdrop-blur-2xl backdrop-saturate-150 shadow-[inset_1px_0_0_0_rgb(255_255_255/0.5),8px_0_32px_-16px_rgb(13_92_70/0.18)] print:hidden">
         <div className="px-5 pt-5 pb-4 border-b border-white/40">

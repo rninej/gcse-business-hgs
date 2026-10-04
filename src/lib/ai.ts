@@ -369,7 +369,8 @@ export function templateFeedback(input: FeedbackInput): string {
 }
 
 export async function generateFeedback(
-  input: FeedbackInput
+  input: FeedbackInput,
+  timeoutMs = 25_000
 ): Promise<{ text: string; by: AttemptResult['feedbackBy'] }> {
   const topicLines = (input.topicStats ?? []).map(
     (s) => `${input.topicTitles[s.topic] ?? s.topic}: ${s.c}/${s.t} correct`
@@ -388,7 +389,7 @@ Write the feedback now.`;
     user,
     maxTokens: 500,
     temperature: 0.6,
-    timeoutMs: 25_000,
+    timeoutMs,
   });
   if (outcome && outcome.text.length > 40 && outcome.text.length < 1200) {
     return { text: outcome.text, by: outcome.provider };

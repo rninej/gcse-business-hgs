@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { col, colCached, put, values } from '@/lib/firebase';
+import { colCached, item, put, values } from '@/lib/firebase';
 import { requireRole } from '@/lib/session';
 import { generateQuestions } from '@/lib/questions';
 import { allLite } from '@/lib/attemptLite';
@@ -250,20 +250,23 @@ export async function POST(req: Request) {
     publishAt = Math.round(rawPublish);
   }
 
-  const classes = await col<StudentClass>('classes');
+  // version-checked cached reads (any write anywhere bumps the stamp, so
+  // these are always fresh — but a re-set task costs ~one round trip instead
+  // of three sequential collection downloads)
+  const classes = await colCached<StudentClass>('classes');
   const myClasses = Object.values(classes).filter((c) => c.teacherId === session.uid);
   // resolve every targeted class (primary + extras); all must belong to the teacher
   const wantedClassIds = Array.from(new Set([body.classId, ...(body.classIds ?? [])].filter(Boolean) as string[]));
   const targeted = wantedClassIds.map((cid) => myClasses.find((c) => c.id === cid)).filter((c): c is StudentClass => Boolean(c));
 
   // specific individuals must be the teacher's own students
-  const studentsCol = await col<Student>('students');
+  const studentsCol = await colCached<Student>('students');
   const wantedStudentIds = Array.from(new Set((body.studentIds ?? []).filter(Boolean)));
   const targetedStudents = wantedStudentIds
     .map((sid) => studentsCol[sid])
     .filter((s): s is Student => Boolean(s) && s.teacherId === session.uid);
 
-  const updating = body.updateId ? (await col<Assignment>('assignments'))[body.updateId] : null;
+  const updating = body.updateId ? await item<Assignment>('assignments', body.updateId) : null;
   const isUpdate = Boolean(updating && updating.teacherId === session.uid && updating.draft);
   if (body.updateId && !isUpdate) {
     return NextResponse.json({ error: 'Draft not found — it may already be live.' }, { status: 404 });
@@ -369,7 +372,7 @@ export async function POST(req: Request) {
       questions: snapshot,
       ...goLive,
     };
-    await put('assignments', updating.id, merged);
+    await put('assignments', updating.id, merged, { bg: true });
     // a draft going live NOW is the moment students learn about it — ring the
     // bell (a scheduled go-live is flipped live by the students' own dashboard
     // loads, so its bell waits)
@@ -414,7 +417,7 @@ export async function POST(req: Request) {
     ...(publishAt && !draft ? { publishAt } : {}),
     ...(!draft && !publishAt ? { publishAt: Date.now(), notifiedAt: Date.now() } : {}),
   };
-  await put('assignments', id, assignment);
+  await put('assignments', id, assignment, { bg: true });
   // ring every targeted student's bell the moment a live assignment lands
   if (!draft && !publishAt) {
     const classIdSet = new Set(classIds);

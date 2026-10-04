@@ -287,7 +287,17 @@ function dig(record: unknown, sub: string[]): unknown {
 function bury(record: Record<string, unknown>, sub: string[], value: unknown, merge: boolean): void {
   if (sub.length === 0) {
     if (merge && value && typeof value === 'object' && !Array.isArray(value)) {
-      Object.assign(record, value as Record<string, unknown>);
+      // RTDB PATCH semantics at the doc root: each payload key is written to
+      // its own path. Keys containing '/' (e.g. "answers/q7") are DEEP paths
+      // in the RTDB REST API — they must nest, not sit as literal keys. Each
+      // such key replaces whatever lives at its leaf, exactly like the RTDB.
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        if (k.includes('/')) {
+          bury(record, k.split('/').filter((s) => s.length > 0), v, false);
+        } else {
+          record[k] = v;
+        }
+      }
     } else {
       // replace at the root of the blob — simulate by clearing + assign
       for (const k of Object.keys(record)) delete record[k];
@@ -315,6 +325,16 @@ function bury(record: Record<string, unknown>, sub: string[], value: unknown, me
     delete cur[last];
   } else {
     cur[last] = value;
+  }
+}
+
+/** Legacy junk sweep: the window where root-merge keys containing '/' were
+ *  stored literally left "answers/q7"-shaped keys behind. They are garbage
+ *  (the RTDB never had them) — drop them whenever a merge rewrites the doc
+ *  so records self-heal. */
+function scrubSlashKeys(record: Record<string, unknown>): void {
+  for (const k of Object.keys(record)) {
+    if (k.includes('/')) delete record[k];
   }
 }
 
@@ -402,11 +422,35 @@ export async function fsPatch(path: string, data: object): Promise<void> {
       const doc = await getDocRaw(p.col!, p.id!);
       const record = (doc ? fromBlob(doc) : null) as Record<string, unknown> | null;
       const base = record && typeof record === 'object' && !Array.isArray(record) ? record : {};
+      scrubSlashKeys(base);
       bury(base, p.sub ?? [], data, true);
       await setDocRaw(p.col!, p.id!, toBlob(base));
     });
   }
   throw new FirestoreRestError(`fsPatch: unsupported path '${path}'`, 400);
+}
+
+/** Fast-path merge for hot routes that ALREADY hold a fresh copy of the doc
+ *  (e.g. the attempt loaded at the start of the request): applies the
+ *  RTDB-shaped sub-path patch to that base and writes it in ONE request —
+ *  no read-modify-write re-read, so an answer check costs a single round
+ *  trip instead of two. Still under the per-doc lock, so concurrent writes
+ *  on this instance stay ordered. */
+export async function fsMergeKnown(
+  col: string,
+  id: string,
+  base: unknown,
+  patch: object
+): Promise<void> {
+  const record =
+    base && typeof base === 'object' && !Array.isArray(base)
+      ? (JSON.parse(JSON.stringify(base)) as Record<string, unknown>)
+      : {};
+  scrubSlashKeys(record);
+  bury(record, [], patch, true);
+  await withLock(`${col}/${id}`, async () => {
+    await setDocRaw(col, id, toBlob(record));
+  });
 }
 
 /** DELETE — whole doc, or one key inside a blob doc. */

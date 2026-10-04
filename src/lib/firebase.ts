@@ -33,9 +33,11 @@
 // caches re-check the active engine's stamp (1 tiny read), and unchanged data
 // costs one round-trip instead of a re-download.
 
+import { after } from 'next/server';
 import {
   FirestoreRestError,
   fsGet,
+  fsMergeKnown,
   fsPatch,
   fsProbe,
   fsRemove,
@@ -94,6 +96,22 @@ export const rtdb = {
 export async function rtdbShallowKeys(path = ''): Promise<string[]> {
   const v = await rtdbFetch<Record<string, true> | null>('GET', path, undefined, 'shallow=true');
   return Object.keys(v ?? {});
+}
+
+/* ---------------- deferred work (post-response) ---------------- */
+
+/** Run a job AFTER the response is sent (Vercel keeps the instance alive via
+ *  waitUntil). Used to take slow-but-safe follow-ups — version bumps, slim
+ *  feed mirrors, AI feedback — off the user-facing critical path: buttons
+ *  feel instant while the data still lands moments later. Falls back to a
+ *  floating promise outside a request context (scripts, background jobs). */
+export function runAfter(job: () => Promise<unknown>): void {
+  const safe = () => Promise.resolve(job()).catch(() => undefined);
+  try {
+    after(safe);
+  } catch {
+    void safe();
+  }
 }
 
 /* ---------------- engine mode (flag lives in the RTDB, always) ---------------- */
@@ -364,23 +382,29 @@ export const fb = {
   get<T>(path: string): Promise<T | null> {
     return backendGet<T>(path);
   },
-  /** Full replace at a path — written to BOTH engines. */
-  async set(path: string, data: unknown): Promise<void> {
+  /** Full replace at a path — written to BOTH engines. With `{ bg: true }`
+   *  the version bump continues after the response: the write itself is
+   *  durable in both engines, only other instances' cache refresh waits a
+   *  beat (this instance's cache is already invalidated synchronously). */
+  async set(path: string, data: unknown, opts?: { bg?: boolean }): Promise<void> {
     invalidate(segOf(path));
     await dualWrite('set', path, data);
-    await bumpVersion(segOf(path));
+    if (opts?.bg) runAfter(() => bumpVersion(segOf(path)));
+    else await bumpVersion(segOf(path));
   },
   /** Shallow-merge into an object without replacing siblings — BOTH engines. */
-  async patch(path: string, data: unknown): Promise<void> {
+  async patch(path: string, data: unknown, opts?: { bg?: boolean }): Promise<void> {
     invalidate(segOf(path));
     await dualWrite('patch', path, data);
-    await bumpVersion(segOf(path));
+    if (opts?.bg) runAfter(() => bumpVersion(segOf(path)));
+    else await bumpVersion(segOf(path));
   },
   /** Delete a node — BOTH engines. */
-  async remove(path: string): Promise<void> {
+  async remove(path: string, opts?: { bg?: boolean }): Promise<void> {
     invalidate(segOf(path));
     await dualWrite('remove', path);
-    await bumpVersion(segOf(path));
+    if (opts?.bg) runAfter(() => bumpVersion(segOf(path)));
+    else await bumpVersion(segOf(path));
   },
 };
 
@@ -445,13 +469,61 @@ export async function item<T>(name: string, id: string): Promise<T | null> {
 }
 
 /** Write one item (full replace of that key) */
-export async function put<T>(name: string, id: string, data: T): Promise<void> {
-  return fb.set(`${name}/${id}`, data);
+export async function put<T>(name: string, id: string, data: T, opts?: { bg?: boolean }): Promise<void> {
+  return fb.set(`${name}/${id}`, data, opts);
 }
 
 /** Merge fields into an existing item */
-export async function merge(name: string, id: string, partial: object): Promise<void> {
-  return fb.patch(`${name}/${id}`, partial);
+export async function merge(name: string, id: string, partial: object, opts?: { bg?: boolean }): Promise<void> {
+  return fb.patch(`${name}/${id}`, partial, opts);
+}
+
+/** HOT-PATH merge for routes that already hold a fresh copy of the record
+ *  (they read it at the start of the same request). The ACTIVE engine gets a
+ *  single-request write built from that known base — no read-modify-write
+ *  re-read — while the mirror engine still receives the same RTDB-shaped
+ *  patch (its native PATCH expands deep keys). The version bump continues
+ *  after the response. Cuts an answer-check from ~3 sequential round trips
+ *  to one read + one write. */
+export async function mergeKnown(
+  name: string,
+  id: string,
+  base: unknown,
+  partial: object
+): Promise<void> {
+  invalidate(`${name}/${id}`);
+  const mode = await getMode();
+  const other: DbMode = mode === 'firestore' ? 'rtdb' : 'firestore';
+  const [primary, secondary] = await Promise.allSettled([
+    mode === 'firestore'
+      ? fsMergeKnown(name, id, base, partial)
+      : rtdb.patch(`${name}/${id}`, partial),
+    other === 'firestore'
+      ? fsMergeKnown(name, id, base, partial)
+      : rtdb.patch(`${name}/${id}`, partial),
+  ]);
+  if (primary.status === 'rejected' && secondary.status === 'fulfilled') {
+    dualWriteErrors++;
+    lastDualWriteError = {
+      at: Date.now(),
+      path: `${name}/${id}`,
+      op: 'patch(known) — active engine missed it, mirror served it',
+      message: String((primary.reason as Error)?.message ?? primary.reason).slice(0, 300),
+    };
+    runAfter(() => bumpVersion(name));
+    return;
+  }
+  if (primary.status === 'rejected') throw primary.reason; // both engines failed
+  if (secondary.status === 'rejected') {
+    dualWriteErrors++;
+    lastDualWriteError = {
+      at: Date.now(),
+      path: `${name}/${id}`,
+      op: 'patch(known)',
+      message: String((secondary.reason as Error)?.message ?? secondary.reason).slice(0, 300),
+    };
+  }
+  runAfter(() => bumpVersion(name));
 }
 
 export function del(name: string, id: string): Promise<void> {

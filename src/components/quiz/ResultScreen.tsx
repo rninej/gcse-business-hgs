@@ -122,7 +122,7 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
         void api.post(`/api/student/attempts/${attemptId}/mark-written`).catch(() => undefined);
       }
       api
-        .get<ResultData>(`/api/student/attempts/${attemptId}`)
+        .getFresh<ResultData>(`/api/student/attempts/${attemptId}`)
         .then((d) => {
           if (d.status === 'submitted') setData(d);
           const still = Math.max(
@@ -139,6 +139,37 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
     };
      
   }, [pending > 0, attemptId]);
+
+  // the submit route writes the instant template feedback first and upgrades
+  // the record to the richer AI version moments later — poll quietly until it
+  // lands (or give up after ~20s; the template version is already good)
+  const feedbackPending = data?.result.feedbackBy === 'template';
+  useEffect(() => {
+    if (!feedbackPending) return;
+    let tries = 0;
+    let alive = true;
+    const timer = setInterval(() => {
+      tries += 1;
+      if (tries > 6 || !alive) {
+        clearInterval(timer);
+        return;
+      }
+      api
+        .getFresh<ResultData>(`/api/student/attempts/${attemptId}`)
+        .then((d) => {
+          if (!alive) return;
+          if (d.status === 'submitted' && d.result?.feedbackBy && d.result.feedbackBy !== 'template') {
+            setData(d);
+            clearInterval(timer);
+          }
+        })
+        .catch(() => undefined);
+    }, 3200);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [feedbackPending, attemptId]);
 
   async function markNow() {
     setMarkingNow(true);

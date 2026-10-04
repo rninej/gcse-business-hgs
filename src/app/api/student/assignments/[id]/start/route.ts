@@ -5,7 +5,6 @@ import { liteForStudent, upsertLite } from '@/lib/attemptLite';
 import { requireRole } from '@/lib/session';
 import { shuffleMcqOptions, shuffleQuestionOrder } from '@/lib/questions';
 import { assignmentTargetsStudent, type Attempt, type Assignment, type Student } from '@/lib/types';
-
 type Ctx = { params: Promise<{ id: string }> };
 
 /**
@@ -20,10 +19,14 @@ export async function POST(_req: Request, ctx: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await ctx.params;
 
-  const me = await item<Student>('students', session.uid);
+  // the two reads are independent — fetch them in parallel so "Start" feels
+  // instant instead of paying two sequential round trips
+  const [me, a] = await Promise.all([
+    item<Student>('students', session.uid),
+    item<Assignment>('assignments', id),
+  ]);
   if (!me) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
 
-  const a = await item<Assignment>('assignments', id);
   if (
     !a ||
     a.draft ||
@@ -70,8 +73,13 @@ export async function POST(_req: Request, ctx: Ctx) {
     hiddenMs: 0,
     result: null,
   };
-  await put('attempts', attemptId, attempt);
-  await upsertLite(attempt);
+  // both writes are independent documents — they fly in parallel, and their
+  // version bumps continue after the response (the records themselves are
+  // durable before it)
+  await Promise.all([
+    put('attempts', attemptId, attempt, { bg: true }),
+    upsertLite(attempt, { bg: true }),
+  ]);
   // attemptN tells the client which go this is (1st, 2nd, …) for the header
   return NextResponse.json({ ok: true, attemptId, resumed: false, attemptN: mine.length + 1 });
 }

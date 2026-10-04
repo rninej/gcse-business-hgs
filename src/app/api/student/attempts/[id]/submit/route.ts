@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { merge } from '@/lib/firebase';
+import { item, mergeKnown, runAfter } from '@/lib/firebase';
 import { loadAccessibleAttempt } from '@/lib/attemptAccess';
 import { markAttempt } from '@/lib/marking';
 import { assessRisk, pointsFor } from '@/lib/risk';
-import { generateFeedback } from '@/lib/ai';
+import { generateFeedback, templateFeedback, type FeedbackInput } from '@/lib/ai';
 import { toReview } from '@/lib/sanitize';
 import { TOPIC_MAP } from '@/lib/topics';
 import { crossedMilestone, streaksFrom, studentSubmittedAt } from '@/lib/streaks';
@@ -87,14 +87,16 @@ export async function POST(req: Request, ctx: Ctx) {
   // only, so a second same-day quiz can't re-unlock or mask the line)
   const priorSubmits = isSelfTest ? [] : await studentSubmittedAt(attempt.studentId);
 
-  // feedback (AI with template fallback — never blocks the result)
+  // feedback: the instant template lands in the record NOW (the student's
+  // result screen shows it straight away); the richer AI version is written
+  // moments later in the background — submitting must never wait on an LLM
   const topicTitles: Record<string, string> = Object.fromEntries(
     (marked.topicStats ?? []).map((s) => [s.topic, TOPIC_MAP[s.topic]?.title ?? s.topic])
   );
   const sortedTopics = [...(marked.topicStats ?? [])]
     .map((s) => ({ tid: s.topic, pct: s.t ? (s.c / s.t) * 100 : 0 }))
     .sort((a, b) => a.pct - b.pct);
-  const feedback = await generateFeedback({
+  const feedbackInput: FeedbackInput = {
     studentName: attempt.studentName,
     quizTitle: attempt.assignmentTitle,
     pct: marked.pct,
@@ -105,7 +107,8 @@ export async function POST(req: Request, ctx: Ctx) {
     weakTopics: sortedTopics.filter((t) => t.pct < 60).map((t) => t.tid),
     strongTopics: sortedTopics.filter((t) => t.pct >= 80).map((t) => t.tid),
     timeTakenSec,
-  });
+  };
+  const feedback = { text: templateFeedback(feedbackInput), by: 'template' as const };
 
   const result: NonNullable<Attempt['result']> = {
     score: marked.score,
@@ -140,24 +143,54 @@ export async function POST(req: Request, ctx: Ctx) {
     streakMilestone,
   };
 
-  await merge('attempts', attempt.id, {
-    status: 'submitted' as const,
-    answers,
-    checked: attempt.checked ?? {},
-    perQ,
-    events,
-    wallMs,
-    hiddenMs,
-    result,
-    streakMilestone,
-  });
+  // single-round-trip write of the submitted record (the attempt was read at
+  // the top of this request) + the dashboard slim feed — independent docs, so
+  // both writes fly in parallel and the response waits for neither's twin
+  await Promise.all([
+    mergeKnown('attempts', attempt.id, attempt, {
+      status: 'submitted' as const,
+      answers,
+      checked: attempt.checked ?? {},
+      perQ,
+      events,
+      wallMs,
+      hiddenMs,
+      result,
+      streakMilestone,
+    }),
+    upsertLite(submitted),
+  ]);
 
-  // slim-feed mirrors — dashboards and results tables read these, never the
-  // fat collection
-  await upsertLite(submitted);
-  if (!isSelfTest) {
-    await syncWrongPool(attempt.studentId, attempt.questions, marked.perQ, result.submittedAt);
-  }
+  // slow follow-ups continue AFTER the response: the AI feedback upgrade
+  // (re-reads the fresh record first so any written marks already landed by
+  // the examiner are preserved) and the wrong-answer pool sync
+  runAfter(async () => {
+    try {
+      const ai = await generateFeedback(feedbackInput, 12_000);
+      if (ai.by !== 'template') {
+        const fresh = await item<Attempt>('attempts', attempt.id);
+        if (fresh && fresh.status === 'submitted' && fresh.result) {
+          const updated: Attempt = {
+            ...fresh,
+            result: { ...fresh.result, feedback: ai.text, feedbackBy: ai.by },
+          };
+          await mergeKnown('attempts', attempt.id, fresh, {
+            result: updated.result,
+          });
+          await upsertLite(updated);
+        }
+      }
+    } catch {
+      /* the template feedback already in the record is good */
+    }
+    if (!isSelfTest) {
+      try {
+        await syncWrongPool(attempt.studentId, attempt.questions, marked.perQ, result.submittedAt);
+      } catch {
+        /* pool sync is best-effort */
+      }
+    }
+  });
 
   const reviews = attempt.questions.map((q, i) => {
     const rec = marked.perQ[q.id];

@@ -25,6 +25,8 @@ import {
   Crown,
   Orbit,
   MoonStar,
+  CheckCircle2,
+  Loader2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -117,6 +119,9 @@ export function StudentHome() {
   const [error, setError] = useState<string | null>(null);
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const [poolStarting, setPoolStarting] = useState(false);
+  /** per-assignment busy state — Start / Do-again buttons show a spinner the
+   * moment they are pressed, so it never looks like the tap did nothing */
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     api
@@ -175,15 +180,18 @@ export function StudentHome() {
       go({ name: 'result', attemptId: a.attemptId });
       return;
     }
+    if (a.status === 'in-progress' && a.attemptId) {
+      go({ name: 'quiz', attemptId: a.attemptId });
+      return;
+    }
+    setBusyId(a.id);
     try {
-      if (a.status === 'in-progress' && a.attemptId) {
-        go({ name: 'quiz', attemptId: a.attemptId });
-        return;
-      }
       const res = await api.post<{ attemptId: string }>(`/api/student/assignments/${a.id}/start`);
       go({ name: 'quiz', attemptId: res.attemptId });
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -203,11 +211,14 @@ export function StudentHome() {
 
   // start the assignment again from scratch — a fresh attempt, teacher sees every go
   async function redo(a: AssignmentRow) {
+    setBusyId(a.id);
     try {
       const res = await api.post<{ attemptId: string }>(`/api/student/assignments/${a.id}/start`);
       go({ name: 'quiz', attemptId: res.attemptId });
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -268,17 +279,23 @@ export function StudentHome() {
         <div className="space-y-3 mb-6">
           {assignments.map((a) => {
             const submitted = a.status === 'submitted';
+            const aBusy = busyId === a.id;
             return (
               <div
                 key={a.id}
                 className={cn(
                   'rounded-lg border bg-card p-4 sm:p-5 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 card-lift',
-                  submitted ? 'opacity-90' : a.status === 'in-progress' ? 'border-primary/50' : undefined
+                  submitted ? 'border-[var(--success)]/30 bg-[var(--success)]/[0.04]' : a.status === 'in-progress' ? 'border-primary/50' : undefined
                 )}
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold break-words">{a.title}</span>
+                    <span className={cn('font-semibold break-words', submitted && 'text-muted-foreground')}>{a.title}</span>
+                    {submitted ? (
+                      <Badge className="bg-[var(--success)]/15 text-[var(--success)] border border-[var(--success)]/30 gap-1 shrink-0">
+                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Done
+                      </Badge>
+                    ) : null}
                     {a.timeLimitMin ? (
                       <Badge variant="outline" className="text-[10px] gap-1">
                         <RotateCw className="h-3 w-3" /> {a.timeLimitMin} min
@@ -305,14 +322,30 @@ export function StudentHome() {
                     <Button size="sm" variant="outline" onClick={() => start(a)}>
                       <Eye className="h-3.5 w-3.5" /> Review
                     </Button>
-                    <Button size="sm" variant="outline" className="border-primary/40 text-primary hover:bg-primary/5" onClick={() => redo(a)}>
-                      <RotateCw className="h-3.5 w-3.5" /> Redo
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-primary/40 text-primary hover:bg-primary/5"
+                      onClick={() => redo(a)}
+                      disabled={aBusy}
+                    >
+                      {aBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <RotateCw className="h-3.5 w-3.5" />}
+                      {aBusy ? 'Starting…' : 'Do again'}
                     </Button>
                   </div>
                 ) : (
-                  <Button size="sm" className="self-start sm:self-auto" onClick={() => start(a)}>
-                    <PlayCircle className="h-4 w-4" />
-                    {a.status === 'in-progress' ? 'Continue' : 'Start'}
+                  <Button
+                    size="sm"
+                    className="self-start sm:self-auto"
+                    onClick={() => start(a)}
+                    disabled={aBusy}
+                  >
+                    {aBusy ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    ) : (
+                      <PlayCircle className="h-4 w-4" />
+                    )}
+                    {aBusy ? 'Starting…' : a.status === 'in-progress' ? 'Continue' : 'Start'}
                   </Button>
                 )}
               </div>

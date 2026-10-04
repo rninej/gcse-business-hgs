@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { item, merge } from '@/lib/firebase';
+import { mergeKnown } from '@/lib/firebase';
 import { loadAccessibleAttempt } from '@/lib/attemptAccess';
 import { markQuestion } from '@/lib/marking';
 import type { Attempt } from '@/lib/types';
@@ -31,7 +31,12 @@ export async function POST(req: Request, ctx: Ctx) {
   // the AI examiner marks them after submission
   if (q.type === 'written') {
     const answer = (body.answer ?? '').toString().slice(0, 5000);
-    await merge('attempts', attempt.id, { [`answers/${qid}`]: answer, lastSeenAt: Date.now() });
+    // the attempt was loaded moments ago in THIS request — mergeKnown turns
+    // the write into a single round trip instead of a read-modify-write
+    await mergeKnown('attempts', attempt.id, attempt, {
+      [`answers/${qid}`]: answer,
+      lastSeenAt: Date.now(),
+    });
     return NextResponse.json({ ok: true, saved: true, marks: q.marks });
   }
 
@@ -51,7 +56,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const answer = (body.answer ?? '').toString().slice(0, 300);
   const outcome = markQuestion(q, answer);
 
-  await merge('attempts', attempt.id, {
+  await mergeKnown('attempts', attempt.id, attempt, {
     [`answers/${qid}`]: answer,
     [`checked/${qid}`]: {
       a: answer,
