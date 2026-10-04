@@ -1,23 +1,49 @@
-// Firebase Realtime Database REST client (server-side only).
-// Data lives at https://hgs-business-default-rtdb.europe-west1.firebasedatabase.app under /hgs
+// Dual-engine data layer (server-side only).
 //
-// Bandwidth model: RTDB bills every byte downloaded, and this app's fat
-// collections (attempts ≈ 16KB per record) were re-downloaded whole on every
-// 5s TTL expiry — polls and dashboards burned hundreds of MB a month for a
-// handful of users. Two layers fix that:
+// The app used to talk straight to the Firebase Realtime Database (RTDB) REST
+// API under /hgs. RTDB bills every byte DOWNLOADED, and even after the
+// versioned-TTL-cache + slim-feeds work (see git history) the byte-meter kept
+// ticking on every poll. The user provisioned a Firestore database in London
+// (europe-west2) — Firestore bills per DOCUMENT READ (50k/day free) and never
+// per byte delivered, which structurally removes the download problem.
 //
-//   1. Version channel — every write bumps a tiny stamp under meta/versions
-//      (~200 bytes for ALL collections). When a cached read's TTL expires we
-//      re-check that stamp first: unchanged data extends the cache for another
-//      TTL cycle at the cost of one tiny round-trip instead of a full
-//      collection download. Works across serverless instances because the
-//      stamps live in Firebase itself.
-//   2. Slim feeds (attemptLite / notifFeed / wrongPool, maintained by the
-//      write paths) mean even genuine re-downloads move a few KB, not the
-//      whole 700KB attempts collection — see src/lib/attemptLite.ts.
+// This module now routes every operation through one of two engines:
 //
-// Writes made through this module invalidate the affected collections
-// immediately and bump their version stamp.
+//   rtdb       the original Realtime Database (always the safe fallback)
+//   firestore  the Firestore REST mirror (see ./firestoreRest.ts)
+//
+// …selected by a tiny flag at meta/databaseMode IN THE RTDB (the fallback
+// engine must never depend on the engine it falls back from). The /debug owner
+// dashboard flips it; every serverless instance notices within ~15s.
+//
+// Safety design — "always switchable back":
+//   • READS come from the active engine only.
+//   • WRITES go to BOTH engines in parallel (RTDB uploads are free; Firestore
+//     writes are 20k/day free and this app uses a few hundred a day), awaited
+//     together before the response so nothing is dropped by the serverless
+//     runtime. Both databases therefore stay byte-identical, and a mode flip
+//     is safe at ANY moment, in either direction.
+//   • If a Firestore READ fails (outage, rules change), the request silently
+//     retries against the RTDB and the failure is counted for the /debug
+//     panel — the app keeps working while the owner decides.
+//   • The one-time bulk copy lives in ./migrateDb.ts (also wired into /debug).
+//
+// The versioned TTL cache from the old module is preserved unchanged on top:
+// writes bump a ~200-byte stamp in BOTH engines' meta/versions docs, expired
+// caches re-check the active engine's stamp (1 tiny read), and unchanged data
+// costs one round-trip instead of a re-download.
+
+import {
+  FirestoreRestError,
+  fsGet,
+  fsPatch,
+  fsProbe,
+  fsRemove,
+  fsSet,
+  getVersionsDoc,
+  patchVersionsDoc,
+  type ProbeResult,
+} from './firestoreRest';
 
 const BASE = (
   process.env.FIREBASE_DB_URL ??
@@ -25,8 +51,15 @@ const BASE = (
 ).replace(/\/+$/, '');
 const NS = 'hgs';
 
-async function fbFetch<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const url = `${BASE}/${NS}/${path}.json`;
+export type DbMode = 'rtdb' | 'firestore';
+
+export type { ProbeResult };
+
+/* ---------------- raw RTDB transport ---------------- */
+
+async function rtdbFetch<T>(method: string, path: string, body?: unknown, query?: string): Promise<T> {
+  const node = path === '' ? '.json' : `${path}.json`;
+  const url = `${BASE}/${NS}/${node}${query ? `?${query}` : ''}`;
   const res = await fetch(url, {
     method,
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
@@ -40,7 +73,103 @@ async function fbFetch<T>(method: string, path: string, body?: unknown): Promise
   return (await res.json()) as T;
 }
 
-/* ---------------- version channel ---------------- */
+/** Raw path-shaped RTDB ops — used by the router, the migration and the
+ *  /debug engine switch (which must bypass the router by definition). */
+export const rtdb = {
+  get<T>(path: string): Promise<T | null> {
+    return rtdbFetch<T | null>('GET', path);
+  },
+  async set(path: string, data: unknown): Promise<void> {
+    await rtdbFetch<unknown>('PUT', path, data);
+  },
+  async patch(path: string, data: unknown): Promise<void> {
+    await rtdbFetch<unknown>('PATCH', path, data);
+  },
+  async remove(path: string): Promise<void> {
+    await rtdbFetch<unknown>('DELETE', path);
+  },
+};
+
+/** Top-level keys of an RTDB node without downloading the payloads. */
+export async function rtdbShallowKeys(path = ''): Promise<string[]> {
+  const v = await rtdbFetch<Record<string, true> | null>('GET', path, undefined, 'shallow=true');
+  return Object.keys(v ?? {});
+}
+
+/* ---------------- engine mode (flag lives in the RTDB, always) ---------------- */
+
+let modeState: { at: number; mode: DbMode } | null = null;
+let modeInflight: Promise<DbMode> | null = null;
+const MODE_TTL_MS = 15_000;
+
+export async function getMode(): Promise<DbMode> {
+  if (modeState && Date.now() - modeState.at < MODE_TTL_MS) return modeState.mode;
+  if (modeInflight) return modeInflight;
+  modeInflight = (async () => {
+    let mode: DbMode = 'rtdb';
+    try {
+      const v = await rtdbFetch<unknown>('GET', 'meta/databaseMode');
+      if (v === 'firestore') mode = 'firestore';
+    } catch {
+      /* flag unreachable — stay on the original engine */
+    }
+    if (modeState && modeState.mode !== mode) hardReset(); // engine flipped under us
+    modeState = { at: Date.now(), mode };
+    return mode;
+  })();
+  try {
+    return await modeInflight;
+  } finally {
+    modeInflight = null;
+  }
+}
+
+/** Flip the engine (owner-only, called by /api/owner/database). */
+export async function setMode(mode: DbMode): Promise<void> {
+  if (mode !== 'rtdb' && mode !== 'firestore') throw new Error('unknown engine');
+  await rtdbFetch<unknown>('PUT', 'meta/databaseMode', mode);
+  modeState = { at: Date.now(), mode };
+  hardReset();
+}
+
+/* ---------------- health counters (surfaced in /debug) ---------------- */
+
+export interface DbEvent {
+  at: number;
+  path: string;
+  op: string;
+  message: string;
+}
+
+let dualWriteErrors = 0;
+let lastDualWriteError: DbEvent | null = null;
+let readFallbacks = 0;
+let lastReadFallback: DbEvent | null = null;
+
+export function dbHealth(): {
+  dualWriteErrors: number;
+  lastDualWriteError: DbEvent | null;
+  fsReadFallbacks: number;
+  lastFsReadFallback: DbEvent | null;
+} {
+  return { dualWriteErrors, lastDualWriteError, fsReadFallbacks: readFallbacks, lastFsReadFallback: lastReadFallback };
+}
+
+/** Called by the migrate endpoint after a full re-copy: sync issues from
+ *  before the copy are ancient history. */
+export function resetDbHealth(): void {
+  dualWriteErrors = 0;
+  lastDualWriteError = null;
+  readFallbacks = 0;
+  lastReadFallback = null;
+}
+
+function noteReadFallback(path: string, e: unknown): void {
+  readFallbacks++;
+  lastReadFallback = { at: Date.now(), path, op: 'read', message: (e as Error).message.slice(0, 300) };
+}
+
+/* ---------------- version channel (both engines, always) ---------------- */
 
 /** Unique per bump — never reuses a value, so two writes inside the same
  *  millisecond can never cancel each other out for a reader. */
@@ -49,50 +178,59 @@ function newStamp(): string {
 }
 
 let versionCache: { at: number; map: Record<string, string> } | null = null;
-let versionInflight: Promise<Record<string, string> | null> | null = null;
+const versionInflight = new Map<DbMode, Promise<Record<string, string> | null>>();
 
 /** Bursts (a dashboard revalidating four collections at once) share a single
  *  version fetch; the window is tiny so our own writes are visible fast. */
 const VERSION_MICRO_MS = 250;
 
+async function readVersionMap(mode: DbMode): Promise<Record<string, string> | null> {
+  const now = Date.now();
+  if (versionCache && now - versionCache.at < VERSION_MICRO_MS) return versionCache.map;
+  let p = versionInflight.get(mode);
+  if (!p) {
+    p = (async () => {
+      try {
+        const map = mode === 'firestore' ? await getVersionsDoc() : await rtdb.get<Record<string, string>>('meta/versions');
+        versionCache = { at: Date.now(), map: map ?? {} };
+        return map;
+      } catch {
+        return null; // channel unreachable → callers fall back to re-downloading
+      } finally {
+        versionInflight.delete(mode);
+      }
+    })();
+    versionInflight.set(mode, p);
+  }
+  return p;
+}
+
+/** Bump a collection's stamp in BOTH engines so either engine's caches stay
+ *  correct — a mode flip must never serve stale data. Never throws: the data
+ *  write already succeeded; worst case readers re-download once. */
 async function bumpVersion(segment: string): Promise<void> {
   const stamp = newStamp();
-  try {
-    await fbFetch<unknown>('PATCH', 'meta/versions', { [segment]: stamp });
-    // optimistically refresh the local map so this instance sees its own bump
-    if (versionCache) {
-      versionCache = { at: 0, map: { ...versionCache.map, [segment]: stamp } };
-    }
-  } catch {
-    /* the data write itself succeeded; worst case readers re-download once */
+  const mode = await getMode();
+  const patch = { [segment]: stamp };
+  const [primary, secondary] = await Promise.allSettled([
+    mode === 'firestore' ? patchVersionsDoc(patch) : rtdb.patch('meta/versions', patch),
+    mode === 'firestore' ? rtdb.patch('meta/versions', patch) : patchVersionsDoc(patch),
+  ]);
+  if (primary.status === 'rejected' && secondary.status === 'rejected') {
+    if (versionCache) versionCache = { at: 0, map: { ...versionCache.map, [segment]: stamp } };
+    return; // both engines keep the pre-bump stamp: readers just re-check sooner
+  }
+  // optimistically refresh the local map so this instance sees its own bump
+  if (versionCache) {
+    versionCache = { at: 0, map: { ...versionCache.map, [segment]: stamp } };
   }
 }
 
-/** Fresh-ish snapshot of every collection's version stamp. Returns null when
- *  the channel is unreachable — callers then fall back to re-downloading. */
-async function getVersionMap(): Promise<Record<string, string> | null> {
-  const now = Date.now();
-  if (versionCache && now - versionCache.at < VERSION_MICRO_MS) return versionCache.map;
-  if (versionInflight) return versionInflight;
-  versionInflight = (async () => {
-    try {
-      const map = (await fbFetch<Record<string, string>>('GET', 'meta/versions')) ?? {};
-      versionCache = { at: Date.now(), map };
-      return map;
-    } catch {
-      return null;
-    } finally {
-      versionInflight = null;
-    }
-  })();
-  return versionInflight;
-}
-
-/* ---------------- in-process cache ---------------- */
+/* ---------------- in-process cache (keyed by engine) ---------------- */
 
 /** Slow-changing reference data keeps longer TTLs; hot quiz data re-checks
  *  sooner. With the version channel these are only "how often do we spend
- *  ~200 bytes confirming nothing changed", not "how stale can data get" —
+ *  one tiny read confirming nothing changed", not "how stale can data get" —
  *  any write anywhere bumps the stamp and forces a true refresh. */
 const COLLECTION_TTL_MS: Record<string, number> = {
   teachers: 60_000,
@@ -126,59 +264,153 @@ function invalidate(name?: string) {
     return;
   }
   for (const key of [...cache.keys()]) {
-    if (key === name || key.startsWith(`${name}/`)) cache.delete(key);
+    if (key === name || key.startsWith(`${name}/`) || key.endsWith(`:${name}`) || key.includes(`:${name}/`)) {
+      cache.delete(key);
+    }
   }
 }
 
+function hardReset(): void {
+  cache.clear();
+  inflight.clear();
+  versionCache = null;
+}
+
+/* ---------------- routed reads (Firestore failure → RTDB fallback) ---------------- */
+
+async function backendGet<T>(path: string): Promise<T | null> {
+  const mode = await getMode();
+  const other: DbMode = mode === 'firestore' ? 'rtdb' : 'firestore';
+  try {
+    return (mode === 'firestore' ? await fsGet(path) : await rtdb.get(path)) as T | null;
+  } catch (e) {
+    noteReadFallback(path, e);
+    return (other === 'firestore' ? await fsGet(path) : await rtdb.get<T>(path)) as T | null;
+  }
+}
+
+/** Read a whole collection OR a feed sub-path (`attemptLite/{uid}`) — the RTDB
+ *  path router inside firestoreRest handles both shapes. */
+async function backendCol<T>(name: string): Promise<Record<string, T> | null> {
+  const mode = await getMode();
+  const other: DbMode = mode === 'firestore' ? 'rtdb' : 'firestore';
+  try {
+    return (mode === 'firestore' ? await fsGet(name) : await rtdb.get(name)) as Record<string, T> | null;
+  } catch (e) {
+    noteReadFallback(name, e);
+    return (other === 'firestore' ? await fsGet(name) : await rtdb.get(name)) as Record<string, T> | null;
+  }
+}
+
+/* ---------------- dual writes (both engines, parallel, awaited) ---------------- */
+
+type WriteOp = 'set' | 'patch' | 'remove';
+
+async function runOp(engine: DbMode, op: WriteOp, path: string, data: unknown): Promise<void> {
+  if (engine === 'firestore') {
+    if (op === 'set') return fsSet(path, data);
+    if (op === 'patch') return fsPatch(path, data as object);
+    return fsRemove(path);
+  }
+  if (op === 'set') return rtdb.set(path, data);
+  if (op === 'patch') return rtdb.patch(path, data);
+  return rtdb.remove(path);
+}
+
+async function dualWrite(op: WriteOp, path: string, data?: unknown): Promise<void> {
+  const mode = await getMode();
+  const other: DbMode = mode === 'firestore' ? 'rtdb' : 'firestore';
+  const [primary, secondary] = await Promise.allSettled([
+    runOp(mode, op, path, data),
+    runOp(other, op, path, data),
+  ]);
+
+  if (primary.status === 'rejected' && secondary.status === 'fulfilled') {
+    // The ACTIVE engine missed the write but the mirror caught it: the user's
+    // action succeeded (reads fall back the same way), and the miss is
+    // counted here — re-running the bulk copy from /debug re-syncs both.
+    dualWriteErrors++;
+    lastDualWriteError = {
+      at: Date.now(),
+      path,
+      op: `${op} — active engine missed it, mirror served it`,
+      message: String((primary.reason as Error)?.message ?? primary.reason).slice(0, 300),
+    };
+    return;
+  }
+  if (primary.status === 'rejected') throw primary.reason; // both engines failed
+  if (secondary.status === 'rejected') {
+    // Active engine is fine; the mirror missed one write. Counted in /debug —
+    // re-running the bulk copy from the dashboard re-syncs both engines.
+    dualWriteErrors++;
+    lastDualWriteError = {
+      at: Date.now(),
+      path,
+      op,
+      message: String((secondary.reason as Error)?.message ?? secondary.reason).slice(0, 300),
+    };
+  }
+}
+
+/* ---------------- public surface (unchanged shapes) ---------------- */
+
+function segOf(path: string): string {
+  return path.split('/')[0];
+}
+
 export const fb = {
+  /** Read any RTDB-shaped path from the ACTIVE engine (with automatic
+   *  RTDB fallback if the Firestore read fails). */
   get<T>(path: string): Promise<T | null> {
-    return fbFetch<T | null>('GET', path);
+    return backendGet<T>(path);
   },
+  /** Full replace at a path — written to BOTH engines. */
   async set(path: string, data: unknown): Promise<void> {
-    const seg = path.split('/')[0];
-    invalidate(seg);
-    await fbFetch<unknown>('PUT', path, data);
-    await bumpVersion(seg);
+    invalidate(segOf(path));
+    await dualWrite('set', path, data);
+    await bumpVersion(segOf(path));
   },
-  /** Shallow-merge into an object without replacing siblings */
+  /** Shallow-merge into an object without replacing siblings — BOTH engines. */
   async patch(path: string, data: unknown): Promise<void> {
-    const seg = path.split('/')[0];
-    invalidate(seg);
-    await fbFetch<unknown>('PATCH', path, data);
-    await bumpVersion(seg);
+    invalidate(segOf(path));
+    await dualWrite('patch', path, data);
+    await bumpVersion(segOf(path));
   },
+  /** Delete a node — BOTH engines. */
   async remove(path: string): Promise<void> {
-    const seg = path.split('/')[0];
-    invalidate(seg);
-    await fbFetch<unknown>('DELETE', path);
-    await bumpVersion(seg);
+    invalidate(segOf(path));
+    await dualWrite('remove', path);
+    await bumpVersion(segOf(path));
   },
 };
 
-/** Read an entire collection (object keyed by id) — always a fresh download.
+/** Read an entire collection (object keyed by id) — always a fresh read.
  *  Cold paths only; hot paths should use colCached (or a slim feed). */
 export async function col<T>(name: string): Promise<Record<string, T>> {
-  const v = await fb.get<Record<string, T>>(name);
+  const v = await backendCol<T>(name);
   return v ?? {};
 }
 
 /**
  * Read a collection (or a nested feed path like `attemptLite/{studentId}`)
- * through the versioned TTL cache. On expiry the ~200-byte version map is
- * re-checked first: unchanged data costs one tiny round-trip, changed data
- * is re-downloaded once (concurrent readers share the request).
+ * through the versioned TTL cache. On expiry the active engine's version
+ * stamp is re-checked first (one tiny read): unchanged data costs one
+ * round-trip, changed data is re-downloaded once (concurrent readers share
+ * the request).
  */
 export async function colCached<T>(name: string, ttlMs?: number): Promise<Record<string, T>> {
+  const mode = await getMode();
   const seg = name.split('/')[0];
   const ttl = ttlMs ?? COLLECTION_TTL_MS[seg] ?? DEFAULT_TTL_MS;
+  const key = `${mode}:${name}`;
   const now = Date.now();
-  const hit = cache.get(name);
+  const hit = cache.get(key);
   if (hit && now - hit.at < ttl) {
     return (hit.data as Record<string, T>) ?? {};
   }
 
   // capture the stamp BEFORE any download (see CacheEntry.ver note)
-  const map = await getVersionMap();
+  const map = await readVersionMap(mode);
   const stampBefore = map?.[seg] ?? null;
 
   if (hit && map && stampBefore !== null && hit.ver === stampBefore) {
@@ -186,23 +418,30 @@ export async function colCached<T>(name: string, ttlMs?: number): Promise<Record
     return (hit.data as Record<string, T>) ?? {};
   }
 
-  let p = inflight.get(name);
+  let p = inflight.get(key);
   if (!p) {
     p = (async () => {
-      const v = (await fbFetch<Record<string, T> | null>('GET', name)) ?? {};
-      cache.set(name, { at: Date.now(), data: v, ver: stampBefore });
-      return v;
+      const other: DbMode = mode === 'firestore' ? 'rtdb' : 'firestore';
+      let v: Record<string, T> | null = null;
+      try {
+        v = (mode === 'firestore' ? await fsGet(name) : await rtdb.get(name)) as Record<string, T> | null;
+      } catch (e) {
+        noteReadFallback(name, e);
+        v = (other === 'firestore' ? await fsGet(name) : await rtdb.get<Record<string, T>>(name)) as Record<string, T> | null;
+      }
+      const data = v ?? {};
+      cache.set(key, { at: Date.now(), data, ver: stampBefore });
+      return data;
     })();
-    inflight.set(name, p);
-    p.finally(() => inflight.delete(name)).catch(() => undefined);
+    inflight.set(key, p);
+    p.finally(() => inflight.delete(key)).catch(() => undefined);
   }
   return (await p) as Record<string, T>;
 }
 
 /** Read one item by id (fresh — detail views want the latest). */
 export async function item<T>(name: string, id: string): Promise<T | null> {
-  const v = await fb.get<T>(`${name}/${id}`);
-  return v ?? null;
+  return backendGet<T>(`${name}/${id}`);
 }
 
 /** Write one item (full replace of that key) */
@@ -229,3 +468,10 @@ export function values<T>(obj: Record<string, T>): T[] {
 export function flatValues<T>(obj: Record<string, Record<string, T>> | null | undefined): T[] {
   return Object.values(obj ?? {}).flatMap((inner) => Object.values(inner ?? {}));
 }
+
+/** Connectivity probe for the Firestore engine (used by /debug). */
+export function probeFirestore(): Promise<ProbeResult> {
+  return fsProbe();
+}
+
+export { FirestoreRestError };

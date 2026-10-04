@@ -33,6 +33,7 @@ import {
   X,
 } from 'lucide-react';
 import { BrandLockup } from '@/components/app/Brand';
+import { DatabaseSection } from '@/components/debug/DatabaseSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -88,7 +89,7 @@ function licencePrice(students: number) {
 function commercialCosts(students: number, callsYear: number) {
   return [
     { item: 'Hosting — Vercel Pro (commercial use)', plan: '$20/mo seat, incl. $20/mo usage credit + 1 TB bandwidth (you would use ~2–4 GB/mo)', cost: VERCEL_PRO_YEAR },
-    { item: 'Database — Firebase RTDB Blaze, budget-capped £5/mo', plan: 'Realistic bill £0–2/mo: first 1 GB storage + 10 GB/mo download free; ~60 MB/yr of quiz data', cost: BLAZE_BUFFER_YEAR },
+    { item: 'Database — Firebase Blaze (RTDB mirror + Firestore engine), budget-capped £5/mo', plan: 'Realistic bill £0–2/mo: Firestore free tier (50k reads/day) serves reads; RTDB keeps a free-to-write live mirror as the fallback; ~60 MB/yr of quiz data', cost: BLAZE_BUFFER_YEAR },
     { item: 'AI — contingency if every free tier was exhausted', plan: `Modelled at paid Gemini Flash rates for ${NUM(callsYear)} calls/yr — in practice the free chain absorbs everything (see capacity table)`, cost: Math.max(5, Math.round(paidAIYearGBP(callsYear))) },
     { item: 'Domain (.co.uk)', plan: 'Annual renewal', cost: DOMAIN_PER_YEAR },
   ];
@@ -383,6 +384,7 @@ function DebugDashboardInner({ onLock }: { onLock: () => void | Promise<void> })
         </section>
 
         <ReportsSection />
+        <DatabaseSection />
         <ComparisonSection />
         <UspSection />
         <AiCapacitySection />
