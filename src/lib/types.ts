@@ -436,4 +436,8 @@ export interface TeacherStudentResult {
   tabSwitches?: number;
   attemptCount?: number; // total attempts (redos included)
   history?: AttemptSummary[]; // every submitted attempt, oldest first
+  /** true while a student with a finished attempt is doing ANOTHER go — the
+   *  headline row keeps showing the last completed attempt (score, time and
+   *  integrity included) instead of a blank "in progress" row */
+  retaking?: boolean;
 }

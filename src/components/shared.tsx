@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { calendarDaysUntil } from '@/lib/dates';
-import { CharAvatar } from '@/components/characters';
+import { CharAvatar, BuildAvatar } from '@/components/characters';
+import { parseBuild } from '@/lib/avatarBuilder';
 import type { QuestionType } from '@/lib/types';
 
 export function PageHeader({
@@ -260,6 +261,8 @@ export function Avatar({
   const s = AVATAR_SIZES[size];
   const emoji = src?.startsWith('emoji:') ? [...src.slice(6)][0] ?? null : null;
   const charId = src?.startsWith('char:') ? src.slice(5) : null;
+  // a custom-built character — invalid/stale payloads fall back to initials
+  const build = src?.startsWith('build:') ? parseBuild(src) : null;
   return (
     <span
       className={cn(
@@ -272,6 +275,9 @@ export function Avatar({
       {charId ? (
         // a 2D character pick — inline SVG bust, clipped to the circle
         <CharAvatar id={charId} />
+      ) : build ? (
+        // a custom-built character — layered SVG from the builder
+        <BuildAvatar build={build} />
       ) : src && !emoji ? (
         // data-URL avatar chosen by this user — next/image adds nothing here
         <img src={src} alt="" className="h-full w-full object-cover" draggable={false} />

@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   XCircle,
   Printer,
+  RotateCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -323,7 +324,23 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3"><StatusPill status={r.status} /></td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <StatusPill status={r.status} />
+                            {/* another go under way — the row still shows the last
+                              * completed attempt; this just whispers that a redo
+                              * is live (the ×N tries column carries the count) */}
+                            {r.retaking ? (
+                              <span
+                                className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-1.5 py-0.5 text-[10px] font-medium text-primary print:hidden"
+                                title="Doing another go right now — this row shows their last completed attempt"
+                              >
+                                <RotateCw className="h-2.5 w-2.5 animate-[spin_2.8s_linear_infinite]" aria-hidden />
+                                Retake
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
                         <td className="px-4 py-3">
                           {r.pct === undefined ? (
                             <span className="text-muted-foreground text-xs">—</span>

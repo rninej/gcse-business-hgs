@@ -3,7 +3,7 @@ import { fb } from '@/lib/firebase';
 
 /** Build marker — bumped every deploy round so the production rollout can be
  *  verified from outside (Vercel serves the old build until it's live). */
-const BUILD = 'r33';
+const BUILD = 'r34';
 
 export async function GET() {
   try {

@@ -61,6 +61,34 @@ export async function GET(_req: Request, ctx: Ctx) {
         }));
       const attempt = mine[mine.length - 1];
       if (attempt.status !== 'submitted') {
+        // doing another go right now. If they already finished one earlier,
+        // the headline row keeps showing that LAST COMPLETED attempt — score,
+        // time and integrity included — instead of blanking to "in progress"
+        // (a tiny "retake live" hint rides along in the UI). Only a student
+        // on their very first go shows as genuinely in progress.
+        const lastSubmitted = mine.filter((x) => x.status === 'submitted' && x.result).pop();
+        if (lastSubmitted?.result) {
+          const lr = lastSubmitted.result;
+          const late = a.dueAt ? lr.submittedAt > a.dueAt + 3_600_000 : false;
+          return {
+            studentId: s.id,
+            displayName: s.displayName,
+            avatar: avatars[s.id]?.img ?? null,
+            username: s.username,
+            status: late ? ('late' as const) : ('submitted' as const),
+            score: lr.score,
+            total: lr.total,
+            pct: lr.pct,
+            submittedAt: lr.submittedAt,
+            timeTakenSec: lr.timeTakenSec,
+            riskScore: lr.riskScore,
+            riskBand: lr.riskBand,
+            riskSignals: lr.riskSignals,
+            attemptCount: mine.length,
+            history,
+            retaking: true,
+          };
+        }
         return {
           studentId: s.id,
           displayName: s.displayName,

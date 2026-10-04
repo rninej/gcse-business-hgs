@@ -125,6 +125,9 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
   const [shareCode, setShareCode] = useState('');
   const [shareBusy, setShareBusy] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
+  // the share-code entry stays collapsed behind a quiet link until asked for —
+  // it's a rare flow and shouldn't compete with the three main sources
+  const [shareOpen, setShareOpen] = useState(false);
   // teacher-added written questions — append to any question source
   const [extraWritten, setExtraWritten] = useState<Question[]>([]);
   // drafts
@@ -586,56 +589,6 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
             ))}
           </RadioGroup>
 
-          {/* redeem another teacher's shared quiz — loads into the editable list */}
-          <div className="glass-soft rounded-xl p-4">
-            <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-              <div className="flex-1 space-y-1.5">
-                <Label htmlFor="share-code" className="text-xs font-medium text-muted-foreground">
-                  Have a share code from another teacher?
-                </Label>
-                <Input
-                  id="share-code"
-                  value={shareCode}
-                  onChange={(e) => {
-                    setShareCode(e.target.value.toUpperCase());
-                    setShareError(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      void redeemShare();
-                    }
-                  }}
-                  placeholder="e.g. K7P2XQ"
-                  className="font-mono tracking-widest uppercase h-10 max-w-[220px]"
-                  maxLength={10}
-                  autoComplete="off"
-                  aria-label="Quiz share code"
-                />
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => void redeemShare()}
-                disabled={shareBusy || shareCode.replace(/[\s-]/g, '').length === 0}
-                className="gap-1.5"
-              >
-                {shareBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Share2 className="h-4 w-4" aria-hidden />}
-                {shareBusy ? 'Loading…' : 'Load shared quiz'}
-              </Button>
-            </div>
-            {shareError ? <p className="text-xs text-[var(--danger)] mt-2" role="alert">{shareError}</p> : null}
-            {sharedFrom && !shareError ? (
-              <p className="text-xs text-[var(--success)] mt-2 flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                {sharedFrom}&rsquo;s quiz is loaded below — tweak anything, then assign it.
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground mt-2">
-                Codes come from another teacher&rsquo;s Assignments page → Share. Their questions land here, fully editable.
-              </p>
-            )}
-          </div>
-
           {mode === 'library' ? (
             <div>
               {quizzes.length === 0 ? (
@@ -859,6 +812,85 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
           {mode !== 'custom' ? (
             <WrittenSection list={extraWritten} setList={setExtraWritten} />
           ) : null}
+
+          {/* redeem another teacher's shared quiz — a rare flow, so it hides
+            * behind this quiet link at the bottom instead of a big card up
+            * top; expanding reveals the compact code entry */}
+          <div className="pt-1">
+            {!shareOpen ? (
+              <button
+                type="button"
+                onClick={() => setShareOpen(true)}
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/80 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary rounded-sm"
+              >
+                <Share2 className="h-3 w-3" aria-hidden />
+                Have a share code from another teacher?
+              </button>
+            ) : (
+              <div className="rounded-lg border bg-card px-3.5 py-3 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+                  <div className="flex-1 space-y-1">
+                    <Label htmlFor="share-code" className="text-xs text-muted-foreground">
+                      Enter the 6-character share code
+                    </Label>
+                    <Input
+                      id="share-code"
+                      value={shareCode}
+                      onChange={(e) => {
+                        setShareCode(e.target.value.toUpperCase());
+                        setShareError(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          void redeemShare();
+                        }
+                      }}
+                      placeholder="e.g. K7P2XQ"
+                      className="font-mono tracking-widest uppercase h-9 max-w-[200px]"
+                      maxLength={10}
+                      autoComplete="off"
+                      aria-label="Quiz share code"
+                      autoFocus
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void redeemShare()}
+                    disabled={shareBusy || shareCode.replace(/[\s-]/g, '').length === 0}
+                    className="gap-1.5"
+                  >
+                    {shareBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Share2 className="h-4 w-4" aria-hidden />}
+                    {shareBusy ? 'Loading…' : 'Load quiz'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setShareOpen(false);
+                      setShareError(null);
+                    }}
+                    aria-label="Hide the share code entry"
+                  >
+                    <X className="h-4 w-4" aria-hidden />
+                  </Button>
+                </div>
+                {shareError ? (
+                  <p className="text-xs text-[var(--danger)]" role="alert">{shareError}</p>
+                ) : sharedFrom ? (
+                  <p className="text-xs text-[var(--success)] flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                    {sharedFrom}&rsquo;s quiz is loaded — tweak anything, then assign it.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Codes come from another teacher&rsquo;s Assignments page → Share.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="flex justify-between gap-3">
             <Button variant="outline" onClick={() => setStep(1)}><ArrowLeft className="h-4 w-4" /> Details</Button>
