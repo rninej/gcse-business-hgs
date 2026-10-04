@@ -28,6 +28,8 @@ import {
   CalendarClock,
   Check,
   FlaskConical,
+  Loader2,
+  Share2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -118,6 +120,11 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
   // ids of the custom questions that came from the bank (vs typed) — drives
   // the little “Bank” badge in the lists
   const [bankIds, setBankIds] = useState<Set<string>>(new Set());
+  // a quiz imported from another teacher's share code — shows attribution
+  const [sharedFrom, setSharedFrom] = useState<string | null>(null);
+  const [shareCode, setShareCode] = useState('');
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
   // teacher-added written questions — append to any question source
   const [extraWritten, setExtraWritten] = useState<Question[]>([]);
   // drafts
@@ -181,6 +188,38 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
   }, [sendMode, publishLocal]);
   const scheduleReady = sendMode === 'now' || (publishAt !== null && publishAt > Date.now());
   const scheduleAfterDue = dueAt !== null && publishAt !== null && publishAt > dueAt;
+
+  /** Redeem another teacher's share code: loads their whole question set into
+   *  the editable list (mode switches to “My questions”) so this teacher can
+   *  tweak anything before setting it to their own classes. */
+  async function redeemShare() {
+    const code = shareCode.replace(/[\s-]/g, '').toUpperCase();
+    if (code.length !== 6) {
+      setShareError('Share codes are 6 characters, like K7P2XQ.');
+      return;
+    }
+    setShareBusy(true);
+    setShareError(null);
+    try {
+      const res = await api.get<{ title: string; fromName: string; questionCount: number; questions: Question[] }>(
+        `/api/teacher/share?code=${code}`
+      );
+      const qs = res.questions.slice(0, CUSTOM_MAX);
+      setCustom(qs);
+      setSharedFrom(res.fromName);
+      setMode('custom');
+      if (!title.trim()) setTitle(res.title);
+      setShareCode('');
+      toast({
+        title: `Loaded “${res.title}”`,
+        description: `${res.questionCount} questions from ${res.fromName} — edit anything you like, then assign it.`,
+      });
+    } catch (e) {
+      setShareError((e as Error).message);
+    } finally {
+      setShareBusy(false);
+    }
+  }
 
   /** Append bank questions to the SAME list typed questions use — deduped by
    *  id and clamped to the 40-question cap, with a toast that says exactly
@@ -547,6 +586,56 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
             ))}
           </RadioGroup>
 
+          {/* redeem another teacher's shared quiz — loads into the editable list */}
+          <div className="glass-soft rounded-xl p-4">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+              <div className="flex-1 space-y-1.5">
+                <Label htmlFor="share-code" className="text-xs font-medium text-muted-foreground">
+                  Have a share code from another teacher?
+                </Label>
+                <Input
+                  id="share-code"
+                  value={shareCode}
+                  onChange={(e) => {
+                    setShareCode(e.target.value.toUpperCase());
+                    setShareError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void redeemShare();
+                    }
+                  }}
+                  placeholder="e.g. K7P2XQ"
+                  className="font-mono tracking-widest uppercase h-10 max-w-[220px]"
+                  maxLength={10}
+                  autoComplete="off"
+                  aria-label="Quiz share code"
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => void redeemShare()}
+                disabled={shareBusy || shareCode.replace(/[\s-]/g, '').length === 0}
+                className="gap-1.5"
+              >
+                {shareBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Share2 className="h-4 w-4" aria-hidden />}
+                {shareBusy ? 'Loading…' : 'Load shared quiz'}
+              </Button>
+            </div>
+            {shareError ? <p className="text-xs text-[var(--danger)] mt-2" role="alert">{shareError}</p> : null}
+            {sharedFrom && !shareError ? (
+              <p className="text-xs text-[var(--success)] mt-2 flex items-center gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                {sharedFrom}&rsquo;s quiz is loaded below — tweak anything, then assign it.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground mt-2">
+                Codes come from another teacher&rsquo;s Assignments page → Share. Their questions land here, fully editable.
+              </p>
+            )}
+          </div>
+
           {mode === 'library' ? (
             <div>
               {quizzes.length === 0 ? (
@@ -738,13 +827,32 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
           ) : null}
 
           {mode === 'custom' ? (
-            <CustomBuilder
-              list={custom}
-              setList={setCustom}
-              bankIds={bankIds}
-              setBankIds={setBankIds}
-              onAddBank={addBankQuestions}
-            />
+            <div>
+              {sharedFrom ? (
+                <div className="flex flex-wrap items-center gap-2 mb-3 rounded-lg border border-primary/30 bg-primary/5 px-3.5 py-2.5">
+                  <Share2 className="h-3.5 w-3.5 text-primary shrink-0" aria-hidden />
+                  <span className="text-xs text-muted-foreground">
+                    Shared quiz loaded — <span className="font-medium text-foreground">{sharedFrom}</span>&rsquo;s questions. Edit
+                    anything before assigning.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSharedFrom(null)}
+                    className="ml-auto text-muted-foreground hover:text-foreground"
+                    aria-label="Dismiss"
+                  >
+                    <X className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                </div>
+              ) : null}
+              <CustomBuilder
+                list={custom}
+                setList={setCustom}
+                bankIds={bankIds}
+                setBankIds={setBankIds}
+                onAddBank={addBankQuestions}
+              />
+            </div>
           ) : null}
 
           {/* AI-marked written questions — available on top of any source */}

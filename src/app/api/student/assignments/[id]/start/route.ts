@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import { item, put } from '@/lib/firebase';
 import { liteForStudent, upsertLite } from '@/lib/attemptLite';
 import { requireRole } from '@/lib/session';
-import { shuffleMcqOptions } from '@/lib/questions';
+import { shuffleMcqOptions, shuffleQuestionOrder } from '@/lib/questions';
 import { assignmentTargetsStudent, type Attempt, type Assignment, type Student } from '@/lib/types';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -57,9 +57,11 @@ export async function POST(_req: Request, ctx: Ctx) {
     dueAt: a.dueAt,
     timeLimitMin: a.timeLimitMin,
     lastSeenAt: Date.now(),
-    // fresh copy with randomised MCQ option order — the correct answer must
-    // not always sit in the same position across attempts and students
-    questions: shuffleMcqOptions(a.questions.map((q) => ({ ...q }))),
+    // fresh copy with randomised MCQ option order AND a shuffled question
+    // order — the correct answer must not always sit in the same position
+    // across attempts and students, and the question types must interleave
+    // (mcq, fib, numeric, mcq…) rather than arrive in authored type blocks
+    questions: shuffleMcqOptions(shuffleQuestionOrder(a.questions.map((q) => ({ ...q })))),
     answers: {},
     checked: {},
     perQ: {},

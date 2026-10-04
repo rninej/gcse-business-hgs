@@ -149,6 +149,23 @@ export function shuffleMcqOptions<T extends Question>(questions: T[]): T[] {
   });
 }
 
+/** Randomise QUESTION ORDER so the types interleave (an mcq, then a fib, then
+ *  a numeric, another mcq…) instead of arriving in authored blocks — banks
+ *  are written in type runs (5 MCQs, then 5 fill-ins, then 3 calculations),
+ *  which reads as a patterned slog. Extended-response (written) questions
+ *  always sink to the end: students answer the quickfire run first, then
+ *  write. Called when an attempt is created, so every student sees a fresh
+ *  order. */
+export function shuffleQuestionOrder<T extends Question>(questions: T[]): T[] {
+  const quick = questions.filter((q) => q.type !== 'written');
+  for (let i = quick.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [quick[i], quick[j]] = [quick[j], quick[i]];
+  }
+  const written = questions.filter((q) => q.type === 'written');
+  return [...quick, ...written];
+}
+
 /** Deterministic guard: every numeric question's explanation must contain a number
  *  matching the claimed value within tolerance. Catches arithmetic slips that the
  *  AI cross-check misses (e.g. explanation says 0.0% while value claims 2.2). */

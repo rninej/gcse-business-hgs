@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { BrandLockup } from '@/components/app/Brand';
 import { DatabaseSection } from '@/components/debug/DatabaseSection';
+import { InterfaceFlagsSection } from '@/components/debug/InterfaceFlagsSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -385,6 +386,7 @@ function DebugDashboardInner({ onLock }: { onLock: () => void | Promise<void> })
 
         <ReportsSection />
         <DatabaseSection />
+        <InterfaceFlagsSection />
         <ComparisonSection />
         <UspSection />
         <AiCapacitySection />

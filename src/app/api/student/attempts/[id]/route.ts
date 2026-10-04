@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loadAccessibleAttempt } from '@/lib/attemptAccess';
+import { fb } from '@/lib/firebase';
 import { isAbandonedTimed, finalizeAttempt } from '@/lib/finalize';
 import { liteForStudent } from '@/lib/attemptLite';
 import { streaksFrom } from '@/lib/streaks';
@@ -56,6 +57,9 @@ export async function GET(_req: Request, ctx: Ctx) {
   const now = Date.now();
   const limitMs = attempt.timeLimitMin ? attempt.timeLimitMin * 60_000 : null;
   const remainingMs = limitMs ? Math.max(0, limitMs - (now - attempt.startedAt)) : null;
+  // interface switches (owner-flippable from /debug) — one tiny read; absent
+  // means every flag sits at its built-in default
+  const uiFlags = (await fb.get<{ caseLayout?: 'drawer' | 'side' }>('meta/uiFlags')) ?? undefined;
   // written answers persist server-side as they are saved — they are never
   // locked, so resume restores them on any device
   const writtenAnswers: Record<string, string> = {};
@@ -79,5 +83,6 @@ export async function GET(_req: Request, ctx: Ctx) {
     // the runner resume exactly where the student left off, on any device
     checked: attempt.checked ?? {},
     writtenAnswers,
+    uiFlags,
   });
 }

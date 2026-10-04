@@ -411,13 +411,17 @@ export function StudentHome() {
             </div>
           </div>
 
-          {board.rows.length <= 1 ? (
+          {/* the board shows however many classmates exist — even a class of
+              one gets a real #1 row (their own), so the leaderboard never
+              looks broken to the first student in a new class */}
+          {board.rows.length === 0 ? (
             <p className="px-5 py-6 text-sm text-muted-foreground text-center">
               The leaderboard fills up as your class completes quizzes — earn the first points!
             </p>
           ) : (
-            <ol className="divide-y stagger">
-              {topRows.map((r, i) => (
+            <>
+              <ol className="divide-y stagger">
+                {topRows.map((r, i) => (
                 <li
                   key={r.studentId}
                   className={cn(
@@ -493,7 +497,15 @@ export function StudentHome() {
                   </div>
                 </li>
               ) : null}
-            </ol>
+              </ol>
+              {board.rows.length === 1 ? (
+                <p className="px-4 sm:px-5 py-3 text-xs text-muted-foreground bg-[var(--sidebar)]/40 border-t">
+                  You are the first on the board — #1 with {board.rows[0].weekPoints.toLocaleString()} point
+                  {board.rows[0].weekPoints === 1 ? '' : 's'} this week. As classmates complete quizzes they
+                  join the board below you.
+                </p>
+              ) : null}
+            </>
           )}
           <p className="px-4 sm:px-5 py-2.5 text-[11px] text-muted-foreground border-t bg-[var(--sidebar)]/40">
             Points come from quiz scores and bonuses — the leaderboard resets each week.

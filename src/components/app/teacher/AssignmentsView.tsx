@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, ClipboardList, Clock, FlaskConical, Pencil, PlusCircle, Rocket, Timer, Trash2, Zap } from 'lucide-react';
+import { ArrowRight, ClipboardList, Clock, Copy, FlaskConical, Loader2, Pencil, PlusCircle, Rocket, Share2, Timer, Trash2, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -14,6 +14,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
@@ -113,6 +120,71 @@ export function AssignmentsView() {
       toast({ title: 'Could not start the self-test', description: (e as Error).message, variant: 'destructive' });
     } finally {
       setTesting(null);
+    }
+  }
+
+  /* ----- quiz sharing: turn one of my assignments into a 6-character code
+   *   another teacher can redeem in their own builder ----- */
+  const [shareOpen, setShareOpen] = useState<Row | null>(null);
+  const [shareCode, setShareCode] = useState<string | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+
+  const loadShares = useCallback(() => {
+    api
+      .get<{ shares: { code: string; assignmentId: string; title: string }[] }>('/api/teacher/share')
+      .then((d) => setExistingShares(d.shares))
+      .catch(() => undefined);
+  }, []);
+  const [existingShares, setExistingShares] = useState<{ code: string; assignmentId: string; title: string }[]>([]);
+
+  useEffect(loadShares, [loadShares]);
+
+  // opening the dialog on a row either shows its existing code or mints one
+  useEffect(() => {
+    if (!shareOpen) {
+      setShareCode(null);
+      setShareError(null);
+      return;
+    }
+    const existing = existingShares.find((s) => s.assignmentId === shareOpen.id);
+    if (existing) {
+      setShareCode(existing.code);
+      return;
+    }
+    setShareBusy(true);
+    api
+      .post<{ code: string }>('/api/teacher/share', { assignmentId: shareOpen.id })
+      .then((d) => {
+        setShareCode(d.code);
+        loadShares();
+      })
+      .catch((e) => setShareError((e as Error).message))
+      .finally(() => setShareBusy(false));
+  }, [shareOpen, existingShares, loadShares]);
+
+  async function revokeShare() {
+    if (!shareCode) return;
+    setShareBusy(true);
+    try {
+      await api.del(`/api/teacher/share?code=${shareCode}`);
+      toast({ title: 'Share code revoked', description: 'That code no longer works for anyone.' });
+      setShareOpen(null);
+      loadShares();
+    } catch (e) {
+      setShareError((e as Error).message);
+    } finally {
+      setShareBusy(false);
+    }
+  }
+
+  async function copyCode(code: string) {
+    const pretty = `${code.slice(0, 3)}-${code.slice(3)}`;
+    try {
+      await navigator.clipboard.writeText(pretty);
+      toast({ title: 'Code copied', description: pretty });
+    } catch {
+      toast({ title: 'Copy it by hand', description: pretty });
     }
   }
 
@@ -294,6 +366,15 @@ export function AssignmentsView() {
                           </Button>
                         </>
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShareOpen(a)}
+                        title="Share this quiz with another teacher"
+                      >
+                        <Share2 className="h-3.5 w-3.5" />
+                        <span className="hidden lg:inline">Share</span>
+                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="icon" className="text-[var(--danger)]" aria-label={`Delete ${a.title}`}>
@@ -340,6 +421,48 @@ export function AssignmentsView() {
           })}
         </div>
       )}
+
+      {/* quiz sharing dialog */}
+      <Dialog open={shareOpen !== null} onOpenChange={(o) => setShareOpen(o ? shareOpen : null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Share2 className="h-4 w-4 text-primary" aria-hidden /> Share “{shareOpen?.title}”
+            </DialogTitle>
+            <DialogDescription>
+              Another teacher redeems this code in their assignment builder (Choose questions → “Have a
+              share code?”) and can set the same quiz to their own classes.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {shareCode ? (
+              <>
+                <div className="flex items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4">
+                  <span className="flex-1 text-center text-2xl font-bold tracking-[0.3em] tabular-nums select-all">
+                    {shareCode.slice(0, 3)}-{shareCode.slice(3)}
+                  </span>
+                  <Button size="sm" variant="outline" onClick={() => void copyCode(shareCode)} className="gap-1.5">
+                    <Copy className="h-3.5 w-3.5" aria-hidden /> Copy
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {shareOpen?.questionCount} questions · anyone with a teacher account and this code can load
+                  it. Revoking stops the code working immediately.
+                </p>
+                <Button variant="outline" className="w-full text-[var(--danger)]" onClick={() => void revokeShare()} disabled={shareBusy}>
+                  Revoke this code
+                </Button>
+              </>
+            ) : shareError ? (
+              <p className="text-sm text-[var(--danger)]" role="alert">{shareError}</p>
+            ) : (
+              <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Making a share code…
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

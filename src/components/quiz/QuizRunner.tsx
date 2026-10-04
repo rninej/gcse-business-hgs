@@ -24,6 +24,7 @@ import {
   LogOut,
   CheckCircle2,
   XCircle,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,6 +47,7 @@ import { useApp } from '@/lib/store';
 import { ErrorNote, MarksChip, TypeBadge } from '@/components/shared';
 import { Diagram } from '@/components/charts';
 import { ExplainMeButton } from '@/components/quiz/ExplainMeButton';
+import { CalculatorButton } from '@/components/quiz/Calculator';
 import { QuizTools } from '@/components/quiz/QuizTools';
 import { playFinish, playWrong, playCorrect } from '@/lib/sfx';
 import { QuizBackdrop } from '@/components/quiz/QuizBackdrop';
@@ -73,6 +75,8 @@ interface RunData {
   questions: ClientQuestion[];
   checked: Record<string, CheckedInfo>;
   writtenAnswers?: Record<string, string>; // saved written answers (never locked)
+  /** server-side interface switches, owner-flippable from /debug */
+  uiFlags?: { caseLayout?: 'drawer' | 'side' };
 }
 
 interface Snapshot {
@@ -206,6 +210,10 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
   const [submitFailed, setSubmitFailed] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+  /** desktop case-study drawer open state (drawer layout only) */
+  const [caseOpen, setCaseOpen] = useState(false);
+  /** titles of case studies already auto-opened this run */
+  const seenExtractRef = useRef<string | null>(null);
   const outcomeRef = useRef<HTMLDivElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
@@ -229,6 +237,36 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
     () => (data?.remainingMs != null ? Date.now() + data.remainingMs : null),
     [data]
   );
+
+  /** desktop case-study presentation: 'drawer' (new focused layout — the case
+   *  study opens in a slide-over panel on demand) or 'side' (the classic
+   *  sticky column next to the question). Server-controlled so the owner can
+   *  flip it back from /debug; mobile ALWAYS shows the extract inline above
+   *  the question. */
+  const caseLayout = data?.uiFlags?.caseLayout === 'side' ? 'side' : 'drawer';
+  const drawerMode = Boolean(q?.extract) && caseLayout === 'drawer';
+
+  // first sight of a new case study swings the drawer open on desktop — the
+  // student never misses that a reading exists; closing it is one tap and
+  // re-opening any case study is the bar above the question
+  useEffect(() => {
+    const title = q?.extract?.title;
+    if (!title || !drawerMode) return;
+    if (seenExtractRef.current !== title) {
+      seenExtractRef.current = title;
+      setCaseOpen(true);
+    }
+  }, [q?.extract?.title, drawerMode]);
+
+  // Escape closes the case-study drawer
+  useEffect(() => {
+    if (!caseOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCaseOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [caseOpen]);
 
   /* ----- actions (declared before the effects that close over them) ----- */
 
@@ -689,12 +727,19 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
         </div>
       </div>
 
-      {/* case study on the RIGHT for desktop (questions read left-to-right
-          first); on mobile it stays above the question — read the case,
-          then answer */}
-      <div className={cn('grid gap-4 md:gap-5', q.extract ? 'lg:grid-cols-[1.25fr_1fr]' : '')}>
+      {/* Case studies: on mobile the extract always sits inline above the
+          question. On desktop the owner picks the presentation (via /debug):
+            drawer (default) — a slide-over reading panel opened from a bar
+              above the question, so the question itself keeps full width;
+            side — the classic sticky column beside the question. */}
+      <div className={cn('grid gap-4 md:gap-5', q.extract && !drawerMode ? 'lg:grid-cols-[1.25fr_1fr]' : '')}>
         {q.extract ? (
-          <aside className="lg:order-2 lg:sticky lg:top-24 self-start min-w-0 rounded-xl border border-white/40 bg-[var(--accent)]/20 backdrop-blur-xl backdrop-saturate-150 p-4 sm:p-5">
+          <aside
+            className={cn(
+              'min-w-0 rounded-xl border border-white/40 bg-[var(--accent)]/20 backdrop-blur-xl backdrop-saturate-150 p-4 sm:p-5',
+              drawerMode ? 'lg:hidden' : 'lg:order-2 lg:sticky lg:top-24 self-start'
+            )}
+          >
             <div className="flex items-center gap-2 text-xs font-semibold text-[var(--accent-foreground)] uppercase tracking-wide mb-2">
               <BookOpenText className="h-4 w-4 shrink-0" aria-hidden /> Case study · {q.extract.title}
             </div>
@@ -713,7 +758,23 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
         {/* question card — glides between questions: the current card dips
             out first, then the next one slides in from the side. mode="wait"
             keeps exactly one card on screen (no overlap flash, no height snap). */}
-        <section className={cn('min-w-0 lg:order-1', !q.extract && 'mx-auto w-full max-w-2xl')}>
+        <section className={cn('min-w-0 lg:order-1', (!q.extract || drawerMode) && 'mx-auto w-full max-w-2xl')}>
+          {drawerMode && q.extract ? (
+            <button
+              type="button"
+              onClick={() => setCaseOpen((o) => !o)}
+              aria-expanded={caseOpen}
+              className="hidden lg:flex w-full items-center gap-2.5 rounded-xl border border-[var(--accent)]/50 bg-[var(--accent)]/15 hover:bg-[var(--accent)]/25 px-4 py-3 mb-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              <BookOpenText className="h-4 w-4 text-[var(--accent-foreground)] shrink-0" aria-hidden />
+              <span className="text-sm font-medium text-[var(--accent-foreground)] truncate">
+                Case study · {q.extract.title}
+              </span>
+              <span className="ml-auto text-xs text-muted-foreground shrink-0 font-normal">
+                {caseOpen ? 'Hide' : 'Read it'}
+              </span>
+            </button>
+          ) : null}
           <div ref={cardRef} className="relative scroll-mt-32 md:scroll-mt-24">
             <AnimatePresence initial={false} custom={dir} mode="wait">
               <motion.div
@@ -869,10 +930,15 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                     />
                   )}
                   {q.type === 'numeric' ? (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      £, % and commas are fine — the marker reads the number.
-                      {q.dp ? ` Answer to ${q.dp} decimal place${q.dp === 1 ? '' : 's'}.` : ''}
-                    </p>
+                    <div className="flex items-end justify-between gap-3 mt-2">
+                      <p className="text-xs text-muted-foreground">
+                        £, % and commas are fine — the marker reads the number.
+                        {q.dp ? ` Answer to ${q.dp} decimal place${q.dp === 1 ? '' : 's'}.` : ''}
+                      </p>
+                      <span className="shrink-0">
+                        <CalculatorButton compact />
+                      </span>
+                    </div>
                   ) : null}
                 </div>
               ) : null}
@@ -1100,6 +1166,69 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
           </div>
         </section>
       </div>
+
+      {/* desktop case-study drawer — a focused reading panel that slides in
+          from the right. Mobile never sees it (extract sits inline). */}
+      {drawerMode && q.extract ? (
+        <AnimatePresence>
+          {caseOpen ? (
+            <>
+              <motion.div
+                key="case-scrim"
+                className="fixed inset-0 z-40 bg-black/35 backdrop-blur-[2px] hidden lg:block"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setCaseOpen(false)}
+                aria-hidden
+              />
+              <motion.aside
+                key="case-drawer"
+                role="dialog"
+                aria-label={`Case study — ${q.extract.title}`}
+                className="fixed inset-y-0 right-0 z-50 hidden lg:flex w-[26rem] max-w-[88vw] flex-col bg-card border-l border-border shadow-2xl"
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'tween', duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <div className="flex items-center gap-2.5 border-b px-5 py-4">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)]/20 text-[var(--accent-foreground)]">
+                    <BookOpenText className="h-4.5 w-4.5" aria-hidden />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Case study
+                    </div>
+                    <div className="text-sm font-semibold truncate">{q.extract.title}</div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    onClick={() => setCaseOpen(false)}
+                    aria-label="Close the case study"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex-1 overflow-y-auto scroll-slim px-5 py-4">
+                  {q.extract.image ? (
+                    <img
+                      src={q.extract.image}
+                      alt={`Case study illustration for ${q.extract.title}`}
+                      className="rounded-lg border mb-4 w-full max-h-56 object-cover"
+                      loading="lazy"
+                    />
+                  ) : null}
+                  <p className="text-[15px] leading-7 whitespace-pre-line">{q.extract.text}</p>
+                </div>
+              </motion.aside>
+            </>
+          ) : null}
+        </AnimatePresence>
+      ) : null}
 
       <p className="sr-only" aria-live="polite">
         Question {idx + 1} of {total}. {answeredCount} answered.

@@ -4,7 +4,7 @@ import { QUIZ_MAP } from '@/data/bank';
 import { item, put } from '@/lib/firebase';
 import { liteForStudent, upsertLite } from '@/lib/attemptLite';
 import { requireRole } from '@/lib/session';
-import { shuffleMcqOptions } from '@/lib/questions';
+import { shuffleMcqOptions, shuffleQuestionOrder } from '@/lib/questions';
 import type { Attempt, Question, Teacher } from '@/lib/types';
 
 /** Teacher self-test WITHOUT an assignment — try a library quiz from the
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     startedAt: Date.now(),
     dueAt: null,
     timeLimitMin: null, // no timer for a dry run
-    questions: shuffleMcqOptions(questions),
+    questions: shuffleMcqOptions(shuffleQuestionOrder(questions)),
     answers: {},
     checked: {},
     perQ: {},

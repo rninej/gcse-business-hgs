@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { fb, item } from '@/lib/firebase';
 import { currentSession } from '@/lib/session';
+import { CHARACTER_IDS } from '@/lib/characters';
 
 /**
  * The signed-in user's own avatar. Avatars live in their own Firebase
@@ -8,9 +9,12 @@ import { currentSession } from '@/lib/session';
  * collections stay small — only the leaderboard, profile pages and this
  * route ever read them.
  *
- * `img` is either a tiny client-processed data URL (a 128×128 JPEG, a few
- * KB — the browser crops and shrinks the photo before it is sent) or an
- * "emoji:🦊" pick. null removes the avatar (back to themed initials).
+ * `img` is one of:
+ *   • a tiny client-processed data URL (128×128 JPEG — the browser crops
+ *     and shrinks the photo before it is sent)
+ *   • an "emoji:🦊" pick
+ *   • a "char:maya" 2D character pick (the cast in characters.tsx)
+ * null removes the avatar (back to themed initials).
  */
 
 const MAX_IMG_CHARS = 150_000; // ~110 KB decoded; a 128px JPEG is a few KB
@@ -21,6 +25,9 @@ function isValidAvatar(v: unknown): v is string {
   if (v.startsWith('emoji:')) {
     const e = v.slice(6);
     return [...e].length === 1 && /\p{Extended_Pictographic}/u.test(e);
+  }
+  if (v.startsWith('char:')) {
+    return CHARACTER_IDS.includes(v.slice(5));
   }
   return v.length <= MAX_IMG_CHARS && DATA_URL_RE.test(v);
 }
@@ -49,7 +56,7 @@ export async function PATCH(req: Request) {
   }
   if (!isValidAvatar(body.avatar)) {
     return NextResponse.json(
-      { error: 'That avatar will not work — upload a JPG/PNG/WebP picture or pick an emoji.' },
+      { error: 'That avatar will not work — upload a JPG/PNG/WebP picture or pick an emoji or character.' },
       { status: 400 }
     );
   }
