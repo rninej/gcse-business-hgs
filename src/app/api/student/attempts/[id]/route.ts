@@ -7,7 +7,12 @@ import { streaksFrom } from '@/lib/streaks';
 import { toClientQuestions, toReview } from '@/lib/sanitize';
 import type { Attempt } from '@/lib/types';
 
- type Ctx = { params: Promise<{ id: string }> };
+type Ctx = { params: Promise<{ id: string }> };
+
+/** interface switches (owner-flippable from /debug) — one tiny read; absent
+ *  means every flag sits at its built-in default. Read once up front and
+ *  shared by both payloads so the result screen gets them too. */
+type UiFlags = { caseLayout?: 'drawer' | 'side'; quizBackdropMobile?: 'nature' | 'doodles' };
 
 export async function GET(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
@@ -22,6 +27,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   }
   const { attempt } = access;
   const isSelfTest = attempt.mode === 'selftest';
+  const uiFlags = (await fb.get<UiFlags>('meta/uiFlags')) ?? undefined;
 
   if (attempt.status === 'submitted') {
     const r = attempt.result;
@@ -51,15 +57,13 @@ export async function GET(_req: Request, ctx: Ctx) {
       streakMilestone: attempt.streakMilestone ?? null,
       explanations: attempt.explanations ?? {},
       teacherFeedback: attempt.teacherFeedback ?? null,
+      uiFlags,
     });
   }
 
   const now = Date.now();
   const limitMs = attempt.timeLimitMin ? attempt.timeLimitMin * 60_000 : null;
   const remainingMs = limitMs ? Math.max(0, limitMs - (now - attempt.startedAt)) : null;
-  // interface switches (owner-flippable from /debug) — one tiny read; absent
-  // means every flag sits at its built-in default
-  const uiFlags = (await fb.get<{ caseLayout?: 'drawer' | 'side' }>('meta/uiFlags')) ?? undefined;
   // written answers persist server-side as they are saved — they are never
   // locked, so resume restores them on any device
   const writtenAnswers: Record<string, string> = {};
@@ -83,6 +87,9 @@ export async function GET(_req: Request, ctx: Ctx) {
     // the runner resume exactly where the student left off, on any device
     checked: attempt.checked ?? {},
     writtenAnswers,
+    // the last question the student was looking at (written on every move) —
+    // rejoining opens the quiz on THIS question, on any device
+    lastQ: typeof attempt.lastQ === 'number' ? attempt.lastQ : null,
     uiFlags,
   });
 }

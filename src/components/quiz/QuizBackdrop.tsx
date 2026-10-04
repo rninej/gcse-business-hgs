@@ -1,28 +1,33 @@
 'use client';
 
 // Backdrop for quiz-taking. Two variants:
-//   • NATURE — a soft hand-drawn landscape (rolling hills, trees, leaves,
-//     birds) in quiet watercolour tones. MOBILE ONLY and on by default:
-//     students asked for a calm nature scene while quizzing on phones, while
-//     desktop keeps the minimalist doodle pattern. Toggled from the ⋯ menu
-//     in the quiz header (persisted per browser).
+//   • NATURE — the fetched forest photographs (public/quiz-backdrops,
+//     deterministic per attempt) with a soft readability veil. MOBILE ONLY:
+//     desktop always keeps the minimalist doodle pattern.
 //   • DOODLES — the original minimalist business-doodle tiles (SVG pattern,
-//     crisp at every resolution). Desktop always; mobile fallback when the
-//     nature scene is switched off.
-// Both are pure SVG — nothing is downloaded, nothing can be low-resolution.
+//     crisp at every resolution).
+// Which one a phone shows by DEFAULT is an owner switch in /debug
+// (quizBackdropMobile: 'nature' | 'doodles', default nature). Students can
+// still override it per browser from the ⋯ menu in the quiz header — an
+// explicit choice always beats the default.
 
 import { useMemo, useSyncExternalStore } from 'react';
 import { cn } from '@/lib/utils';
 
 export const NATURE_KEY = 'hgs.natureBg';
 
-/** read the persisted nature-scene preference (default: on) */
-export function naturePref(): boolean {
-  if (typeof window === 'undefined') return false;
+/** the owner-set default, as served with quiz data ('nature' when absent) */
+export type BackdropDefault = 'nature' | 'doodles';
+
+/** read the per-browser preference: 'on' | 'off' when the student chose, or
+ *  null when they never touched the ⋯ switch (→ follow the owner default) */
+export function explicitNature(): 'on' | 'off' | null {
+  if (typeof window === 'undefined') return null;
   try {
-    return localStorage.getItem(NATURE_KEY) !== 'off';
+    const v = localStorage.getItem(NATURE_KEY);
+    return v === 'on' || v === 'off' ? v : null;
   } catch {
-    return true;
+    return null;
   }
 }
 
@@ -50,15 +55,16 @@ export function subscribeNature(cb: () => void): () => void {
   return () => natureListeners.delete(cb);
 }
 
-export function getNatureSnapshot(): boolean {
-  return naturePref();
+export function getNatureSnapshot(): 'on' | 'off' | null {
+  return explicitNature();
 }
 
-export function getNatureServerSnapshot(): boolean {
-  return true; // on by default; corrected on the client before first paint
+export function getNatureServerSnapshot(): 'on' | 'off' | null {
+  return null; // decided on the client — callers always pass the default too
 }
 
-/** flip the preference from the ⋯ menu (same tab + others via storage) */
+/** flip the preference from the ⋯ menu (same tab + others via storage).
+ *  Any tap is an EXPLICIT choice, so it always overrides the owner default. */
 export function setNaturePref(on: boolean): void {
   try {
     localStorage.setItem(NATURE_KEY, on ? 'on' : 'off');
@@ -75,10 +81,13 @@ function pick(seed: string, len: number): number {
   return h % len;
 }
 
-export function QuizBackdrop({ attemptId }: { attemptId: string }) {
+export function QuizBackdrop({ attemptId, mobileDefault = 'nature' }: { attemptId: string; mobileDefault?: BackdropDefault }) {
   const idx = useMemo(() => pick(attemptId, DOODLE_COUNT), [attemptId]);
   const forest = useMemo(() => pick(attemptId, FOREST_COUNT), [attemptId]);
-  const natureOn = useSyncExternalStore(subscribeNature, getNatureSnapshot, getNatureServerSnapshot);
+  // explicit per-browser choice beats the owner-set default; no choice yet →
+  // whatever /debug says phones should show (nature when the flag is absent)
+  const explicit = useSyncExternalStore(subscribeNature, getNatureSnapshot, getNatureServerSnapshot);
+  const natureOn = explicit === null ? mobileDefault === 'nature' : explicit === 'on';
   return (
     <>
       {/* nature scene: phones only (below md) — desktop keeps the doodles */}

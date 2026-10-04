@@ -330,6 +330,10 @@ export interface Attempt {
    *  Timed attempts whose heartbeat goes stale are auto-submitted — leaving
    *  a timed quiz ends it (rejoining is only for untimed quizzes). */
   lastSeenAt?: number;
+  /** Index of the last question the student was LOOKING at (reported as they
+   *  move around). Rejoining an in-progress attempt opens on this question,
+   *  on any device — not back at the first unanswered one. */
+  lastQ?: number;
   questions: Question[]; // full snapshot — SERVER ONLY, never sent to client pre-submission
   answers: Record<string, string>; // confirmed (checked) answers are persisted here
   checked: Record<string, CheckedState>; // qid -> outcome, filled as the student confirms

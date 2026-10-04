@@ -76,7 +76,10 @@ interface RunData {
   checked: Record<string, CheckedInfo>;
   writtenAnswers?: Record<string, string>; // saved written answers (never locked)
   /** server-side interface switches, owner-flippable from /debug */
-  uiFlags?: { caseLayout?: 'drawer' | 'side' };
+  uiFlags?: { caseLayout?: 'drawer' | 'side'; quizBackdropMobile?: 'nature' | 'doodles' };
+  /** index of the last question the student was looking at, as recorded by the
+   *  server — rejoining opens on this question, on any device */
+  lastQ?: number | null;
 }
 
 interface Snapshot {
@@ -225,6 +228,16 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
 
   const lsKey = `hgs_run_${attemptId}`;
 
+  /** always-fresh {answers, idx} — the autosave interval, the unload handler
+   *  and the leave flush all read from here, so the saved snapshot can never
+   *  be a stale closure frozen at load-time */
+  const liveRef = useRef({ answers: {}, idx: 0 });
+  liveRef.current = { answers, idx };
+
+  /** debounce for the "I'm looking at question N" reports — a run of palette
+   *  jumps collapses into a single write */
+  const progressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const questions = data?.questions ?? [];
   const total = questions.length;
   const q: ClientQuestion | undefined = questions[idx];
@@ -251,6 +264,9 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
    *  the question. */
   const caseLayout = data?.uiFlags?.caseLayout === 'side' ? 'side' : 'drawer';
   const drawerMode = Boolean(q?.extract) && caseLayout === 'drawer';
+  /** what phones show behind a quiz by default — owner switch from /debug
+   *  (students can still override per browser from the ⋯ menu) */
+  const backdropDefault = data?.uiFlags?.quizBackdropMobile === 'doodles' ? 'doodles' : 'nature';
 
   // first sight of a new case study swings the drawer open on desktop — the
   // student never misses that a reading exists; closing it is one tap and
@@ -276,11 +292,52 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
 
   /* ----- actions (declared before the effects that close over them) ----- */
 
+  /** fire-and-forget "I'm looking at question N" — keptalive so it survives
+   *  tab close, and via api.post so it busts the GET memo (a leave-then-rejoin
+   *  must see the fresh position, not a 10s-old cached response) */
+  function sendProgressNow(q: number, keepalive = false) {
+    const path = `/api/student/attempts/${attemptId}/progress`;
+    if (keepalive) {
+      try {
+        fetch(path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ q }),
+          keepalive: true,
+        }).catch(() => undefined);
+      } catch {
+        /* ignore */
+      }
+    } else {
+      api.post(path, { q }).catch(() => undefined);
+    }
+  }
+
+  /** queue a position report (debounced) — call on every move */
+  function reportProgress(q: number) {
+    if (store.submitted) return;
+    if (progressTimer.current) clearTimeout(progressTimer.current);
+    progressTimer.current = setTimeout(() => {
+      progressTimer.current = null;
+      sendProgressNow(q);
+    }, 1600);
+  }
+
+  /** flush everything pending right now — used when the student deliberately
+   *  leaves (exit dialog, unmount) so both stores hold the true position */
+  function flushProgress(keepalive = false) {
+    if (progressTimer.current) {
+      clearTimeout(progressTimer.current);
+      progressTimer.current = null;
+    }
+    if (!store.submitted) sendProgressNow(liveRef.current.idx, keepalive);
+  }
+
   function persist() {
     if (!data || store.submitted) return;
     const snap: Snapshot = {
-      answers,
-      idx,
+      answers: liveRef.current.answers,
+      idx: liveRef.current.idx,
       perQ: store.perQ,
       events: store.events,
       hiddenMs: store.totalHiddenMs(),
@@ -301,12 +358,15 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
       store.leaveText(q.id, answers[q.id] ?? '');
     }
     setDir(newIdx >= idx ? 1 : -1);
-    setIdx(Math.max(0, Math.min(newIdx, total - 1)));
+    const target = Math.max(0, Math.min(newIdx, total - 1));
+    setIdx(target);
+    // tell the server where we now are (debounced) — rejoining opens HERE
+    reportProgress(target);
     // scroll the WHOLE area into view — on mobile the case study sits above
     // the question, so scrolling only to the card would hide it off-screen
     // and the next question would look like it has no reading at all
-    const target = topRef.current ?? cardRef.current;
-    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const targetEl = topRef.current ?? cardRef.current;
+    if (targetEl) targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function pickOption(qid: string, value: string) {
@@ -461,16 +521,28 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
         setAnswers(merged);
         setSavedWritten(Object.fromEntries(Object.keys(serverWritten).filter((k) => serverWritten[k]).map((qid) => [qid, true])));
 
-        // resume on the first question that hasn't been confirmed yet
+        // resume exactly where the student left off, on any device:
+        //  1. a local snapshot (this browser) — the most precise, carries
+        //     telemetry + unchecked answers too
+        //  2. the server-recorded position (any browser, reported as the
+        //     student moved around)
+        //  3. with neither: the first question not yet confirmed
         const snapIdx = Math.min(snap?.idx ?? 0, Math.max(0, d.questions.length - 1));
+        const serverQ =
+          typeof d.lastQ === 'number' && d.lastQ >= 0 && d.lastQ < d.questions.length ? d.lastQ : null;
         const firstUnchecked = d.questions.findIndex((x) => !serverChecked[x.id]);
         const resumeIdx = snap
           ? snapIdx
-          : firstUnchecked >= 0
-            ? firstUnchecked
-            : d.questions.length - 1;
+          : serverQ !== null
+            ? serverQ
+            : firstUnchecked >= 0
+              ? firstUnchecked
+              : d.questions.length - 1;
         setIdx(Math.max(0, Math.min(resumeIdx, d.questions.length - 1)));
         if (snap) store.restore(snap);
+        // record where we are opening so the server knows (covers the
+        // fallback paths where nothing was stored yet)
+        reportProgress(resumeIdx);
       })
       .catch((e) => {
         if (alive) setError((e as Error).message);
@@ -520,7 +592,12 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
 
     const ticker = setInterval(() => setNow(Date.now()), 300);
     const saver = setInterval(() => persist(), 5000);
-    const onLeave = () => persist();
+    const onLeave = () => {
+      // leaving the page entirely: keepalive lets the report survive the
+      // tab close, so rejoining opens on this question, not the first one
+      flushProgress(true);
+      persist();
+    };
     window.addEventListener('beforeunload', onLeave);
 
     return () => {
@@ -534,6 +611,9 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
       clearInterval(ticker);
       clearInterval(saver);
       store.closeHidden();
+      // navigating away (SPA) — leave the server holding the real position
+      flushProgress();
+      persist();
     };
      
   }, [data, submittedView]);
@@ -680,8 +760,9 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
 
   return (
     <div className="max-w-4xl mx-auto" data-attempt={attemptId}>
-      {/* decorative doodle backdrop — a different pattern every attempt */}
-      <QuizBackdrop attemptId={attemptId} />
+      {/* decorative backdrop — a different pattern every attempt; phones follow
+          the owner's default (nature photo vs doodles) unless the student chose */}
+      <QuizBackdrop attemptId={attemptId} mobileDefault={backdropDefault} />
       {/* header */}
       <div className="sticky top-14 md:top-0 z-30 -mx-4 sm:mx-0 px-4 sm:px-0 mb-4 md:mb-5">
         <div className="rounded-xl border border-white/50 bg-card/75 backdrop-blur-2xl backdrop-saturate-150 px-4 py-3 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.6),0_12px_36px_-12px_rgb(13_92_70/0.2)]">
@@ -703,7 +784,7 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                 {timeStr}
               </span>
             ) : null}
-            <QuizTools attemptId={attemptId} question={q} questionNumber={idx + 1} />
+            <QuizTools attemptId={attemptId} question={q} questionNumber={idx + 1} backdropDefault={backdropDefault} />
             <AlertDialog open={exitOpen} onOpenChange={setExitOpen}>
               <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="sm">
@@ -726,7 +807,14 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
                       {submitting ? 'Submitting…' : 'Leave & submit'}
                     </AlertDialogAction>
                   ) : (
-                    <AlertDialogAction onClick={() => go(data.selfTest ? { name: 't-home' } : { name: 's-home' })}>Leave</AlertDialogAction>
+                    <AlertDialogAction
+                      onClick={() => {
+                        flushProgress();
+                        go(data.selfTest ? { name: 't-home' } : { name: 's-home' });
+                      }}
+                    >
+                      Leave
+                    </AlertDialogAction>
                   )}
                 </AlertDialogFooter>
               </AlertDialogContent>

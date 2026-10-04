@@ -42,6 +42,7 @@ import {
   setNaturePref,
   subscribeNature,
 } from './QuizBackdrop';
+import type { BackdropDefault } from './QuizBackdrop';
 import {
   getSoundsServerSnapshot,
   getSoundsSnapshot,
@@ -55,6 +56,9 @@ interface QuizToolsProps {
   attemptId: string;
   question: ClientQuestion;
   questionNumber: number;
+  /** what phones show by default (owner switch from /debug) — an explicit
+   *  student choice from this menu always beats it */
+  backdropDefault?: BackdropDefault;
 }
 
 const REPORT_KINDS = [
@@ -86,9 +90,11 @@ function getMobileServerSnapshot(): boolean {
   return false;
 }
 
-export function QuizTools({ attemptId, question, questionNumber }: QuizToolsProps) {
+export function QuizTools({ attemptId, question, questionNumber, backdropDefault = 'nature' }: QuizToolsProps) {
   const { toast } = useToast();
-  const natureOn = useSyncExternalStore(subscribeNature, getNatureSnapshot, getNatureServerSnapshot);
+  // tri-state: 'on'/'off' = the student picked; null = follow the default
+  const natureChoice = useSyncExternalStore(subscribeNature, getNatureSnapshot, getNatureServerSnapshot);
+  const natureOn = natureChoice === null ? backdropDefault === 'nature' : natureChoice === 'on';
   const soundsOn = useSyncExternalStore(subscribeSounds, getSoundsSnapshot, getSoundsServerSnapshot);
   const isMobile = useSyncExternalStore(subscribeMobile, getMobileSnapshot, getMobileServerSnapshot);
   /** the question currently being read aloud (id) — the button shows "stop"

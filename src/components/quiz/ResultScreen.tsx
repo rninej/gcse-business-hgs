@@ -48,6 +48,8 @@ interface ResultData {
   streak: number;
   streakMilestone?: number | null;
   teacherFeedback?: { text: string; at: number; byName: string } | null;
+  /** owner interface switches — the backdrop follows the mobile default */
+  uiFlags?: { caseLayout?: 'drawer' | 'side'; quizBackdropMobile?: 'nature' | 'doodles' };
 }
 
 /** Quart-out count-up — the score rolls up and decelerates into its final
@@ -275,7 +277,7 @@ export function ResultScreen({ attemptId }: { attemptId: string }) {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <QuizBackdrop attemptId={attemptId} />
+      <QuizBackdrop attemptId={attemptId} mobileDefault={data.uiFlags?.quizBackdropMobile === 'doodles' ? 'doodles' : 'nature'} />
       {/* 80%+ — a proper celebration. Fires once on arrival, and once more
           if the AI examiner's marks push the score across the line. */}
       <Confetti trigger={r.pct >= 80 ? `${attemptId}:yes` : null} />
