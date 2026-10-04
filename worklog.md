@@ -1031,3 +1031,16 @@ Stage Summary:
 - All 3 requests shipped and QA'd. Retakes never blank the teacher's results view; the share-code entry is a quiet bottom link; the character builder is live with a 12-step point-gated accessory ladder (server-enforced).
 - QA artifacts left in DB (clearly-named): poppy.quinn now has an in-progress retake of "R33 shuffle QA" (demonstrates the feature), teacher Mrs QA Share wears the wizard+aura build avatar.
 - Next: push to GitHub → Vercel → poll build r34 on gcse.business.
+
+---
+Task ID: 34-deploy
+Agent: Z.ai Code (main)
+Task: R34 deploy + handover
+
+Work Log:
+- Committed d25f6da (R34) and pushed to github.com/rninej/gcse-business-hgs with the user's PAT → Vercel auto-deploy triggered.
+- Polled https://gcse.business/api/health (apex 308-redirects to www — normal): LIVE with {"ok":true,"db":"connected","build":"r34"} — production rollout confirmed.
+- Set up recurring 15-min webDevReview cron (job 435802) for continuous QA + incremental development.
+
+Stage Summary:
+- R34 fully live on gcse.business. Cron reviewer active every 15 minutes.
