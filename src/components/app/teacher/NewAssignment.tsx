@@ -54,6 +54,7 @@ import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { PageHeader, MarksChip, TypeBadge, ErrorNote } from '@/components/shared';
 import { SUBTOPIC_MAP, subtopicsOf, targetLabel, topicTitle, TOPICS } from '@/lib/topics';
+import { AskFirst, PURPOSE_PROMPT, difficultyLabel, purposeLabel, typesLabel } from './AskFirst';
 import type { Question, QuestionType, WrittenPoint, WrittenQuestion } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -118,6 +119,11 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
   const [aiTypes, setAiTypes] = useState<QuestionType[]>([]);
   const [aiDifficulty, setAiDifficulty] = useState<'1' | '2' | '3' | 'mixed'>('mixed');
   const [aiCases, setAiCases] = useState(true);
+  const [aiPurpose, setAiPurpose] = useState('');
+  // the ask-first interview: 1–6 = the question on screen, 7 = the brief summary
+  const [askStep, setAskStep] = useState(1);
+  // hidden once questions exist (brief bar takes over); "Change answers" reopens it at the summary
+  const [showInterview, setShowInterview] = useState(true);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiQuestions, setAiQuestions] = useState<Question[] | null>(null);
   const [aiProvider, setAiProvider] = useState<string | null>(null);
@@ -184,6 +190,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
         setAiQuestions(d.questions);
         setAiProvider('draft');
         setUpdatingDraftId(draftId);
+        setShowInterview(false);
       })
       .catch((e) => setError((e as Error).message));
   }, [draftId]);
@@ -335,10 +342,22 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
     setAiSubtopics(next);
   }
 
+  // the brief sent to the AI: the purpose answer from the interview + the
+  // teacher's free note — one text the model follows closely
+  const briefOut = useMemo(
+    () =>
+      [
+        aiPurpose ? PURPOSE_PROMPT[aiPurpose] : '',
+        aiBrief.trim(),
+      ]
+        .filter(Boolean)
+        .join('\n') || undefined,
+    [aiPurpose, aiBrief]
+  );
+
   async function generate() {
     setAiBusy(true);
     setError(null);
-    setAiQuestions(null);
     try {
       const res = await api.post<{
         provider: string;
@@ -347,7 +366,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
       }>('/api/teacher/generate', {
         topics: aiTopics,
         subtopics: aiSubtopics,
-        brief: aiBrief.trim() || undefined,
+        brief: briefOut,
         count: aiCount,
         types: aiTypes,
         difficulty: aiDifficulty === 'mixed' ? 'mixed' : Number(aiDifficulty),
@@ -355,6 +374,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
       });
       setAiQuestions(res.questions);
       setAiProvider(res.provider);
+      setShowInterview(false);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -396,7 +416,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
         quizId: mode === 'library' ? quizId : undefined,
         aiParams:
           mode === 'ai'
-            ? { topics: aiTopics, subtopics: aiSubtopics, brief: aiBrief.trim() || undefined, count: aiQuestions?.length ?? aiCount, types: aiTypes, difficulty: aiDifficulty === 'mixed' ? 'mixed' : Number(aiDifficulty), caseStudies: aiCases }
+            ? { topics: aiTopics, subtopics: aiSubtopics, brief: briefOut, count: aiQuestions?.length ?? aiCount, types: aiTypes, difficulty: aiDifficulty === 'mixed' ? 'mixed' : Number(aiDifficulty), caseStudies: aiCases }
             : undefined,
         // the reviewed (and possibly edited) preview goes with the request —
         // the server uses it directly instead of generating a second set
@@ -620,7 +640,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
         <div className="space-y-5">
           <RadioGroup value={mode} onValueChange={(v) => setMode(v as Mode)} className="grid gap-3 sm:grid-cols-3">
             {[  
-              { v: 'ai' as Mode, icon: Sparkles, t: 'Generate', d: 'Type what you want, or pick topics' },
+              { v: 'ai' as Mode, icon: Sparkles, t: 'Generate', d: 'It asks you a few questions first, then writes it' },
               { v: 'library' as Mode, icon: BookOpen, t: 'Quiz library', d: 'Hand-written banks, ready to go' },
               { v: 'custom' as Mode, icon: PenLine, t: 'My questions', d: 'Type your own — any style' },
             ].map((o) => (
@@ -651,194 +671,108 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
 
           {mode === 'ai' ? (
             <div className="glass rounded-xl p-5 space-y-5">
-              {/* free-text brief — the teacher just types what they want */}
-              <div className="space-y-2">
-                <Label htmlFor="ai-brief">Describe the quiz you want</Label>
-                <Textarea
-                  id="ai-brief"
-                  value={aiBrief}
-                  onChange={(e) => setAiBrief(e.target.value)}
-                  rows={3}
-                  maxLength={600}
-                  placeholder="e.g. “A quiz about a local bakery's finances — mostly break-even calculations, one case study about cash flow, and a couple of tougher written questions”… or leave blank and use the options below."
+              {/* the ask-first interview — a trial teacher said it plainly:
+                  "you didn't ask me any questions. You're meant to satisfy
+                  need and you don't know what we want." So the builder asks
+                  first: purpose, exact sub-topics, count, difficulty, styles,
+                  free note — then writes. Shown until questions exist; the
+                  brief bar takes over afterwards. */}
+              {showInterview || !aiQuestions ? (
+                <AskFirst
+                  step={askStep}
+                  onStep={setAskStep}
+                  purpose={aiPurpose}
+                  onPurpose={setAiPurpose}
+                  topics={aiTopics}
+                  subtopics={aiSubtopics}
+                  subCounts={subCounts}
+                  onToggleTopic={toggleTopic}
+                  onPickWhole={pickWhole}
+                  onToggleSub={toggleSub}
+                  count={aiCount}
+                  onCount={setAiCount}
+                  difficulty={aiDifficulty}
+                  onDifficulty={setAiDifficulty}
+                  types={aiTypes}
+                  onTypes={setAiTypes}
+                  cases={aiCases}
+                  onCases={setAiCases}
+                  note={aiBrief}
+                  onNote={setAiBrief}
+                  busy={aiBusy}
+                  onGenerate={generate}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Write it like you'd say it — topics, question styles, a business to feature, anything. The AI follows your description.{' '}
-                  <span className="tabular-nums">{aiBrief.length}/600</span>
-                </p>
-              </div>
-
-              <div className="space-y-2.5">
-                <Label>{aiBrief.trim() ? 'Topics (optional — the AI picks from your description)' : 'Topics'}</Label>
-                <div className="flex flex-wrap gap-2">
-                  {TOPICS.map((t) => {
-                    const whole = aiTopics.includes(t.id);
-                    const subs = aiSubtopics.filter((s) => s.startsWith(t.id + '.'));
-                    const on = whole || subs.length > 0;
-                    return (
-                      <button
-                        key={t.id}
-                        onClick={() => toggleTopic(t.id)}
-                        className={cn(
-                          'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
-                          on ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
-                        )}
-                        aria-pressed={on}
-                      >
-                        {t.id} {t.short}
-                        {on && !whole ? <span className="ml-1 opacity-80 tabular-nums">({subs.length})</span> : null}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* every active topic opens its sub-topic row — the official
-                    spec numbers teachers plan by (2.1.3 = Business and
-                    globalisation). Chips carry the bank coverage count. */}
-                {TOPICS.filter(
-                  (t) => aiTopics.includes(t.id) || aiSubtopics.some((s) => s.startsWith(t.id + '.'))
-                ).map((t) => {
-                  const whole = aiTopics.includes(t.id);
-                  const subs = aiSubtopics.filter((s) => s.startsWith(t.id + '.'));
-                  return (
-                    <div key={t.id} className="glass-soft rounded-lg p-3 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold">{t.id} · {t.title}</span>
-                        <span className="text-[10px] text-muted-foreground tabular-nums">
-                          {whole ? 'whole topic' : `${subs.length} of ${t.subtopics.length} sub-topics picked`}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5" role="group" aria-label={`Sub-topics within ${t.title}`}>
-                        <button
-                          type="button"
-                          onClick={() => pickWhole(t.id)}
-                          aria-pressed={whole}
-                          className={cn(
-                            'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
-                            whole ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
-                          )}
-                        >
-                          Whole topic
-                        </button>
-                        {t.subtopics.map((st) => {
-                          const on = whole || subs.includes(st.id);
-                          const count = subCounts?.[st.id];
-                          return (
-                            <button
-                              key={st.id}
-                              type="button"
-                              onClick={() => toggleSub(t.id, st.id)}
-                              aria-pressed={on}
-                              title={`${st.id} ${st.title}`}
-                              className={cn(
-                                'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
-                                on ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
-                              )}
-                            >
-                              {st.id} {st.short}
-                              {count !== undefined ? <span className="ml-1 opacity-70 tabular-nums">{count}</span> : null}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-                <p className="text-xs text-muted-foreground">
-                  Pick whole topics, or narrow to exact sub-topics — like just{' '}
-                  <span className="font-medium text-foreground">2.1.3 Business and globalisation</span>. The little
-                  numbers show how many bank questions each sub-topic already has.
-                </p>
-                {aiTopics.length + aiSubtopics.length === 0 && !aiBrief.trim() ? (
-                  <p className="text-xs text-[var(--warn)]">Pick at least one topic or sub-topic — or describe the quiz above.</p>
-                ) : null}
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-5">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Questions</span>
-                    <span className="font-semibold tabular-nums">{aiCount}</span>
-                  </div>
-                  <Slider value={[aiCount]} min={5} max={30} step={1} onValueChange={(v) => setAiCount(v[0] ?? 12)} />
-                  <p className="text-xs text-muted-foreground">5–30 questions.</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Difficulty</Label>
-                  <Select value={aiDifficulty} onValueChange={(v) => setAiDifficulty(v as '1' | '2' | '3' | 'mixed')}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mixed">Mixed (recommended)</SelectItem>
-                      <SelectItem value="1">Foundation</SelectItem>
-                      <SelectItem value="2">Standard</SelectItem>
-                      <SelectItem value="3">Challenge</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Question styles</Label>
-                <div className="flex flex-wrap gap-2">
-                  {(
-                    [
-                      ['mcq', 'Multiple choice'],
-                      ['term', 'Type the term'],
-                      ['fib', 'Fill the blank'],
-                      ['numeric', 'Calculations'],
-                      ['truefalse', 'True / false'],
-                      ['written', 'Written · AI marked'],
-                    ] as [QuestionType, string][]
-                  ).map(([t, label]) => {
-                    const on = aiTypes.includes(t);
-                    return (
-                      <button
-                        key={t}
-                        onClick={() => setAiTypes(on ? aiTypes.filter((x) => x !== t) : [...aiTypes, t])}
-                        className={cn('rounded-full border px-3 py-1.5 text-xs font-medium transition-colors', on ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary')}
-                        aria-pressed={on}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Leave all off for a natural mix. Written questions arrive with an AI-built mark scheme and are marked by the AI examiner.
-                </p>
-              </div>
-
-              <div className="glass-soft rounded-lg p-4 flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium">Include case studies</div>
-                  <p className="text-xs text-muted-foreground">Short business extracts above some questions.</p>
-                </div>
-                <Switch checked={aiCases} onCheckedChange={setAiCases} aria-label="Include case studies" />
-              </div>
-
-              <div className="flex flex-wrap gap-3 items-center">
-                <Button onClick={generate} disabled={aiBusy || (aiTopics.length + aiSubtopics.length === 0 && !aiBrief.trim())}>
-                  {aiBusy ? (
-                    <>
-                      <RotateCw className="h-4 w-4 animate-spin" /> Writing questions…
-                    </>
-                  ) : (
-                    <>
-                      <Wand2 className="h-4 w-4" /> {aiQuestions ? 'Generate again' : 'Generate questions'}
-                    </>
-                  )}
-                </Button>
-                {(aiTopics.length > 0 || aiSubtopics.length > 0) && !aiQuestions ? (
-                  <span className="text-xs text-muted-foreground">
-                    Scope: <span className="font-medium text-foreground">{targetLabel(aiTopics, aiSubtopics)}</span>
+              ) : aiProvider === 'draft' ? (
+                <div className="glass-soft rounded-xl p-4 flex flex-wrap items-center gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Pencil className="h-[18px] w-[18px]" aria-hidden />
                   </span>
-                ) : null}
-                {aiQuestions ? (
+                  <p className="min-w-0 flex-1 text-sm">
+                    Editing a saved draft — tweak the questions below, or change the brief and write a fresh set.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setAskStep(1);
+                      setShowInterview(true);
+                    }}
+                  >
+                    Change the brief
+                  </Button>
+                </div>
+              ) : (
+                <div className="glass-soft rounded-xl p-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Wand2 className="h-[18px] w-[18px]" aria-hidden />
+                  </span>
+                  <p className="min-w-0 flex-1 text-sm">
+                    <span className="font-semibold">Your brief:</span>{' '}
+                    <span className="text-muted-foreground">
+                      {[
+                        purposeLabel(aiPurpose) || 'No particular purpose',
+                        targetLabel(aiTopics, aiSubtopics),
+                        `${aiQuestions.length} questions`,
+                        difficultyLabel(aiDifficulty),
+                        typesLabel(aiTypes, aiCases),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setAskStep(7);
+                        setShowInterview(true);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" aria-hidden /> Change answers
+                    </Button>
+                    <Button size="sm" onClick={generate} disabled={aiBusy}>
+                      {aiBusy ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                      ) : (
+                        <RotateCw className="h-3.5 w-3.5" aria-hidden />
+                      )}
+                      {aiBusy ? 'Writing…' : 'Generate again'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {aiQuestions && !aiBusy ? (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span className="text-sm flex items-center gap-1.5 text-[var(--success)]">
                     <CheckCircle2 className="h-4 w-4" /> {aiQuestions.length} questions · {totalMarks} marks
                   </span>
-                ) : null}
-              </div>
+                  <span className="text-xs text-muted-foreground">
+                    Edit, delete or reorder anything below before you set it.
+                  </span>
+                </div>
+              ) : null}
 
               {aiBusy ? (
                 <div className="space-y-2" aria-live="polite">

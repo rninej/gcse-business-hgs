@@ -1,8 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Users, ClipboardList, CheckCircle2, TrendingUp, ShieldAlert, Layers, ArrowRight, PlusCircle, BookOpen, Trophy, Flame, Medal, Wand2, BellRing, CircleDot, MessageSquareHeart } from 'lucide-react';
-import { FeedbackDialog, OnboardingPrompt } from '@/components/app/FeedbackDialog';
+import { Users, ClipboardList, CheckCircle2, TrendingUp, ShieldAlert, Layers, ArrowRight, PlusCircle, BookOpen, Trophy, Flame, Medal, Wand2, BellRing, CircleDot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -82,7 +81,6 @@ export function TeacherHome() {
   const go = useApp((s) => s.go);
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const load = useCallback(() => {
     api
@@ -179,28 +177,6 @@ export function TeacherHome() {
       </div>
 
       <NeedsAttentionCard rows={data.needsAttention ?? []} />
-
-      {/* the needs channel — the product asking the teacher, not the other
-          way round. The questionnaire fires once (see OnboardingPrompt); this
-          card is the always-open door. */}
-      <OnboardingPrompt />
-      <button
-        type="button"
-        onClick={() => setFeedbackOpen(true)}
-        className="w-full glass-soft rounded-xl p-4 flex items-center gap-3 text-left hover:border-primary/30 transition-all mb-5"
-      >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <MessageSquareHeart className="h-[18px] w-[18px]" aria-hidden />
-        </span>
-        <span className="min-w-0">
-          <span className="block text-sm font-semibold">Something you need? Say it here.</span>
-          <span className="block text-xs text-muted-foreground">
-            Quizzes on exact sub-topics, report tweaks, new question styles — every note reaches the builder directly.
-          </span>
-        </span>
-        <ArrowRight className="h-4 w-4 ml-auto shrink-0 text-muted-foreground" aria-hidden />
-      </button>
-      <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
 
       {/* explicit minmax(0,1fr) column on mobile — an implicit auto track
           sizes to max-content and overflows narrow viewports */}
