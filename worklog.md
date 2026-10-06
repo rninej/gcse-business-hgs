@@ -1246,3 +1246,16 @@ Stage Summary:
 - Bank: 567 questions, every one sub-topic tagged; every sub-topic ≥4 questions in both pools.
 - QA artifacts left in DB (clearly-named): teacher "Mrs R37 QA" (r37qa@test.com / quizhero37) + class "11B Business" + assignment "Globalisation recap" (11 AI questions, all 2.1.3) + one onboarding feedback entry (fb_3b9afcb2e2); poppy.quinn has a 5-question 2.1.3 practice attempt in progress.
 - Next: push to GitHub → Vercel → poll build r37 on gcse.business; 15-min webDevReview cron continues.
+
+---
+Task ID: 37-deploy
+Agent: Z.ai Code (main)
+Task: R37 deploy + handover
+
+Work Log:
+- Pushed aa93f41 to github.com/rninej/gcse-business-hgs (remote had its own R36 commit 3abc2b4 — identical content except the dev.pid runtime file; re-based by resetting to the remote R36 and cherry-picking the R37 commit cleanly) → Vercel auto-deploy.
+- https://www.gcse.business/api/health → {"ok":true,"db":"connected","build":"r37"} — R37 LIVE on production.
+- Recurring 15-min webDevReview cron re-created (job 440498, Europe/London) — continuous QA + incremental development.
+
+Stage Summary:
+- R37 fully live on gcse.business: teachers can target any official spec sub-topic (e.g. 2.1.3 Business and globalisation — the teacher's exact example) when generating quizzes, browsing the library, picking bank questions and (students too) building self-study mixes; the product now asks teachers what they need via a one-time questionnaire + an always-available feedback channel, with every answer landing in the owner's /debug inbox.
