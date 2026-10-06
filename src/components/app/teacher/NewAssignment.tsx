@@ -51,6 +51,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
+import { openSelfTestTab } from '@/lib/selftest';
 import { useApp } from '@/lib/store';
 import { PageHeader, MarksChip, TypeBadge, ErrorNote } from '@/components/shared';
 import { SUBTOPIC_MAP, subtopicsOf, targetLabel, topicTitle, TOPICS } from '@/lib/topics';
@@ -383,19 +384,29 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
   }
 
   /** dry-run the current question set as a private self-test — exactly what
-   *  students would experience, without assigning anything */
+   *  students would experience, without assigning anything. Opens in its own
+   *  tab (like a separate site) so this builder — draft, answers and all —
+   *  stays exactly as it is behind it */
   async function tryItYourself() {
     if (!finalQuestions || tryingSelf) return;
     setTryingSelf(true);
     try {
-      const res = await api.post<{ attemptId: string }>('/api/teacher/selftest', {
-        title: title.trim() || 'Draft quiz',
-        questions: finalQuestions,
+      await openSelfTestTab(() =>
+        api
+          .post<{ attemptId: string }>('/api/teacher/selftest', {
+            title: title.trim() || 'Draft quiz',
+            questions: finalQuestions,
+          })
+          .then((res) => res.attemptId),
+      );
+      toast({
+        title: 'Sample test opened in a new tab',
+        description: 'Play it there exactly as students see it — your draft stays open here.',
       });
-      go({ name: 'quiz', attemptId: res.attemptId });
     } catch (e) {
-      setTryingSelf(false);
       toast({ title: 'Could not start the self-test', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setTryingSelf(false);
     }
   }
 

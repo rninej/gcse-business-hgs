@@ -24,6 +24,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
+import { openSelfTestTab } from '@/lib/selftest';
 import { useApp } from '@/lib/store';
 import { PageHeader, ThemedSkeleton, ErrorNote, EmptyState, DueChip, PctChip } from '@/components/shared';
 import { cn } from '@/lib/utils';
@@ -109,13 +110,19 @@ export function AssignmentsView() {
     }
   }
 
-  // try your own assignment exactly as a student sees it — a private dry run
-  // that never appears in class statistics
+  // try your own assignment exactly as a student sees it — the sample
+  // test opens in its OWN TAB (like a separate site), so this dashboard
+  // stays untouched behind it; never appears in class statistics
   async function selfTest(a: Row) {
     setTesting(a.id);
     try {
-      const res = await api.post<{ attemptId: string }>(`/api/teacher/assignments/${a.id}/selftest`);
-      go({ name: 'quiz', attemptId: res.attemptId });
+      await openSelfTestTab(() =>
+        api.post<{ attemptId: string }>(`/api/teacher/assignments/${a.id}/selftest`).then((res) => res.attemptId),
+      );
+      toast({
+        title: 'Sample test opened in a new tab',
+        description: 'Play it there exactly as students see it — this tab keeps your dashboard open.',
+      });
     } catch (e) {
       toast({ title: 'Could not start the self-test', description: (e as Error).message, variant: 'destructive' });
     } finally {

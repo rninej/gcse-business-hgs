@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/collapsible';
 import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
+import { openSelfTestTab } from '@/lib/selftest';
 import { PageHeader, ThemedSkeleton, ErrorNote, MarksChip, TypeBadge } from '@/components/shared';
 import { Diagram } from '@/components/charts';
 import { SUBTOPIC_MAP, topicTitle, TOPICS, TOPIC_MAP } from '@/lib/topics';
@@ -244,16 +245,23 @@ function QuizPreview({ quizId, load }: { quizId: string; load: (quizId: string) 
   const [trying, setTrying] = useState(false);
 
   /** play the whole quiz yourself — exactly like a student sees it, without
-   *  assigning anything (a private self-test that never touches class stats) */
+   *  assigning anything (a private self-test that never touches class stats).
+   *  Runs in its own tab, like a separate site — the library stays open here */
   async function tryIt() {
     if (trying) return;
     setTrying(true);
     try {
-      const res = await api.post<{ attemptId: string }>('/api/teacher/selftest', { quizId });
-      go({ name: 'quiz', attemptId: res.attemptId });
+      await openSelfTestTab(() =>
+        api.post<{ attemptId: string }>('/api/teacher/selftest', { quizId }).then((res) => res.attemptId),
+      );
+      toast({
+        title: 'Sample test opened in a new tab',
+        description: 'Play it there exactly as students see it — the library stays open here.',
+      });
     } catch (e) {
-      setTrying(false);
       toast({ title: 'Could not start the self-test', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setTrying(false);
     }
   }
 

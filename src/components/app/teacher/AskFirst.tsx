@@ -217,9 +217,6 @@ export function AskFirst(p: AskFirstProps) {
         </span>
         <div className="min-w-0">
           <p className="text-sm font-semibold leading-snug">Before I write anything — a few questions.</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            You’re the teacher; I’m not. Answer these and the quiz comes out the way you want it, first time.
-          </p>
         </div>
       </div>
 
