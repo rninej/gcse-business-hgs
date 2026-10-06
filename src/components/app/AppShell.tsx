@@ -6,11 +6,12 @@
 // Light + dark via the ThemeToggle. Warms the API cache on mount so clicking
 // around the app is instant, and pings the AI health endpoint so model
 // availability stays fresh in the background on every visit.
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { LogOut } from 'lucide-react';
+import { LogOut, MessageSquareHeart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BrandLockup } from './Brand';
+import { FeedbackDialog } from './FeedbackDialog';
 import { PasswordDialog } from './PasswordDialog';
 import { ProfileDialog } from './ProfileDialog';
 import { StudentBell } from './student/StudentBell';
@@ -89,6 +90,8 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
       .catch(() => undefined);
   }, [session?.uid]);
 
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+
   const nav: NavItem[] = isTeacher
     ? [
         { label: 'Dashboard', icon: LayoutDashboardIcon, view: { name: 't-home' } },
@@ -155,6 +158,20 @@ export function AppShell({ children, active }: { children: React.ReactNode; acti
           {/* user block doubles as the profile-picture editor */}
           <ProfileDialog trigger="row" />
           {!isTeacher ? <StudentBell variant="row" /> : null}
+          {/* the needs channel — teachers can always reach the builder */}
+          {isTeacher ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setFeedbackOpen(true)}
+                className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-left text-muted-foreground hover:text-foreground hover:bg-[var(--sidebar-accent)]/70 transition-colors"
+              >
+                <MessageSquareHeart className="h-[17px] w-[17px]" aria-hidden />
+                <span>Tell us what you need</span>
+              </button>
+              <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
+            </>
+          ) : null}
           {/* same geometry as the nav rows above — icon and label sit on the
               identical left rail so the sidebar reads as one aligned column */}
           <ThemeToggle variant="row" />

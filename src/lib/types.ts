@@ -31,6 +31,9 @@ export interface BaseQuestion {
   id: string;
   type: QuestionType;
   topic: string; // topic id, e.g. '2.1'
+  /** official spec sub-topic id, e.g. '2.1.3' — lets teachers target
+   *  individual sub-topics (globalisation without growth, etc.) */
+  subtopic?: string;
   difficulty: 1 | 2 | 3;
   marks: number;
   stem: string;
@@ -102,6 +105,9 @@ export interface Teacher {
   email: string; // lowercase, unique
   pw: string; // scrypt hash
   createdAt: number;
+  /** Set once the teacher has been shown (and sent or dismissed) the
+   *  "what do you need?" onboarding questionnaire — it never nags again. */
+  feedbackOnboarded?: boolean;
 }
 
 export interface StudentClass {
@@ -310,6 +316,21 @@ export interface TeacherFeedback {
   text: string;
   at: number;
   byName: string;
+}
+
+/** Product feedback / need-survey entries from teachers — the "you never
+ *  asked me what I want" channel. Teachers submit from the sidebar or the
+ *  first-login questionnaire; the owner reads them in /debug. */
+export interface FeedbackEntry {
+  id: string;
+  teacherId: string;
+  teacherName: string;
+  kind: 'onboarding' | 'feature' | 'issue' | 'other';
+  message: string;
+  /** optional context, e.g. the questionnaire's chip picks (JSON string) */
+  meta?: string;
+  createdAt: number;
+  seen?: boolean;
 }
 
 export interface Attempt {

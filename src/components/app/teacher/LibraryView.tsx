@@ -15,7 +15,8 @@ import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
 import { PageHeader, ThemedSkeleton, ErrorNote, MarksChip, TypeBadge } from '@/components/shared';
 import { Diagram } from '@/components/charts';
-import { topicTitle, TOPIC_MAP } from '@/lib/topics';
+import { SUBTOPIC_MAP, topicTitle, TOPICS, TOPIC_MAP } from '@/lib/topics';
+import { cn } from '@/lib/utils';
 import type { Question } from '@/lib/types';
 
 interface QuizRow {
@@ -24,6 +25,7 @@ interface QuizRow {
   blurb: string;
   theme: 1 | 2;
   topics: string[];
+  subtopics?: string[];
   audience: 'practice' | 'assignment';
   questionCount: number;
   types: Question['type'][];
@@ -34,6 +36,9 @@ export function LibraryView() {
   const [quizzes, setQuizzes] = useState<QuizRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  // official sub-topic filter ('' = all) — teachers browse by exact spec
+  // numbers like 2.1.3 Business and globalisation
+  const [subFilter, setSubFilter] = useState('');
 
   useEffect(() => {
     api
@@ -59,6 +64,8 @@ export function LibraryView() {
         z.blurb,
         ...z.topics,
         ...z.topics.map((t) => TOPIC_MAP[t]?.title ?? ''),
+        ...(z.subtopics ?? []),
+        ...(z.subtopics ?? []).map((s) => SUBTOPIC_MAP[s]?.title ?? s),
         ...z.types,
       ]
         .join(' ')
@@ -66,6 +73,14 @@ export function LibraryView() {
       return q.split(/\s+/).every((w) => hay.includes(w));
     });
   }, [quizzes, query]);
+
+  const filtered = useMemo(
+    () =>
+      subFilter
+        ? matches.filter((z) => (z.subtopics ?? []).includes(subFilter))
+        : matches,
+    [matches, subFilter]
+  );
 
   if (error)
     return (
@@ -82,8 +97,8 @@ export function LibraryView() {
       </>
     );
 
-  const t1 = matches.filter((q) => q.theme === 1);
-  const t2 = matches.filter((q) => q.theme === 2);
+  const t1 = filtered.filter((q) => q.theme === 1);
+  const t2 = filtered.filter((q) => q.theme === 2);
 
   return (
     <>
@@ -98,7 +113,7 @@ export function LibraryView() {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search the library — try “cash flow”, “2.4”, “motivation”…"
+          placeholder="Search the library — try “globalisation”, “2.1.3”, “cash flow”…"
           className="pl-10 pr-10 h-12 text-base rounded-xl bg-card"
           aria-label="Search the quiz library"
         />
@@ -118,6 +133,41 @@ export function LibraryView() {
           No quizzes match “{query}”. Try a topic number like <span className="font-medium">1.3</span> or a word like <span className="font-medium">marketing</span>.
         </p>
       ) : null}
+
+      {/* sub-topic filter — the official spec numbers teachers plan by */}
+      <div className="flex gap-1.5 overflow-x-auto scroll-slim pb-1.5 mb-5 sm:flex-wrap sm:overflow-visible" role="group" aria-label="Filter by sub-topic">
+        <button
+          type="button"
+          aria-pressed={subFilter === ''}
+          onClick={() => setSubFilter('')}
+          className={cn(
+            'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0',
+            subFilter === '' ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
+          )}
+        >
+          All sub-topics
+        </button>
+        {TOPICS.flatMap((t) =>
+          t.subtopics.map((st) => {
+            const on = subFilter === st.id;
+            return (
+              <button
+                key={st.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setSubFilter(on ? '' : st.id)}
+                title={`${st.id} ${st.title} (Topic ${t.id})`}
+                className={cn(
+                  'rounded-full border px-2.5 py-1.5 text-[11px] font-medium transition-colors whitespace-nowrap shrink-0',
+                  on ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
+                )}
+              >
+                {st.id} {st.short}
+              </button>
+            );
+          })
+        )}
+      </div>
 
       {[
         { title: 'Theme 1 · Investigating small business', rows: t1 },
@@ -141,11 +191,30 @@ export function LibraryView() {
                     <Badge variant="secondary" className="tabular-nums shrink-0">{q.questionCount} Qs</Badge>
                   </div>
                   <div className="flex flex-wrap gap-1.5 mt-3">
-                    {q.topics.map((t) => (
-                      <Badge key={t} variant="outline" className="text-[10px] font-normal">
-                        {t} {topicTitle(t).split(' ')[0]}
-                      </Badge>
-                    ))}
+                    {q.subtopics && q.subtopics.length > 0 ? (
+                      <>
+                        {q.subtopics.slice(0, 5).map((s) => (
+                          <Badge
+                            key={s}
+                            variant={s === subFilter ? 'default' : 'outline'}
+                            className="text-[10px] font-normal"
+                          >
+                            {s} {SUBTOPIC_MAP[s]?.short ?? ''}
+                          </Badge>
+                        ))}
+                        {q.subtopics.length > 5 ? (
+                          <Badge variant="outline" className="text-[10px] font-normal">
+                            +{q.subtopics.length - 5}
+                          </Badge>
+                        ) : null}
+                      </>
+                    ) : (
+                      q.topics.map((t) => (
+                        <Badge key={t} variant="outline" className="text-[10px] font-normal">
+                          {t} {topicTitle(t).split(' ')[0]}
+                        </Badge>
+                      ))
+                    )}
                     {q.types.map((t) => (
                       <TypeBadge key={t} type={t} />
                     ))}
@@ -219,7 +288,7 @@ function QuizPreview({ quizId, load }: { quizId: string; load: (quizId: string) 
                   <span className="text-xs font-bold text-primary tabular-nums">{i + 1}</span>
                   <TypeBadge type={q.type} />
                   <MarksChip marks={q.marks} />
-                  <span className="text-[10px] text-muted-foreground ml-auto">{q.topic}</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">{q.subtopic ?? q.topic}</span>
                 </div>
                 {q.extract ? (
                   <p className="text-xs italic text-muted-foreground border-l-2 pl-2 my-1.5">

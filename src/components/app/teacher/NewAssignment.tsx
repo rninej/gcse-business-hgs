@@ -53,13 +53,13 @@ import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { PageHeader, MarksChip, TypeBadge, ErrorNote } from '@/components/shared';
-import { topicTitle, TOPICS } from '@/lib/topics';
+import { SUBTOPIC_MAP, subtopicsOf, targetLabel, topicTitle, TOPICS } from '@/lib/topics';
 import type { Question, QuestionType, WrittenPoint, WrittenQuestion } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface ClassRow { id: string; name: string; studentCount: number }
 interface StudentLite { id: string; displayName: string; username: string; classId: string; className: string }
-interface QuizRow { id: string; title: string; blurb: string; theme: 1 | 2; topics: string[]; questionCount: number; types: QuestionType[] }
+interface QuizRow { id: string; title: string; blurb: string; theme: 1 | 2; topics: string[]; subtopics?: string[]; questionCount: number; types: QuestionType[] }
 
 type Mode = 'library' | 'ai' | 'custom';
 
@@ -107,6 +107,12 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
   const [quizId, setQuizId] = useState(presetQuizId ?? '');
   // ai
   const [aiTopics, setAiTopics] = useState<string[]>(['2.1']);
+  // individually selected sub-topics ('2.1.3') — hard boundaries the AI
+  // and the bank fallback must respect (globalisation means globalisation)
+  const [aiSubtopics, setAiSubtopics] = useState<string[]>([]);
+  // bank coverage per sub-topic, shown on the chips so teachers can see
+  // what the human-written bank already covers
+  const [subCounts, setSubCounts] = useState<Record<string, number> | null>(null);
   const [aiBrief, setAiBrief] = useState('');
   const [aiCount, setAiCount] = useState(12);
   const [aiTypes, setAiTypes] = useState<QuestionType[]>([]);
@@ -145,7 +151,12 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
       if (d.classes.length > 0 && !presetQuizId && !draftId) setClassIds([d.classes[0].id]);
     }).catch((e) => setError((e as Error).message));
     api.get<{ students: StudentLite[] }>('/api/teacher/students').then((d) => setStudents(d.students)).catch(() => undefined);
-    api.get<{ quizzes: QuizRow[] }>('/api/quizzes?audience=assignment').then((d) => setQuizzes(d.quizzes)).catch(() => undefined);
+    api.get<{ quizzes: QuizRow[]; subtopicCounts?: Record<string, number> }>('/api/quizzes?audience=assignment')
+      .then((d) => {
+        setQuizzes(d.quizzes);
+        if (d.subtopicCounts) setSubCounts(d.subtopicCounts);
+      })
+      .catch(() => undefined);
   }, [presetQuizId, draftId]);
 
   // editing an existing draft: prefill everything, questions land in the
@@ -291,6 +302,39 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
         ? (aiQuestions?.length ?? 0) >= 4
         : custom.length >= 1;
 
+  /** topic chips: tap to select the WHOLE topic, tap again to clear it */
+  function toggleTopic(id: string) {
+    if (aiTopics.includes(id)) {
+      setAiTopics(aiTopics.filter((x) => x !== id));
+    } else {
+      setAiTopics([...aiTopics, id]);
+    }
+    // any partial picks for that topic are replaced by the whole-topic choice
+    setAiSubtopics(aiSubtopics.filter((s) => !s.startsWith(id + '.')));
+  }
+
+  /** 'Whole topic' chip inside a topic's panel */
+  function pickWhole(id: string) {
+    if (aiTopics.includes(id)) return;
+    setAiTopics([...aiTopics, id]);
+    setAiSubtopics(aiSubtopics.filter((s) => !s.startsWith(id + '.')));
+  }
+
+  /** sub-topic chips: tapping one while the WHOLE topic is selected means
+   *  'actually, just this bit' — exactly the teacher's intent (2.1.3-only
+   *  quizzes). Tapping more adds them; unticking all clears the topic. */
+  function toggleSub(topicId: string, subId: string) {
+    if (aiTopics.includes(topicId)) {
+      setAiTopics(aiTopics.filter((x) => x !== topicId));
+      setAiSubtopics([...aiSubtopics.filter((s) => !s.startsWith(topicId + '.')), subId]);
+      return;
+    }
+    const next = aiSubtopics.includes(subId)
+      ? aiSubtopics.filter((x) => x !== subId)
+      : [...aiSubtopics, subId];
+    setAiSubtopics(next);
+  }
+
   async function generate() {
     setAiBusy(true);
     setError(null);
@@ -302,6 +346,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
         questions: Question[];
       }>('/api/teacher/generate', {
         topics: aiTopics,
+        subtopics: aiSubtopics,
         brief: aiBrief.trim() || undefined,
         count: aiCount,
         types: aiTypes,
@@ -351,7 +396,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
         quizId: mode === 'library' ? quizId : undefined,
         aiParams:
           mode === 'ai'
-            ? { topics: aiTopics, brief: aiBrief.trim() || undefined, count: aiQuestions?.length ?? aiCount, types: aiTypes, difficulty: aiDifficulty === 'mixed' ? 'mixed' : Number(aiDifficulty), caseStudies: aiCases }
+            ? { topics: aiTopics, subtopics: aiSubtopics, brief: aiBrief.trim() || undefined, count: aiQuestions?.length ?? aiCount, types: aiTypes, difficulty: aiDifficulty === 'mixed' ? 'mixed' : Number(aiDifficulty), caseStudies: aiCases }
             : undefined,
         // the reviewed (and possibly edited) preview goes with the request —
         // the server uses it directly instead of generating a second set
@@ -594,40 +639,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
               {quizzes.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Library is loading…</p>
               ) : (
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {quizzes.map((q) => (
-                    <button
-                      key={q.id}
-                      onClick={() => setQuizId(q.id)}
-                      aria-pressed={quizId === q.id}
-                      className={cn(
-                        'relative glass-soft rounded-xl p-4 text-left transition-all',
-                        quizId === q.id ? 'glass-selected' : 'hover:border-primary/30'
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          'absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full transition-all',
-                          quizId === q.id
-                            ? 'bg-primary text-primary-foreground scale-100 shadow-md'
-                            : 'scale-0 opacity-0'
-                        )}
-                        aria-hidden
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                      </span>
-                      <div className="flex items-center justify-between gap-2 pr-8">
-                        <span className="font-semibold text-sm">{q.title}</span>
-                        <Badge variant="secondary" className="tabular-nums shrink-0">Theme {q.theme}</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">{q.blurb}</p>
-                      <p className="text-xs mt-2">
-                        <span className="font-semibold tabular-nums">{q.questionCount}</span> questions
-                        <span className="text-muted-foreground"> · {q.topics.map((t) => `${t} ${topicTitle(t).split(' ')[0]}`).join(', ')}</span>
-                      </p>
-                    </button>
-                  ))}
-                </div>
+                <LibraryGrid quizzes={quizzes} quizId={quizId} onPick={setQuizId} />
               )}
               {quizId && libraryQuestions ? (
                 <p className="text-xs text-[var(--success)] mt-3 flex items-center gap-1.5">
@@ -656,15 +668,17 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
                 </p>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <Label>{aiBrief.trim() ? 'Topics (optional — the AI picks from your description)' : 'Topics'}</Label>
                 <div className="flex flex-wrap gap-2">
                   {TOPICS.map((t) => {
-                    const on = aiTopics.includes(t.id);
+                    const whole = aiTopics.includes(t.id);
+                    const subs = aiSubtopics.filter((s) => s.startsWith(t.id + '.'));
+                    const on = whole || subs.length > 0;
                     return (
                       <button
                         key={t.id}
-                        onClick={() => setAiTopics(on ? aiTopics.filter((x) => x !== t.id) : [...aiTopics, t.id])}
+                        onClick={() => toggleTopic(t.id)}
                         className={cn(
                           'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
                           on ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
@@ -672,11 +686,72 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
                         aria-pressed={on}
                       >
                         {t.id} {t.short}
+                        {on && !whole ? <span className="ml-1 opacity-80 tabular-nums">({subs.length})</span> : null}
                       </button>
                     );
                   })}
                 </div>
-                {aiTopics.length === 0 && !aiBrief.trim() ? <p className="text-xs text-[var(--warn)]">Pick at least one topic — or describe the quiz above.</p> : null}
+
+                {/* every active topic opens its sub-topic row — the official
+                    spec numbers teachers plan by (2.1.3 = Business and
+                    globalisation). Chips carry the bank coverage count. */}
+                {TOPICS.filter(
+                  (t) => aiTopics.includes(t.id) || aiSubtopics.some((s) => s.startsWith(t.id + '.'))
+                ).map((t) => {
+                  const whole = aiTopics.includes(t.id);
+                  const subs = aiSubtopics.filter((s) => s.startsWith(t.id + '.'));
+                  return (
+                    <div key={t.id} className="glass-soft rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold">{t.id} · {t.title}</span>
+                        <span className="text-[10px] text-muted-foreground tabular-nums">
+                          {whole ? 'whole topic' : `${subs.length} of ${t.subtopics.length} sub-topics picked`}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5" role="group" aria-label={`Sub-topics within ${t.title}`}>
+                        <button
+                          type="button"
+                          onClick={() => pickWhole(t.id)}
+                          aria-pressed={whole}
+                          className={cn(
+                            'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                            whole ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
+                          )}
+                        >
+                          Whole topic
+                        </button>
+                        {t.subtopics.map((st) => {
+                          const on = whole || subs.includes(st.id);
+                          const count = subCounts?.[st.id];
+                          return (
+                            <button
+                              key={st.id}
+                              type="button"
+                              onClick={() => toggleSub(t.id, st.id)}
+                              aria-pressed={on}
+                              title={`${st.id} ${st.title}`}
+                              className={cn(
+                                'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                                on ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
+                              )}
+                            >
+                              {st.id} {st.short}
+                              {count !== undefined ? <span className="ml-1 opacity-70 tabular-nums">{count}</span> : null}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+                <p className="text-xs text-muted-foreground">
+                  Pick whole topics, or narrow to exact sub-topics — like just{' '}
+                  <span className="font-medium text-foreground">2.1.3 Business and globalisation</span>. The little
+                  numbers show how many bank questions each sub-topic already has.
+                </p>
+                {aiTopics.length + aiSubtopics.length === 0 && !aiBrief.trim() ? (
+                  <p className="text-xs text-[var(--warn)]">Pick at least one topic or sub-topic — or describe the quiz above.</p>
+                ) : null}
               </div>
 
               <div className="grid sm:grid-cols-2 gap-5">
@@ -742,7 +817,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
               </div>
 
               <div className="flex flex-wrap gap-3 items-center">
-                <Button onClick={generate} disabled={aiBusy || (aiTopics.length === 0 && !aiBrief.trim())}>
+                <Button onClick={generate} disabled={aiBusy || (aiTopics.length + aiSubtopics.length === 0 && !aiBrief.trim())}>
                   {aiBusy ? (
                     <>
                       <RotateCw className="h-4 w-4 animate-spin" /> Writing questions…
@@ -753,6 +828,11 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
                     </>
                   )}
                 </Button>
+                {(aiTopics.length > 0 || aiSubtopics.length > 0) && !aiQuestions ? (
+                  <span className="text-xs text-muted-foreground">
+                    Scope: <span className="font-medium text-foreground">{targetLabel(aiTopics, aiSubtopics)}</span>
+                  </span>
+                ) : null}
                 {aiQuestions ? (
                   <span className="text-sm flex items-center gap-1.5 text-[var(--success)]">
                     <CheckCircle2 className="h-4 w-4" /> {aiQuestions.length} questions · {totalMarks} marks
@@ -1105,7 +1185,9 @@ function QuestionPreviewList({
                     </Badge>
                   ) : null}
                   <MarksChip marks={q.marks} />
-                  <span className="text-[10px] text-muted-foreground ml-auto">{q.topic} {topicTitle(q.topic).split(' ')[0]}</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">
+                    {q.subtopic ? `${q.subtopic} ${SUBTOPIC_MAP[q.subtopic]?.short ?? ''}` : `${q.topic} ${topicTitle(q.topic).split(' ')[0]}`}
+                  </span>
                   {!readOnly && onEdit ? (
                     <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Edit question" onClick={() => setEditingId(q.id)}>
                       <Pencil className="h-3.5 w-3.5" />
@@ -1348,6 +1430,7 @@ function CustomBuilder({
 }) {
   const [type, setType] = useState<QuestionType>('mcq');
   const [topic, setTopic] = useState('2.1');
+  const [subtopic, setSubtopic] = useState('');
   const [stem, setStem] = useState('');
   const [marks, setMarks] = useState(1);
   const [explain, setExplain] = useState('');
@@ -1372,7 +1455,7 @@ function CustomBuilder({
       extractOn && extractTitle.trim() && extractText.trim().length >= 20
         ? { title: extractTitle.trim(), text: extractText.trim() }
         : undefined;
-    const base = { id: `c${Date.now().toString(36)}`, topic, marks, stem: stem.trim(), explain: explain.trim(), extract };
+    const base = { id: `c${Date.now().toString(36)}`, topic, subtopic: subtopic || undefined, marks, stem: stem.trim(), explain: explain.trim(), extract };
     let q: Question | null = null;
     if (type === 'mcq') {
       if (options.some((o) => !o.trim())) q = null;
@@ -1469,11 +1552,28 @@ function CustomBuilder({
           </div>
           <div className="space-y-1">
             <Label>Topic</Label>
-            <Select value={topic} onValueChange={setTopic}>
+            <Select
+              value={topic}
+              onValueChange={(v) => {
+                setTopic(v);
+                setSubtopic('');
+              }}
+            >
               <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {TOPICS.map((t) => (
                   <SelectItem key={t.id} value={t.id}>{t.id} · {t.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>Sub-topic <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Select value={subtopic} onValueChange={setSubtopic}>
+              <SelectTrigger className="w-56"><SelectValue placeholder="Whole topic" /></SelectTrigger>
+              <SelectContent>
+                {subtopicsOf(topic).map((st) => (
+                  <SelectItem key={st.id} value={st.id}>{st.id} · {st.title}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -1615,6 +1715,7 @@ function CustomBuilder({
 
 function WrittenFields({ onAdd }: { onAdd: (q: Question) => void }) {
   const [topic, setTopic] = useState('2.1');
+  const [subtopic, setSubtopic] = useState('');
   const [stem, setStem] = useState('');
   const [points, setPoints] = useState<{ text: string; marks: number }[]>([{ text: '', marks: 1 }]);
   const [model, setModel] = useState('');
@@ -1640,6 +1741,7 @@ function WrittenFields({ onAdd }: { onAdd: (q: Question) => void }) {
       id: `w${Date.now().toString(36)}`,
       type: 'written',
       topic,
+      subtopic: subtopic || undefined,
       difficulty: 3,
       marks: total,
       stem: stem.trim(),
@@ -1663,16 +1765,35 @@ function WrittenFields({ onAdd }: { onAdd: (q: Question) => void }) {
         <Badge variant="outline" className="tabular-nums">{total} {total === 1 ? 'mark' : 'marks'}</Badge>
       </div>
 
-      <div className="space-y-1">
-        <Label>Topic</Label>
-        <Select value={topic} onValueChange={setTopic}>
-          <SelectTrigger className="w-72"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {TOPICS.map((t) => (
-              <SelectItem key={t.id} value={t.id}>{t.id} · {t.title}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex flex-wrap gap-3">
+        <div className="space-y-1">
+          <Label>Topic</Label>
+          <Select
+            value={topic}
+            onValueChange={(v) => {
+              setTopic(v);
+              setSubtopic('');
+            }}
+          >
+            <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {TOPICS.map((t) => (
+                <SelectItem key={t.id} value={t.id}>{t.id} · {t.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label>Sub-topic <span className="text-muted-foreground font-normal">(optional)</span></Label>
+          <Select value={subtopic} onValueChange={setSubtopic}>
+            <SelectTrigger className="w-64"><SelectValue placeholder="Whole topic" /></SelectTrigger>
+            <SelectContent>
+              {subtopicsOf(topic).map((st) => (
+                <SelectItem key={st.id} value={st.id}>{st.id} · {st.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="space-y-1">
@@ -1806,6 +1927,174 @@ function WrittenSection({ list, setList }: { list: Question[]; setList: (q: Ques
 }
 
 /* ------------------------------------------------------------------ */
+/* Library grid — quiz cards with an official sub-topic filter.        */
+/* Teachers browse by exact spec sub-topic (2.1.3 Globalisation…),     */
+/* and every card shows which sub-topics its questions actually cover. */
+/* ------------------------------------------------------------------ */
+function LibraryGrid({
+  quizzes,
+  quizId,
+  onPick,
+}: {
+  quizzes: QuizRow[];
+  quizId: string;
+  onPick: (id: string) => void;
+}) {
+  const [topic, setTopic] = useState('');
+  const [subtopic, setSubtopic] = useState('');
+
+  const shown = quizzes.filter((q) => {
+    if (topic && !q.topics.includes(topic)) return false;
+    if (subtopic && !(q.subtopics ?? []).includes(subtopic)) return false;
+    return true;
+  });
+
+  return (
+    <div className="space-y-3">
+      {/* filter: topic area → sub-topic drill-down, official spec numbers */}
+      <div className="flex gap-1.5 overflow-x-auto scroll-slim pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0" role="group" aria-label="Filter library by topic">
+        <button
+          type="button"
+          aria-pressed={topic === ''}
+          onClick={() => {
+            setTopic('');
+            setSubtopic('');
+          }}
+          className={cn(
+            'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0',
+            topic === '' ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
+          )}
+        >
+          All topics
+        </button>
+        {TOPICS.map((t) => {
+          const on = topic === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => {
+                setTopic(on ? '' : t.id);
+                setSubtopic('');
+              }}
+              className={cn(
+                'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0',
+                on ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
+              )}
+            >
+              {t.id} {t.short}
+            </button>
+          );
+        })}
+      </div>
+      {topic ? (
+        <div className="flex gap-1.5 overflow-x-auto scroll-slim pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0" role="group" aria-label="Filter library by sub-topic">
+          <button
+            type="button"
+            aria-pressed={subtopic === ''}
+            onClick={() => setSubtopic('')}
+            className={cn(
+              'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors whitespace-nowrap shrink-0',
+              subtopic === '' ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
+            )}
+          >
+            All of {topic}
+          </button>
+          {subtopicsOf(topic).map((st) => {
+            const on = subtopic === st.id;
+            return (
+              <button
+                key={st.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setSubtopic(on ? '' : st.id)}
+                title={st.title}
+                className={cn(
+                  'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors whitespace-nowrap shrink-0',
+                  on ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
+                )}
+              >
+                {st.id} {st.short}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {shown.length === 0 ? (
+        <div className="rounded-xl border border-dashed p-6 text-center">
+          <div className="text-sm font-medium">No library quizzes in {subtopic || topic} yet</div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Try the Generate tab — the AI writes a quiz on any sub-topic — or pick bank questions under My questions.
+          </p>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 gap-3">
+          {shown.map((q) => (
+            <button
+              key={q.id}
+              onClick={() => onPick(q.id)}
+              aria-pressed={quizId === q.id}
+              className={cn(
+                'relative glass-soft rounded-xl p-4 text-left transition-all',
+                quizId === q.id ? 'glass-selected' : 'hover:border-primary/30'
+              )}
+            >
+              <span
+                className={cn(
+                  'absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full transition-all',
+                  quizId === q.id
+                    ? 'bg-primary text-primary-foreground scale-100 shadow-md'
+                    : 'scale-0 opacity-0'
+                )}
+                aria-hidden
+              >
+                <CheckCircle2 className="h-4 w-4" />
+              </span>
+              <div className="flex items-center justify-between gap-2 pr-8">
+                <span className="font-semibold text-sm">{q.title}</span>
+                <Badge variant="secondary" className="tabular-nums shrink-0">Theme {q.theme}</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">{q.blurb}</p>
+              {/* exact spec coverage — what a teacher plans by */}
+              <div className="flex flex-wrap gap-1 mt-2">
+                {q.subtopics && q.subtopics.length > 0 ? (
+                  <>
+                    {q.subtopics.slice(0, 4).map((s) => (
+                      <Badge key={s} variant="outline" className="text-[10px] text-muted-foreground">
+                        {s} {SUBTOPIC_MAP[s]?.short ?? ''}
+                      </Badge>
+                    ))}
+                    {q.subtopics.length > 4 ? (
+                      <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                        +{q.subtopics.length - 4} more
+                      </Badge>
+                    ) : null}
+                  </>
+                ) : (
+                  q.topics.map((t) => (
+                    <Badge key={t} variant="outline" className="text-[10px] text-muted-foreground">
+                      {t} {topicTitle(t).split(' ')[0]}
+                    </Badge>
+                  ))
+                )}
+              </div>
+              <p className="text-xs mt-2">
+                <span className="font-semibold tabular-nums">{q.questionCount}</span> questions
+                {subtopic ? (
+                  <span className="text-[var(--success)]"> · covers {subtopic}</span>
+                ) : null}
+              </p>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Bank picker — a dialog of every bank question, filterable by topic, */
 /* type and keyword. Tick rows (they survive filter changes), then add */
 /* them to the same list typed questions use — or press Lucky dip to  */
@@ -1823,6 +2112,8 @@ function BankPicker({
   const [open, setOpen] = useState(false);
   // filters (single-select each — '' = all)
   const [topic, setTopic] = useState('');
+  // official sub-topic drill-down within the chosen topic ('' = all of it)
+  const [subtopic, setSubtopic] = useState('');
   const [type, setType] = useState('');
   const [qInput, setQInput] = useState('');
   const [q, setQ] = useState('');
@@ -1836,7 +2127,7 @@ function BankPicker({
   // lucky-dip size
   const [dipN, setDipN] = useState(10);
 
-  const reqKey = `${topic}|${type}|${q}|${reload}`;
+  const reqKey = `${topic}|${subtopic}|${type}|${q}|${reload}`;
   const current = result && result.key === reqKey ? result : null;
   const rows = current?.rows ?? null;
   const total = current?.total ?? 0;
@@ -1853,6 +2144,7 @@ function BankPicker({
     let cancelled = false;
     const params = new URLSearchParams();
     if (topic) params.set('topic', topic);
+    if (topic && subtopic) params.set('subtopic', subtopic);
     if (type) params.set('type', type);
     if (q) params.set('q', q);
     api
@@ -1867,7 +2159,7 @@ function BankPicker({
     return () => {
       cancelled = true;
     };
-  }, [open, reqKey, topic, type, q]);
+  }, [open, reqKey, topic, subtopic, type, q]);
 
   const capped = rows !== null && total > rows.length;
 
@@ -1937,7 +2229,10 @@ function BankPicker({
               <button
                 type="button"
                 aria-pressed={topic === ''}
-                onClick={() => setTopic('')}
+                onClick={() => {
+                  setTopic('');
+                  setSubtopic('');
+                }}
                 className={cn(
                   'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0',
                   topic === '' ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
@@ -1952,7 +2247,10 @@ function BankPicker({
                     key={t.id}
                     type="button"
                     aria-pressed={on}
-                    onClick={() => setTopic(on ? '' : t.id)}
+                    onClick={() => {
+                      setTopic(on ? '' : t.id);
+                      setSubtopic('');
+                    }}
                     className={cn(
                       'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0',
                       on ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
@@ -1964,6 +2262,42 @@ function BankPicker({
               })}
             </div>
           </div>
+          {topic ? (
+            <div className="space-y-1.5">
+              <span className="text-xs font-medium">Sub-topic within {topic}</span>
+              <div className="flex gap-1.5 overflow-x-auto scroll-slim pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0" role="group" aria-label="Filter by sub-topic">
+                <button
+                  type="button"
+                  aria-pressed={subtopic === ''}
+                  onClick={() => setSubtopic('')}
+                  className={cn(
+                    'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors whitespace-nowrap shrink-0',
+                    subtopic === '' ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
+                  )}
+                >
+                  All of {topic}
+                </button>
+                {subtopicsOf(topic).map((st) => {
+                  const on = subtopic === st.id;
+                  return (
+                    <button
+                      key={st.id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setSubtopic(on ? '' : st.id)}
+                      title={st.title}
+                      className={cn(
+                        'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors whitespace-nowrap shrink-0',
+                        on ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-secondary'
+                      )}
+                    >
+                      {st.id} {st.short}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           <div className="space-y-1.5">
             <span className="text-xs font-medium">Question type</span>
             <div className="flex gap-1.5 overflow-x-auto scroll-slim pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0" role="group" aria-label="Filter by question type">
@@ -2091,7 +2425,7 @@ function BankPicker({
                       <span className="flex items-center gap-1.5 flex-wrap">
                         <TypeBadge type={row.type} />
                         <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                          {row.topic}
+                          {row.subtopic ?? row.topic}
                         </Badge>
                         <MarksChip marks={row.marks} />
                       </span>

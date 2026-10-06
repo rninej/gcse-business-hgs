@@ -10,7 +10,7 @@ import { useApp } from '@/lib/store';
 import { api } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader, ThemedSkeleton, ErrorNote, TypeBadge } from '@/components/shared';
-import { topicTitle, TOPIC_MAP, TOPICS } from '@/lib/topics';
+import { SUBTOPIC_MAP, subtopicsOf, topicTitle, TOPIC_MAP, TOPICS } from '@/lib/topics';
 import { cn } from '@/lib/utils';
 import type { QuestionType } from '@/lib/types';
 
@@ -20,6 +20,7 @@ interface QuizRow {
   blurb: string;
   theme: 1 | 2;
   topics: string[];
+  subtopics?: string[];
   audience: 'practice' | 'assignment';
   questionCount: number;
   types: QuestionType[];
@@ -62,6 +63,8 @@ export function PracticeView() {
         z.blurb,
         ...z.topics,
         ...z.topics.map((t) => TOPIC_MAP[t]?.title ?? ''),
+        ...(z.subtopics ?? []),
+        ...(z.subtopics ?? []).map((s) => SUBTOPIC_MAP[s]?.title ?? s),
         ...z.types,
       ]
         .join(' ')
@@ -206,6 +209,9 @@ function MixBuilder() {
   const go = useApp((s) => s.go);
   const { toast } = useToast();
   const [topics, setTopics] = useState<Set<string>>(new Set());
+  // individual sub-topics ('2.1.3') — when any are picked for a topic,
+  // that topic stops contributing its whole pool (hard boundary)
+  const [subs, setSubs] = useState<Set<string>>(new Set());
   const [count, setCount] = useState(10);
   const [difficulty, setDifficulty] = useState<'mixed' | '1' | '2' | '3'>('mixed');
   const [building, setBuilding] = useState(false);
@@ -217,14 +223,46 @@ function MixBuilder() {
       else next.add(id);
       return next;
     });
+    // re-selecting a whole topic drops its sub-topic picks
+    setSubs((s) => {
+      const next = new Set(s);
+      for (const x of [...s]) if (x.startsWith(id + '.')) next.delete(x);
+      return next;
+    });
+  }
+
+  /** tapping a sub-topic while its whole topic is selected means
+   *  'actually, just this bit' — the same intent teachers have */
+  function toggleSub(topicId: string, subId: string) {
+    if (topics.has(topicId)) {
+      setTopics((s) => {
+        const next = new Set(s);
+        next.delete(topicId);
+        return next;
+      });
+      setSubs((s) => {
+        const next = new Set(s);
+        for (const x of [...s]) if (x.startsWith(topicId + '.')) next.delete(x);
+        next.add(subId);
+        return next;
+      });
+      return;
+    }
+    setSubs((s) => {
+      const next = new Set(s);
+      if (next.has(subId)) next.delete(subId);
+      else next.add(subId);
+      return next;
+    });
   }
 
   async function start() {
-    if (topics.size === 0 || building) return;
+    if (topics.size + subs.size === 0 || building) return;
     setBuilding(true);
     try {
       const res = await api.post<{ attemptId: string }>('/api/student/practice', {
         topics: [...topics],
+        subtopics: [...subs],
         count,
         difficulty,
       });
@@ -235,7 +273,7 @@ function MixBuilder() {
     }
   }
 
-  const picked = topics.size;
+  const picked = topics.size + subs.size;
 
   return (
     <section className="glass rounded-2xl p-4 sm:p-6 mb-5 anim-rise" aria-label="Build your own quiz">
@@ -257,7 +295,8 @@ function MixBuilder() {
       {/* topic chips — all 10 spec topics, wrap on any width */}
       <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Pick your topics">
         {TOPICS.map((t) => {
-          const on = topics.has(t.id);
+          const on = topics.has(t.id) || [...subs].some((s) => s.startsWith(t.id + '.'));
+          const nSubs = [...subs].filter((s) => s.startsWith(t.id + '.')).length;
           return (
             <button
               key={t.id}
@@ -272,10 +311,58 @@ function MixBuilder() {
               )}
             >
               <span className="tabular-nums font-medium">{t.id}</span> {t.short}
+              {on && nSubs > 0 ? <span className="opacity-75 tabular-nums">({nSubs})</span> : null}
             </button>
           );
         })}
       </div>
+
+      {/* sub-topic rows for every picked topic — the official spec
+          numbers (2.1.3 Globalisation…) teachers revision-plan by */}
+      {TOPICS.filter((t) => topics.has(t.id) || [...subs].some((s) => s.startsWith(t.id + '.'))).map((t) => {
+        const whole = topics.has(t.id);
+        const mine = [...subs].filter((s) => s.startsWith(t.id + '.'));
+        return (
+          <div key={t.id} className="mt-2.5 glass-soft rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold">{t.id} · {t.title}</span>
+              <span className="text-[10px] text-muted-foreground">
+                {whole ? 'whole topic' : `${mine.length} picked`}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label={`Sub-topics within ${t.title}`}>
+              <button
+                type="button"
+                aria-pressed={whole}
+                onClick={() => toggle(t.id)}
+                className={cn(
+                  'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors press',
+                  whole ? 'border-primary bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                )}
+              >
+                Whole topic
+              </button>
+              {subtopicsOf(t.id).map((st) => {
+                const on = whole || subs.has(st.id);
+                return (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => toggleSub(t.id, st.id)}
+                    aria-pressed={on}
+                    className={cn(
+                      'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors press',
+                      on ? 'border-primary bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                    )}
+                  >
+                    <span className="tabular-nums">{st.id}</span> {st.short}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
 
       {/* count + difficulty */}
       <div className="mt-5 grid gap-5 sm:grid-cols-2">
@@ -328,8 +415,8 @@ function MixBuilder() {
       <div className="mt-5 pt-4 border-t border-white/40 flex flex-col sm:flex-row sm:items-center gap-3">
         <p className="text-xs text-muted-foreground min-w-0 flex-1" aria-live="polite">
           {picked === 0
-            ? 'Pick at least one topic to get started.'
-            : `${picked} topic${picked === 1 ? '' : 's'} picked · untimed, unlimited goes`}
+            ? 'Pick at least one topic (or sub-topic) to get started.'
+            : `${topics.size} topic${topics.size === 1 ? '' : 's'}${subs.size > 0 ? ` + ${subs.size} sub-topic${subs.size === 1 ? '' : 's'}` : ''} picked · untimed, unlimited goes`}
         </p>
         <Button
           onClick={() => void start()}

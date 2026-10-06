@@ -5,12 +5,13 @@ import { item, put } from '@/lib/firebase';
 import { liteForStudent, upsertLite } from '@/lib/attemptLite';
 import { shuffleMcqOptions } from '@/lib/questions';
 import { requireRole } from '@/lib/session';
-import { TOPIC_MAP } from '@/lib/topics';
+import { SUBTOPIC_MAP, TOPIC_MAP } from '@/lib/topics';
 import type { Attempt, Question, Student } from '@/lib/types';
 
 /** Body of the custom-mix branch — fields are validated, never trusted. */
 interface MixBody {
   topics?: unknown;
+  subtopics?: unknown;
   count?: unknown;
   difficulty?: unknown;
 }
@@ -21,10 +22,11 @@ interface MixBody {
  * Two modes:
  *  • {quizId}                — a pre-built library quiz from the practice pool
  *                              (resumes an in-progress attempt of the same quiz)
- *  • {topics, count, difficulty} — "Build your own quiz": a one-off mix drawn
- *                              from every practice-pool question in the chosen
- *                              topics. quizId wins if both are sent. Custom
- *                              mixes are never resumed — every click is fresh.
+ *  • {topics, subtopics, count, difficulty} — "Build your own quiz": a one-off
+ *                              mix drawn from every practice-pool question in
+ *                              the chosen topics / official sub-topics. quizId
+ *                              wins if both are sent. Custom mixes are never
+ *                              resumed — every click is fresh.
  */
 export async function POST(req: Request) {
   const session = await requireRole('student');
@@ -110,7 +112,13 @@ async function startCustomMix(
         (t): t is string => typeof t === 'string' && Boolean(TOPIC_MAP[t])
       )
     : [];
-  if (topics.length === 0) {
+  // individual official sub-topics ('2.1.3') — hard boundaries within topics
+  const subtopics = Array.isArray(body.subtopics)
+    ? [...new Set(body.subtopics)].filter(
+        (s): s is string => typeof s === 'string' && Boolean(SUBTOPIC_MAP[s])
+      )
+    : [];
+  if (topics.length === 0 && subtopics.length === 0) {
     return NextResponse.json(
       { error: 'Pick at least one topic to build your quiz.' },
       { status: 400 }
@@ -126,13 +134,18 @@ async function startCustomMix(
     Number.isFinite(rawCount) && rawCount > 0 ? Math.min(Math.round(rawCount), 50) : 10;
 
   // pool: every practice-pool question in the chosen topics, deduped by id
-  // (question.topic is authoritative — a quiz's topic list is only metadata)
+  // (question.topic is authoritative — a quiz's topic list is only metadata).
+  // Sub-topic selections are hard boundaries: a 2.1.3-only mix never serves
+  // growth questions even though they share the 2.1 topic id.
   const topicSet = new Set(topics);
+  const subSet = new Set(subtopics);
   const pool = new Map<string, Question>();
   for (const qz of QUIZZES) {
     if (qz.audience !== 'practice') continue;
     for (const q of qz.questions) {
-      if (!topicSet.has(q.topic)) continue;
+      if (subSet.size > 0) {
+        if (!q.subtopic || !subSet.has(q.subtopic)) continue;
+      } else if (!topicSet.has(q.topic)) continue;
       if (diff !== null && q.difficulty !== diff) continue;
       if (!pool.has(q.id)) pool.set(q.id, q);
     }
@@ -141,7 +154,7 @@ async function startCustomMix(
     return NextResponse.json(
       {
         error:
-          'No practice questions for that mix yet — try another topic, or set the difficulty to Mixed.',
+          'No practice questions for that mix yet — try another topic or sub-topic, or set the difficulty to Mixed.',
       },
       { status: 400 }
     );
@@ -173,7 +186,7 @@ async function startCustomMix(
     teacherId: me.teacherId,
     classId: me.classId,
     assignmentId: null,
-    assignmentTitle: `My mix · ${topics.sort().join(' + ')} · practice`,
+    assignmentTitle: `My mix · ${[...topics.sort(), ...subtopics.sort()].join(' + ')} · practice`,
     quizId: undefined, // no library quiz behind a custom mix
     startedAt: Date.now(),
     dueAt: null,

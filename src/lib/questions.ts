@@ -4,12 +4,15 @@
 import { randomUUID } from 'crypto';
 import { askAI, extractJson } from './ai';
 import { KNOWLEDGE, knowledgeForTopics } from '@/data/knowledge';
-import { TOPIC_MAP } from './topics';
+import { SUBTOPIC_MAP, TOPIC_MAP } from './topics';
 import type { NumericQuestion, Question, QuestionType } from './types';
 import { QUIZZES } from '@/data/bank';
 
 export interface GenParams {
   topics: string[];
+  /** individually selected sub-topics (e.g. ['2.1.3']) — when present these
+   *  are the hard boundaries: no questions from the rest of the topic */
+  subtopics?: string[];
   count: number; // 5..30
   types: QuestionType[];
   difficulty: 1 | 2 | 3 | 'mixed';
@@ -50,7 +53,11 @@ function stripMd(s: string): string {
 }
 
 /** Structural validation of one AI-produced question */
-function validateOne(raw: Record<string, unknown>, allowedTopics: Set<string>): Question | null {
+function validateOne(
+  raw: Record<string, unknown>,
+  allowedTopics: Set<string>,
+  allowedSubtopics?: Set<string>
+): Question | null {
   const type = raw.type;
   const topic = typeof raw.topic === 'string' ? raw.topic : '';
   const stem = typeof raw.stem === 'string' ? stripMd(raw.stem.trim()) : '';
@@ -60,6 +67,11 @@ function validateOne(raw: Record<string, unknown>, allowedTopics: Set<string>): 
   const marks = Math.min(3, Math.max(1, Number(raw.marks) || 1));
   if (!stem || stem.length < 12 || !explain || explain.length < 10) return null;
   if (!allowedTopics.has(topic)) return null;
+  // the AI may tag its question with the sub-topic it targeted — keep it only
+  // when it's one of the teacher's selected sub-topics (never invent one)
+  const rawSub = typeof raw.subtopic === 'string' ? raw.subtopic : '';
+  const subtopic =
+    allowedSubtopics && allowedSubtopics.has(rawSub) ? rawSub : undefined;
 
   const extract =
     raw.extract && typeof raw.extract === 'object'
@@ -82,17 +94,17 @@ function validateOne(raw: Record<string, unknown>, allowedTopics: Set<string>): 
     const others = options.filter((_, i) => i !== correct).map((o) => o.length);
     const avgOthers = others.reduce((a, b) => a + b, 0) / others.length;
     if (cLen > Math.max(...others) && cLen > avgOthers * 1.75) return null;
-    return { id: '', type: 'mcq', topic, difficulty, marks, stem, extract, explain, options, correct };
+    return { id: '', type: 'mcq', topic, subtopic, difficulty, marks, stem, extract, explain, options, correct };
   }
   if (type === 'term' || type === 'fib') {
     const accept = Array.isArray(raw.accept) ? raw.accept.map((a) => stripMd(String(a).trim())).filter(Boolean) : [];
     if (accept.length < 1 || accept.length > 6) return null;
     if (accept.some((a) => a.length > 40)) return null;
-    return { id: '', type, topic, difficulty, marks, stem, extract, explain, accept };
+    return { id: '', type, topic, subtopic, difficulty, marks, stem, extract, explain, accept };
   }
   if (type === 'truefalse') {
     if (typeof raw.answer !== 'boolean') return null;
-    return { id: '', type: 'truefalse', topic, difficulty, marks, stem, extract, explain, answer: raw.answer };
+    return { id: '', type: 'truefalse', topic, subtopic, difficulty, marks, stem, extract, explain, answer: raw.answer };
   }
   if (type === 'numeric') {
     const value = Number(raw.value);
@@ -100,7 +112,7 @@ function validateOne(raw: Record<string, unknown>, allowedTopics: Set<string>): 
     if (!Number.isFinite(value) || !Number.isFinite(tol) || tol < 0 || tol > 2) return null;
     const unit = typeof raw.unit === 'string' && ['%', '£', 'loaves', 'units', 'kg'].includes(raw.unit) ? raw.unit : undefined;
     const dp = Number.isInteger(raw.dp) && (raw.dp as number) >= 0 && (raw.dp as number) <= 3 ? (raw.dp as number) : undefined;
-    return { id: '', type: 'numeric', topic, difficulty, marks, stem, extract, explain, value, tol, unit, dp };
+    return { id: '', type: 'numeric', topic, subtopic, difficulty, marks, stem, extract, explain, value, tol, unit, dp };
   }
   if (type === 'written') {
     // AI-written extended-response question with its own mark scheme
@@ -118,7 +130,7 @@ function validateOne(raw: Record<string, unknown>, allowedTopics: Set<string>): 
     }
     if (total < 2 || total > 12) return null;
     if (stem.length < 25) return null; // real exam-style command needed
-    return { id: '', type: 'written', topic, difficulty: 3, marks: total, stem, extract, explain, points };
+    return { id: '', type: 'written', topic, subtopic, difficulty: 3, marks: total, stem, extract, explain, points };
   }
   return null;
 }
@@ -220,8 +232,16 @@ function dedupe(questions: Question[]): Question[] {
 
 /** Curated-bank fallback when every AI provider fails */
 export function bankFallback(params: GenParams): Question[] {
+  const subSet = new Set((params.subtopics ?? []).filter((s) => SUBTOPIC_MAP[s]));
   const pool: Question[] = [];
   for (const quiz of QUIZZES) {
+    // sub-topic selections are hard boundaries — only questions tagged with
+    // one of the chosen sub-topics qualify (a globalisation-only quiz must
+    // never serve growth questions, even in the fallback)
+    if (subSet.size > 0) {
+      for (const q of quiz.questions) if (q.subtopic && subSet.has(q.subtopic)) pool.push(q);
+      continue;
+    }
     if (quiz.topics.some((t) => params.topics.includes(t))) pool.push(...quiz.questions);
   }
   if (pool.length < 5) {
@@ -237,13 +257,16 @@ export function bankFallback(params: GenParams): Question[] {
 
 export async function generateQuestions(params: GenParams): Promise<GenResult> {
   const count = Math.max(5, Math.min(30, params.count));
+  // individual sub-topics selected — these are the teacher's hard boundaries
+  const subtopics = (params.subtopics ?? []).filter((s) => SUBTOPIC_MAP[s]);
+  const subParents = [...new Set(subtopics.map((s) => s.split('.').slice(0, 2).join('.')))];
   let topics = params.topics.filter((t) => KNOWLEDGE[t]);
   // with a brief but no topics, the teacher leaves topic choice to the AI —
   // allow every spec topic in that case (validation needs the full set)
-  if (topics.length === 0 && params.brief) {
+  if (topics.length === 0 && subParents.length === 0 && params.brief) {
     topics = Object.keys(KNOWLEDGE).filter((t) => TOPIC_MAP[t]);
   }
-  if (topics.length === 0) topics.push('1.1', '2.1');
+  if (topics.length === 0 && subParents.length === 0) topics.push('1.1', '2.1');
 
   const typeLine = params.types.length ? params.types.join(', ') : 'a natural mix (mostly mcq and term)';
   const diffLine = params.difficulty === 'mixed' ? 'roughly 40% easy, 40% medium, 20% hard' : `all difficulty ${params.difficulty}`;
@@ -254,12 +277,25 @@ export async function generateQuestions(params: GenParams): Promise<GenResult> {
     ? `\nTEACHER'S BRIEF (follow it closely — it overrides the type/difficulty/case-study preferences above when they conflict; the question count and the JSON schema always stand):\n${params.brief.slice(0, 600)}\n`
     : '';
 
-  const user = `Write ${count} GCSE Business questions on: ${topics.map((t) => `${t} ${TOPIC_MAP[t]?.title ?? ''}`).join('; ')}.
+  // targeting line: whole topics read as before; sub-topic selections come
+  // with their official spec content so the model knows the exact boundary
+  const targetLine = [
+    ...topics.map((t) => `${t} ${TOPIC_MAP[t]?.title ?? ''} (the whole topic)`),
+    ...subtopics.map(
+      (s) => `${s} ${SUBTOPIC_MAP[s].title} — ONLY this sub-topic: ${SUBTOPIC_MAP[s].focus}`
+    ),
+  ].join('; ');
+  const scopeLine =
+    subtopics.length > 0
+      ? `\nSCOPE (critical): the teacher has selected specific sub-topics. Every question must sit INSIDE the sub-topics marked "ONLY this sub-topic". Do NOT write about anything else from the parent topic — e.g. if only 2.1.3 Business and globalisation is listed, questions about mergers, takeovers, organic growth or changing aims are WRONG even though they belong to topic 2.1. Set each question's "topic" field to the sub-topic's parent topic id (e.g. "2.1") and add a "subtopic" field with the exact sub-topic id (e.g. "2.1.3").\n`
+      : '';
+
+  const user = `Write ${count} GCSE Business questions on: ${targetLine}.
 
 QUESTION TYPES wanted: ${typeLine}.
 DIFFICULTY: ${diffLine}.
 CASE STUDY EXTRACTS: ${params.caseStudies ? 'include short case-study extracts above roughly a third of the questions (real businesses or clearly realistic small firms, 2-4 sentences)' : 'mostly standalone questions; at most one short extract'}.
-${briefLine}
+${briefLine}${scopeLine}
 
 Rules:
 - One correct answer only, no trick wording, no "all of the above".
@@ -267,11 +303,11 @@ Rules:
 - Never let one question give away another's answer: a term that one question asks the student to type must not appear in any other question's stem, options or explanation.
 - "term" questions ask for a key term (1-3 words) — provide accepted spellings including obvious spacing/hyphen variants and the plural.
 - "numeric" questions must state the rounding (e.g. "to 1 decimal place"); the value must be mathematically certain from the stem/extract; tolerance 0.05-0.5; include the full working in the explanation, ENDING with the final answer.
-- Topics use Edexcel spec ids: 1.1 1.2 1.3 1.4 1.5 2.1 2.2 2.3 2.4 2.5.
+- Topics use Edexcel spec ids: 1.1 1.2 1.3 1.4 1.5 2.1 2.2 2.3 2.4 2.5. When sub-topics are listed, also set "subtopic" to the exact sub-topic id (e.g. "2.1.3").
 - Explanations are 1-2 sentences, teacher-quality.
 
 Use this knowledge (from the endorsed textbook) as your factual grounding:
-${knowledgeForTopics(topics).slice(0, 6000)}
+${knowledgeForTopics([...new Set([...topics, ...subParents])]).slice(0, 6000)}
 
 ${SCHEMA_HINT}`;
 
@@ -300,9 +336,10 @@ ${SCHEMA_HINT}`;
     };
   }
 
-  const allowedTopics = new Set(topics);
+  const allowedTopics = new Set([...topics, ...subParents]);
+  const allowedSubtopics = new Set(subtopics);
   let valid = parsed
-    .map((r) => (r && typeof r === 'object' ? validateOne(r as Record<string, unknown>, allowedTopics) : null))
+    .map((r) => (r && typeof r === 'object' ? validateOne(r as Record<string, unknown>, allowedTopics, allowedSubtopics) : null))
     .filter((q): q is Question => q !== null);
   valid = dedupe(valid);
   valid = await verifyNumeric(valid);

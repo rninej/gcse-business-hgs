@@ -13,8 +13,16 @@ type CustomInput = Partial<Question> & { type: QuestionType };
 
 /** Written questions: a stem plus a mark scheme of 1–8 points (1–3 marks
  *  each, 12 marks max). The AI examiner marks students' answers against it. */
+/** official sub-topic tag carried from the builder — kept only when it
+ *  belongs to the question's own topic ('2.1.3' under '2.1') */
+function validSub(raw: CustomInput, topic: string | null): string | undefined {
+  const s = typeof raw.subtopic === 'string' ? raw.subtopic : '';
+  return topic && s.startsWith(topic + '.') && /^[12]\.[1-5]\.[1-9]$/.test(s) ? s : undefined;
+}
+
 function validateWritten(raw: CustomInput, isPreview: boolean): Question | null {
   const topic = typeof raw.topic === 'string' && TOPICS.some((t) => t.id === raw.topic) ? raw.topic : null;
+  const subtopic = validSub(raw, topic);
   const stem = (raw.stem ?? '').toString().trim();
   const explain = (raw.explain ?? '').toString().trim();
   if (!topic || stem.length < (isPreview ? 12 : 15) || explain.length < 10) return null;
@@ -39,7 +47,7 @@ function validateWritten(raw: CustomInput, isPreview: boolean): Question | null 
       : undefined;
   if (extract && extract.text.length < 20) return null;
 
-  return { id: '', type: 'written', topic, difficulty: 3, marks: total, stem: stem.slice(0, 900), extract, explain, points };
+  return { id: '', type: 'written', topic, subtopic, difficulty: 3, marks: total, stem: stem.slice(0, 900), extract, explain, points };
 }
 
 /** Validate a question that comes from the teacher-reviewed AI preview.
@@ -48,6 +56,11 @@ function validateWritten(raw: CustomInput, isPreview: boolean): Question | null 
 function validatePreview(raw: CustomInput): Question | null {
   if (!raw || typeof raw !== 'object') return null;
   const topic = typeof raw.topic === 'string' && TOPICS.some((t) => t.id === raw.topic) ? raw.topic : null;
+  // official sub-topic tag ('2.1.3') — kept only when it belongs to the topic
+  const subtopic =
+    typeof raw.subtopic === 'string' && topic && raw.subtopic.startsWith(topic + '.') && /^[12]\.[1-5]\.[1-9]$/.test(raw.subtopic)
+      ? raw.subtopic
+      : undefined;
   const stem = (raw.stem ?? '').toString().trim();
   const explain = (raw.explain ?? '').toString().trim();
   const marks = Math.min(3, Math.max(1, Number(raw.marks) || 1));
@@ -65,23 +78,23 @@ function validatePreview(raw: CustomInput): Question | null {
     const correct = Number(raw.correct);
     if (options.length !== 4 || options.some((o) => !o)) return null;
     if (!Number.isInteger(correct) || correct < 0 || correct > 3) return null;
-    return { id: '', type: 'mcq', topic, difficulty, marks, stem, extract, explain, options, correct };
+    return { id: '', type: 'mcq', topic, subtopic, difficulty, marks, stem, extract, explain, options, correct };
   }
   if (raw.type === 'term' || raw.type === 'fib') {
     const accept = (raw.accept ?? []).map((a) => String(a ?? '').trim()).filter(Boolean).slice(0, 6);
     if (accept.length < 1) return null;
-    return { id: '', type: raw.type, topic, difficulty, marks, stem, extract, explain, accept };
+    return { id: '', type: raw.type, topic, subtopic, difficulty, marks, stem, extract, explain, accept };
   }
   if (raw.type === 'truefalse') {
     if (typeof raw.answer !== 'boolean') return null;
-    return { id: '', type: 'truefalse', topic, difficulty, marks, stem, extract, explain, answer: raw.answer };
+    return { id: '', type: 'truefalse', topic, subtopic, difficulty, marks, stem, extract, explain, answer: raw.answer };
   }
   if (raw.type === 'numeric') {
     const value = Number(raw.value);
     const tol = Number(raw.tol);
     if (!Number.isFinite(value) || !Number.isFinite(tol) || tol < 0 || tol > 2) return null;
     return {
-      id: '', type: 'numeric', topic, difficulty, marks, stem, extract, explain, value, tol,
+      id: '', type: 'numeric', topic, subtopic, difficulty, marks, stem, extract, explain, value, tol,
       unit: typeof raw.unit === 'string' ? raw.unit : undefined,
       dp: Number.isInteger(raw.dp) ? (raw.dp as number) : undefined,
     };
@@ -96,6 +109,7 @@ function validateCustom(raw: CustomInput): Question | null {
   // written questions have their own shape and mark rules (up to 12 marks)
   if (raw.type === 'written') return validateWritten(raw, false);
   const topic = typeof raw.topic === 'string' && TOPICS.some((t) => t.id === raw.topic) ? raw.topic : null;
+  const subtopic = validSub(raw, topic);
   const stem = (raw.stem ?? '').toString().trim();
   const explain = (raw.explain ?? '').toString().trim();
   const marks = Math.min(3, Math.max(1, Number(raw.marks) || 1));
@@ -134,6 +148,7 @@ function validateCustom(raw: CustomInput): Question | null {
       id: '',
       type: 'numeric',
       topic,
+      subtopic,
       difficulty: 2,
       marks,
       stem,
@@ -208,7 +223,7 @@ interface CreateBody {
   timeLimitMin?: number | null;
   mode?: 'library' | 'ai' | 'custom';
   quizId?: string;
-  aiParams?: { topics: string[]; brief?: string; count: number; types: QuestionType[]; difficulty: number | 'mixed'; caseStudies: boolean };
+  aiParams?: { topics: string[]; subtopics?: string[]; brief?: string; count: number; types: QuestionType[]; difficulty: number | 'mixed'; caseStudies: boolean };
   customQuestions?: CustomInput[];
   /** AI-marked written questions appended on top of any mode's question set. */
   extraWritten?: CustomInput[];
@@ -305,11 +320,13 @@ export async function POST(req: Request) {
     } else {
       const p = body.aiParams;
       const brief = typeof p?.brief === 'string' ? p.brief.trim().slice(0, 600) : '';
-      if (!p || (!Array.isArray(p.topics) || p.topics.length === 0) && !brief) {
-        return NextResponse.json({ error: 'Select at least one topic — or describe the quiz you want.' }, { status: 400 });
+      const regenSubs = Array.isArray(p?.subtopics) ? p.subtopics.filter((s) => typeof s === 'string') : [];
+      if (!p || (!Array.isArray(p.topics) || p.topics.length === 0) && regenSubs.length === 0 && !brief) {
+        return NextResponse.json({ error: 'Select at least one topic or sub-topic — or describe the quiz you want.' }, { status: 400 });
       }
       const gen = await generateQuestions({
         topics: Array.isArray(p.topics) ? p.topics : [],
+        subtopics: regenSubs,
         brief: brief || undefined,
         count: Math.max(5, Math.min(30, Number(p.count) || 10)),
         types: Array.isArray(p.types) ? p.types : [],

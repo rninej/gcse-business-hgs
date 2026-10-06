@@ -38,6 +38,12 @@ import practice22 from './practice-t2-22';
 import practice23 from './practice-t2-23';
 import practice24 from './practice-t2-24';
 import practice25 from './practice-t2-25';
+import stakeholderstech from './stakeholders-tech';
+import changingaims from './changing-aims';
+import mixinaction from './mix-in-action';
+import qualitysales from './quality-sales';
+import practicefillers from './practice-fillers';
+import practicefillers2 from './practice-fillers-2';
 
 const DEFS = [
   // Theme 1 — teacher assignment pool
@@ -64,6 +70,12 @@ const DEFS = [
   financecalcs,
   peopleperformance,
   longform,
+  // Sub-topic coverage boosters (teacher pool) — fill the spec corners the
+  // big themed banks left thin (stakeholders, technology, changing aims…)
+  stakeholderstech,
+  changingaims,
+  mixinaction,
+  qualitysales,
   // Student practice pool (never shown to teachers as settable homework)
   practice11,
   practice12,
@@ -75,6 +87,8 @@ const DEFS = [
   practice23,
   practice24,
   practice25,
+  practicefillers,
+  practicefillers2,
 ];
 
 export const QUIZZES: Quiz[] = DEFS.map(compileQuiz);
