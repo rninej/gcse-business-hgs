@@ -484,7 +484,10 @@ export function AskFirst(p: AskFirstProps) {
                 </div>
                 <Switch checked={p.cases} onCheckedChange={p.onCases} aria-label="Include case studies" />
               </div>
-              <p className="text-xs text-muted-foreground">Leave all off and I’ll mix them naturally.</p>
+              <p className="text-xs text-muted-foreground">
+                Leave all off and I’ll mix them naturally. Written questions come as Edexcel 3-mark “Explain one…”
+                tasks — mention a 6, 9 or 12-marker in question 6 and I’ll write it at that tariff.
+              </p>
             </div>
           ) : null}
 
