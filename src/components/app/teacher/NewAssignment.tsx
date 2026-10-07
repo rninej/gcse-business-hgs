@@ -87,6 +87,69 @@ function toLocalInput(ms: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** Animated progress bar for AI generation. The old bar sat frozen at a
+ *  third of the width with a pulse — teachers watched it and thought the
+ *  thing had stalled ("the loading bar doesn't even move"). This one always
+ *  moves: it sets off quickly, settles into a steady crawl, walks through
+ *  readable stages of what the writer is doing, and never claims 100% until
+ *  the questions have actually landed. */
+function GenerateProgress({ scope, count }: { scope: string; count: number }) {
+  const [p, setP] = useState(4);
+
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      setP((x) => Math.min(95, x + Math.max(0.25, (95 - x) * 0.016)));
+    }, 240);
+    return () => window.clearInterval(t);
+  }, []);
+
+  const stage =
+    p < 12
+      ? 'Reading your brief…'
+      : p < 30
+        ? scope
+          ? `Choosing questions from ${scope}…`
+          : 'Choosing questions to match your note…'
+        : p < 55
+          ? `Writing ${count} questions…`
+          : p < 75
+            ? 'Checking answers, facts and arithmetic…'
+            : p < 90
+              ? 'Polishing the wording…'
+              : 'Nearly there — putting the quiz in order…';
+
+  return (
+    <div className="space-y-2" aria-live="polite">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-sm text-muted-foreground truncate" title={stage}>
+          {stage}
+        </p>
+        <span className="shrink-0 text-xs font-medium text-muted-foreground tabular-nums">
+          {Math.round(p)}%
+        </span>
+      </div>
+      <div
+        className="relative h-2.5 overflow-hidden rounded-full bg-secondary"
+        role="progressbar"
+        aria-label="Writing your quiz"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(p)}
+      >
+        <div
+          className="relative h-full overflow-hidden rounded-full bg-primary transition-[width] duration-300 ease-out"
+          style={{ width: `${p}%` }}
+        >
+          <span className="gen-sheen" aria-hidden />
+        </div>
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Usually 20–40 seconds. You can edit every question afterwards.
+      </p>
+    </div>
+  );
+}
+
 export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string; draftId?: string }) {
   const go = useApp((s) => s.go);
   const { toast } = useToast();
@@ -785,14 +848,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
                 </div>
               ) : null}
 
-              {aiBusy ? (
-                <div className="space-y-2" aria-live="polite">
-                  <p className="text-sm text-muted-foreground">Writing questions, checking facts and arithmetic… this takes up to a minute.</p>
-                  <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                    <div className="h-full w-1/3 bg-primary animate-pulse" />
-                  </div>
-                </div>
-              ) : null}
+              {aiBusy ? <GenerateProgress scope={targetLabel(aiTopics, aiSubtopics)} count={aiCount} /> : null}
 
               {aiQuestions ? (
                 <QuestionPreviewList

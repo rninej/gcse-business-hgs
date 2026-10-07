@@ -7,6 +7,12 @@
 // how many questions, how tough, which styles, and a free "anything else?".
 // Answers collapse into an editable brief; Generate only happens once the
 // teacher has said what they want.
+//
+// Progression is EXPLICIT: every question shows the same footer with a Next
+// button. An earlier build auto-advanced on chip taps, but several questions
+// ship with a sensible default already selected — and teachers rightly said
+// "some people won't know to press the button which is already pressed".
+// Chips now only select; Next always moves you on.
 
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, ChevronLeft, Loader2, Pencil, Wand2 } from 'lucide-react';
@@ -335,13 +341,13 @@ export function AskFirst(p: AskFirstProps) {
             <div className="space-y-2.5 pl-0 sm:pl-7">
               <div className="flex flex-wrap gap-2" role="group" aria-label="What the quiz is for">
                 {PURPOSES.map((o) => (
-                  <Chip key={o.v} on={p.purpose === o.v} onClick={() => { p.onPurpose(o.v); advance(1); }} title={o.hint}>
+                  <Chip key={o.v} on={p.purpose === o.v} onClick={() => p.onPurpose(o.v)} title={o.hint}>
                     {o.label}
                   </Chip>
                 ))}
               </div>
               <div>
-                <Chip on={p.purpose === ''} onClick={() => { p.onPurpose(''); advance(1); }}>
+                <Chip on={p.purpose === ''} onClick={() => p.onPurpose('')}>
                   Doesn’t matter — just good questions
                 </Chip>
               </div>
@@ -416,16 +422,6 @@ export function AskFirst(p: AskFirstProps) {
                   little numbers show bank coverage per sub-topic.
                 </p>
               )}
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-xs text-muted-foreground">
-                  {p.topics.length + p.subtopics.length === 0
-                    ? 'You can leave this empty if you describe it later.'
-                    : 'All set.'}
-                </span>
-                <Button size="sm" onClick={() => advance(2)}>
-                  That’s the scope <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                </Button>
-              </div>
             </div>
           ) : null}
 
@@ -434,14 +430,7 @@ export function AskFirst(p: AskFirstProps) {
             <div className="space-y-3 pl-0 sm:pl-7">
               <div className="flex flex-wrap gap-2" role="group" aria-label="Number of questions">
                 {COUNT_CHIPS.map((n) => (
-                  <Chip
-                    key={n}
-                    on={p.count === n}
-                    onClick={() => {
-                      p.onCount(n);
-                      advance(3);
-                    }}
-                  >
+                  <Chip key={n} on={p.count === n} onClick={() => p.onCount(n)}>
                     {n}
                   </Chip>
                 ))}
@@ -453,9 +442,6 @@ export function AskFirst(p: AskFirstProps) {
                 </div>
                 <Slider value={[p.count]} min={5} max={30} step={1} onValueChange={(v) => p.onCount(v[0] ?? 12)} />
               </div>
-              <Button size="sm" variant="outline" onClick={() => advance(3)}>
-                {p.count} questions is right <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-              </Button>
             </div>
           ) : null}
 
@@ -464,14 +450,7 @@ export function AskFirst(p: AskFirstProps) {
             <div className="space-y-2.5 pl-0 sm:pl-7">
               <div className="flex flex-wrap gap-2" role="group" aria-label="Difficulty">
                 {DIFFS.map(([v, label]) => (
-                  <Chip
-                    key={v}
-                    on={p.difficulty === v}
-                    onClick={() => {
-                      p.onDifficulty(v);
-                      advance(4);
-                    }}
-                  >
+                  <Chip key={v} on={p.difficulty === v} onClick={() => p.onDifficulty(v)}>
                     {label}
                   </Chip>
                 ))}
@@ -505,12 +484,7 @@ export function AskFirst(p: AskFirstProps) {
                 </div>
                 <Switch checked={p.cases} onCheckedChange={p.onCases} aria-label="Include case studies" />
               </div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">Leave all off and I’ll mix them naturally.</p>
-                <Button size="sm" onClick={() => advance(5)}>
-                  Next <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                </Button>
-              </div>
+              <p className="text-xs text-muted-foreground">Leave all off and I’ll mix them naturally.</p>
             </div>
           ) : null}
 
@@ -529,26 +503,33 @@ export function AskFirst(p: AskFirstProps) {
                 <p className="text-xs text-muted-foreground tabular-nums">
                   Optional <span className="ml-1">{p.note.length}/600</span>
                 </p>
-                <Button size="sm" onClick={() => advance(6)}>
-                  That’s everything <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                </Button>
               </div>
             </div>
           ) : null}
 
-          {/* back link */}
-          {active.n > 1 ? (
-            <button
-              type="button"
-              onClick={() => {
-                setReturnTo(null);
-                p.onStep(active.n - 1);
-              }}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" aria-hidden /> back
-            </button>
-          ) : null}
+          {/* shared footer — the SAME way forward on every question: a
+              prominent Next button. Questions that already have a sensible
+              default (Mixed difficulty, 12 questions…) can be accepted with
+              one press; nothing requires re-clicking an already-lit chip. */}
+          <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-3">
+            {active.n > 1 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setReturnTo(null);
+                  p.onStep(active.n - 1);
+                }}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" aria-hidden /> back
+              </button>
+            ) : (
+              <p className="text-xs text-muted-foreground">Pick one — or just press Next.</p>
+            )}
+            <Button onClick={() => advance(active.n)} className="font-semibold">
+              Next <ArrowRight className="h-4 w-4" aria-hidden />
+            </Button>
+          </div>
         </div>
       ) : null}
     </div>

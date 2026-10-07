@@ -535,3 +535,23 @@
   animation: nature-drift 46s ease-in-out infinite;
   will-change: transform;
 }
+
+/* ------------------------------------------------------------------ */
+/* generation progress sheen — a light band sweeping across the filled */
+/* part of the AI-writing bar, so it reads as actively working between */
+/* width ticks (the width itself eases via transition-[width])         */
+/* ------------------------------------------------------------------ */
+@keyframes gen-sheen {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(480%); }
+}
+.gen-sheen {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 22%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.38), transparent);
+  animation: gen-sheen 1.5s ease-in-out infinite;
+  will-change: transform;
+}
