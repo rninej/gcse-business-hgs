@@ -35,6 +35,7 @@ import {
 import { BrandLockup } from '@/components/app/Brand';
 import { DatabaseSection } from '@/components/debug/DatabaseSection';
 import { InterfaceFlagsSection } from '@/components/debug/InterfaceFlagsSection';
+import { LegalDocsSection } from '@/components/debug/LegalDocsSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -339,6 +340,7 @@ function DebugDashboardInner({ onLock }: { onLock: () => void | Promise<void> })
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <style>{`
+        @page { margin: 14mm 13mm 16mm; }
         @media print {
           .no-print { display: none !important; }
           body { background: white !important; }
@@ -347,22 +349,49 @@ function DebugDashboardInner({ onLock }: { onLock: () => void | Promise<void> })
           body.print-invoice main > section:not(#invoice-section) { display: none !important; }
           body.print-invoice > div > header,
           body.print-invoice > div > footer { display: none !important; }
+          /* legal-document modes ("Print" button on each document) — the chosen
+             document prints ALONE, A4, full width between the page margins */
+          body.print-privacy > div > footer,
+          body.print-dpa > div > footer,
+          body.print-terms > div > footer { display: none !important; }
+          body.print-privacy main,
+          body.print-dpa main,
+          body.print-terms main { max-width: none !important; margin: 0 !important; padding: 0 !important; }
+          body.print-privacy main > section:not(#legal-section),
+          body.print-dpa main > section:not(#legal-section),
+          body.print-terms main > section:not(#legal-section) { display: none !important; }
+          body.print-privacy #legal-section,
+          body.print-dpa #legal-section,
+          body.print-terms #legal-section { margin: 0 !important; }
+          body.print-privacy .legal-stack,
+          body.print-dpa .legal-stack,
+          body.print-terms .legal-stack { max-width: none !important; margin: 0 !important; }
+          body.print-privacy .legal-stack > *,
+          body.print-dpa .legal-stack > *,
+          body.print-terms .legal-stack > * { margin: 0 !important; }
+          body.print-privacy .doc-block:not(.doc-block-privacy),
+          body.print-dpa .doc-block:not(.doc-block-dpa),
+          body.print-terms .doc-block:not(.doc-block-terms) { display: none !important; }
+          /* every legal sheet prints as clean paper */
+          .legal-sheet { padding: 0 !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
+          /* when several documents print together, each starts on a fresh page */
+          .doc-block + .doc-block { break-before: page; }
         }
       `}</style>
 
       <header className="sticky top-0 z-20 border-b border-white/40 bg-background/70 backdrop-blur-xl no-print">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 min-h-16 py-2.5 flex items-center justify-between gap-3">
           <BrandLockup />
-          <div className="flex items-center gap-2">
-            <Badge className="hidden sm:inline-flex" variant="outline">Owner dashboard · not indexed</Badge>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Badge className="hidden lg:inline-flex" variant="outline">Owner dashboard · not indexed</Badge>
             <Button variant="outline" size="sm" onClick={() => window.print()}>
-              <Printer className="h-4 w-4" /> Print / PDF
+              <Printer className="h-4 w-4" /> <span className="hidden sm:inline">Print / PDF</span>
             </Button>
             <Button variant="ghost" size="sm" onClick={() => void onLock()}>
-              <Gavel className="h-4 w-4" /> Lock
+              <Gavel className="h-4 w-4" /> <span className="hidden sm:inline">Lock</span>
             </Button>
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/"><ArrowLeft className="h-4 w-4" /> App</Link>
+              <Link href="/" aria-label="Back to the app"><ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">App</span></Link>
             </Button>
           </div>
         </div>
@@ -392,6 +421,7 @@ function DebugDashboardInner({ onLock }: { onLock: () => void | Promise<void> })
         <AiCapacitySection />
         <CostSection />
         <CalculatorSection />
+        <LegalDocsSection />
         <InvoiceSection />
         <SourcesSection />
       </main>

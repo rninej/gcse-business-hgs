@@ -1340,3 +1340,34 @@ Stage Summary:
 - Files: src/lib/questions.ts (mix plan + hard filters + tariff system + Edexcel style block + fallback type filtering + askTariffWritten top-up), AskFirst.tsx (Q5 tariff hint), health r41.
 - No DB writes (all generations were previews, never assigned).
 - Test accounts unchanged: teacher e2e-lb@test.uk/testpass123.
+
+---
+Task ID: 42
+Agent: Z.ai Code (main)
+Task: R42 — user request: create the school onboarding data-protection documents as printable documents on the /debug page — Privacy Policy, Data Processing Agreement (DPA), Terms of Service — the pack a school's data-protection lead asks for before sign-off.
+
+Work Log:
+- NEW src/components/debug/LegalDocsSection.tsx — a "Data protection & privacy pack" section on the owner dashboard (placed between the calculator and the invoice: pricing → compliance → invoice tells the closing-the-deal story). Three paper-like documents (white cards, serif Georgia, 11pt, versioned headers) stacked at 50rem width, each with its own Print button.
+- Per-document printing follows the invoice's proven body-class pattern: printDoc() adds `print-privacy|print-dpa|print-terms` to <body>, window.print(), removed on afterprint (+3s safety). New @media print rules in DebugDashboard: the chosen document prints ALONE (other sections + other doc blocks hidden, main/stack padding zeroed, footer hidden), every sheet prints as clean paper (no border/shadow/radius/padding), each document starts a fresh page when several print together, and @page margins 14/13/16mm. Print output verified by rendering actual PDFs with print-media emulation.
+- PRIVACY POLICY (11 sections + short-version box): verified-factual content — scrypt teacher hashes, the AES-256-GCM teacher-recoverable student logins (disclosed honestly with a never-reuse-passwords warning), one httpOnly session cookie, EU-hosted Firebase (europe-west1), an "exactly what is sent to AI" section (question + mark scheme + answer text for marking; display name + quiz title + score for feedback; brief only for generation — verified in src/lib/ai.ts), never-sold/no-advertising promise, UK GDPR rights + ICO complaints route, Children's Code para, international transfers note.
+- DATA PROCESSING AGREEMENT (UK GDPR Art. 28 shape, 9 clauses + signature blocks): editable school fields (legal name, 2 address lines — dashed fill-ins that flow into the signature blocks), controller/processor role split (school = controller for student data; we = controller for teacher accounts), processing-details table, 8 numbered processor obligations (24h breach notice, 30-day deletion, audit rights), sub-processor table (Google/Firebase EU, Gemini, Groq, Z.ai — with what each can see), Art. 32 security measures, IDTA transfer safeguards, a FERPA "school official" clause for US schools, precedence + survival, twin signature blocks.
+- TERMS OF SERVICE (13 clauses): the service (1BS0), accounts (incl. teacher-visible student logins), acceptable use (no scraping the bank, teachers review generated questions first), IP split (platform ours/licensed; teacher content theirs; student work theirs; generated quizzes printable while licensed), AI-marking assistive disclaimer with teacher override, 99.5% availability target + one-school-day support (no SLA credits on the department licence), fees, termination, liability cap at 12 months' fees, 30-day notice for changes, England & Wales law.
+- Header fix en route (pre-existing mobile defect): the dashboard header buttons overflowed at 390px (scrollWidth 459) — Lock/App/Print labels now hide below sm (icon-only buttons with aria-label), badge below lg, tighter gap → scrollWidth exactly 390.
+- Polish from VLM round 1: list spacing 1.5→2, DPA tables got shaded header rows + break-inside-avoid; the round-1 "missing card container" finding was disproven with computed-style equality across all three sheets (screenshot crop artifact).
+- Build marker r42. tsc: no new errors (pre-existing errors untouched in examples/skills/feedback-route). lint 0 errors.
+- QA (agent-browser, owner gate opened for QA by minting the HMAC-signed hgs_owner cookie with the dev fallback secret — the stored owner password was NOT touched):
+  · /debug renders the section: 3 sheets (doc-privacy/doc-dpa/doc-terms), 3 print buttons with correct labels.
+  · PRINT OUTPUT (the core requirement): print-mode PDFs rendered — Privacy 3 pages, DPA 3 pages, Terms 3 pages; ZERO dashboard leakage (no Educake/costs/invoice content in any); each PDF starts with its own document header; cross-doc mentions are legitimate in-text references only; DPA last page shows signature blocks with the filled school name flowing through + reference footer (DPA-2026-01).
+  · DPA fields filled via native setter → values render in parties block AND signature block.
+  · Computed styles identical across all three sheets (bg/border/shadow/padding/font/line-height) — container consistency proven.
+  · Mobile 390px: scrollWidth 390 exact after header fix; dark mode: paper card contrast clean.
+  · VLM reviews: round 2 PASS (no critical/minor defects), dark+mobile PASS.
+  · dev.log clean (GET /debug 200, owner APIs 200); page console clean (HMR only); no page errors.
+  · Owner cookie left valid for ~11h in the QA browser only (dev fallback secret; production unaffected — it has its own SESSION_SECRET).
+
+Stage Summary:
+- The /debug page now carries the full school sign-off pack: three genuinely printable, school-DPO-grade documents (Privacy Policy, DPA with fillable fields + signatures, Terms of Service), each printing alone as a clean A4 serif document — verified end-to-end by rendering the actual print output to PDF.
+- Every factual claim in the documents was verified against the codebase (hashing, encryption, cookie, EU hosting, exact AI payloads, providers) — nothing in the pack overstates the platform's privacy posture.
+- Files: +src/components/debug/LegalDocsSection.tsx; DebugDashboard.tsx (import + section + print CSS + mobile header fix); debug/page.tsx (metadata); health r42.
+- No DB writes. Test accounts unchanged: teacher e2e-lb@test.uk/testpass123.
+- Next: push → Vercel → verify r42 on gcse.business; production /debug gate stays owner-password protected (minted QA cookie doesn't work there).
