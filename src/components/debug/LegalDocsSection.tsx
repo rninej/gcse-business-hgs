@@ -11,7 +11,9 @@
 //   - student logins: AES-256-GCM encrypted copy so teachers can re-issue
 //     forgotten logins (src/lib/passwords.ts) — disclosed honestly below
 //   - sessions: one HMAC-SHA-256-signed httpOnly cookie (src/lib/session.ts)
-//   - storage: Google Firebase Realtime Database, EU region europe-west1
+//   - storage: Google Firebase — primary Firestore in London (europe-west2,
+//     UK) with a live Realtime Database mirror in the EU (europe-west1);
+//     the engine switch is owner-controlled (src/lib/firebase.ts)
 //   - AI marking sends question + mark scheme + answer text only; feedback
 //     adds the display name, quiz title and score (src/lib/ai.ts)
 //   - providers: Google Gemini, Groq, Z.ai (src/lib/ai.ts)
@@ -36,7 +38,7 @@ function printDoc(id: DocId) {
   setTimeout(cleanup, 3000);
 }
 
-const CONTACT = 'hello@gcsebusiness.co.uk';
+const CONTACT = 'arnavjain1009@gmail.com';
 const longDate = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
 // ---------- tiny typographic helpers shared by all three documents ----------
@@ -127,7 +129,7 @@ function DocBlock({
 
 function PrivacyDoc({ date }: { date: string }) {
   return (
-    <DocSheet id="privacy" title="Privacy Policy" meta={`Version 1.0 · Effective ${date}`}>
+    <DocSheet id="privacy" title="Privacy Policy" meta={`Version 1.1 · Effective ${date}`}>
       <H3>1. Who we are and how to reach us</H3>
       <P>
         gcsebusiness (&ldquo;we&rdquo;, &ldquo;us&rdquo;) operates gcse.business, a quiz and revision
@@ -147,7 +149,7 @@ function PrivacyDoc({ date }: { date: string }) {
         <UL>
           <LI>We collect only what the platform needs to run: names and usernames, logins, quiz work and progress.</LI>
           <LI>No advertising, no tracking cookies, no analytics profiles — and your data is never sold.</LI>
-          <LI>Student data lives in the EU, on Google Firebase, encrypted in transit.</LI>
+          <LI>Student data lives in the UK, on Google Firebase, encrypted in transit.</LI>
           <LI>Written answers are marked by AI — we send the answer text, and nothing that identifies the student (details in §5).</LI>
           <LI>Schools can delete students and classes at any time; everything else is deleted within 30 days of the licence ending.</LI>
         </UL>
@@ -171,10 +173,11 @@ function PrivacyDoc({ date }: { date: string }) {
 
       <H3>4. Where your data lives, and for how long</H3>
       <P>
-        Account and work data is stored in Google Firebase&rsquo;s Realtime Database, hosted in the
-        EU (europe-west1 region). Data is kept while the licence is active. Teachers can delete
-        students and classes at any time from the dashboard; everything else is deleted within 30
-        days of the licence ending or of a written request from the school.
+        Account and work data is stored in Google Firebase&rsquo;s Firestore database, hosted in
+        the United Kingdom (London, europe-west2 region), with a live mirror kept in the EU
+        (europe-west1) for resilience. Data is kept while the licence is active. Teachers can
+        delete students and classes at any time from the dashboard; everything else is deleted
+        within 30 days of the licence ending or of a written request from the school.
       </P>
 
       <H3>5. AI marking, feedback and quiz generation — exactly what is sent</H3>
@@ -202,10 +205,10 @@ function PrivacyDoc({ date }: { date: string }) {
       <H3>7. Who else can see it</H3>
       <P>
         We never sell personal data, and we never share it for advertising or marketing. We use a
-        short list of sub-processors — Google LLC (Firebase, EU-hosted database; Gemini, AI marking),
-        Groq Inc. (AI marking) and Zhipu AI / Z.ai (AI marking) — listed in full in the Data
-        Processing Agreement. We would disclose data only if legally compelled, and we would tell
-        the school wherever the law allows us to.
+        short list of sub-processors — Google LLC (Firebase, UK-hosted database; Gemini, AI
+        marking), Groq Inc. (AI marking) and Zhipu AI / Z.ai (AI marking) — listed in full in the
+        Data Processing Agreement. We would disclose data only if legally compelled, and we
+        would tell the school wherever the law allows us to.
       </P>
 
       <H3>8. Your rights</H3>
@@ -227,9 +230,10 @@ function PrivacyDoc({ date }: { date: string }) {
 
       <H3>10. International transfers</H3>
       <P>
-        The primary database is in the EU. The AI providers in §5 may process the limited content
-        described there outside the UK or EEA, only under their enterprise API terms with
-        appropriate safeguards. No full student records are ever transferred.
+        The primary database is in the UK (London, europe-west2), with a live mirror in the EU.
+        The AI providers in §5 may process the limited content described there outside the UK or
+        EEA, only under their enterprise API terms with appropriate safeguards. No full student
+        records are ever transferred.
       </P>
 
       <H3>11. Changes to this policy</H3>
@@ -238,7 +242,7 @@ function PrivacyDoc({ date }: { date: string }) {
         Continuing to use the platform after a change takes effect means accepting it.
       </P>
 
-      <DocFoot line={`gcsebusiness · gcse.business · ${CONTACT} — Privacy Policy v1.0, effective ${date}.`} />
+      <DocFoot line={`gcsebusiness · gcse.business · ${CONTACT} — Privacy Policy v1.1, effective ${date}.`} />
     </DocSheet>
   );
 }
@@ -257,7 +261,7 @@ function DpaDoc({ date, year }: { date: string; year: number }) {
     <DocSheet
       id="dpa"
       title="Data Processing Agreement"
-      meta={`Reference DPA-${year}-01 · Version 1.0 · Made ${date}`}
+      meta={`Reference DPA-${year}-01 · Version 1.1 · Made ${date}`}
     >
       <P>
         This Data Processing Agreement (&ldquo;Agreement&rdquo;) is made on {date} between:
@@ -347,7 +351,7 @@ function DpaDoc({ date, year }: { date: string; year: number }) {
         <tbody>
           <tr>
             <td className="border border-neutral-300 px-2.5 py-1.5">Google LLC (Firebase)</td>
-            <td className="border border-neutral-300 px-2.5 py-1.5">EU-hosted database (europe-west1)</td>
+            <td className="border border-neutral-300 px-2.5 py-1.5">UK-hosted database (Firestore, London) + EU mirror</td>
             <td className="border border-neutral-300 px-2.5 py-1.5">All platform data, as hosting provider.</td>
           </tr>
           <tr>
@@ -385,10 +389,11 @@ function DpaDoc({ date, year }: { date: string; year: number }) {
 
       <H3>6. International transfers</H3>
       <P>
-        The primary database stays in the EU (europe-west1). Where an AI sub-processor processes the
-        limited content described in §4 outside the UK or EEA, transfers rely on appropriate
-        safeguards such as the UK IDTA or the Addendum to the EU Standard Contractual Clauses — and
-        only the minimum content is ever transferred.
+        The primary database stays in the UK (Firestore, London, europe-west2), with a live
+        mirror in the EU. Where an AI sub-processor processes the limited content described in §4
+        outside the UK or EEA, transfers rely on appropriate safeguards such as the UK IDTA or
+        the Addendum to the EU Standard Contractual Clauses — and only the minimum content is
+        ever transferred.
       </P>
 
       <H3>7. US schools — FERPA</H3>
@@ -434,7 +439,7 @@ function DpaDoc({ date, year }: { date: string; year: number }) {
         </div>
       </div>
 
-      <DocFoot line={`gcsebusiness · gcse.business · ${CONTACT} — Data Processing Agreement v1.0 (DPA-${year}-01), made ${date}.`} />
+      <DocFoot line={`gcsebusiness · gcse.business · ${CONTACT} — Data Processing Agreement v1.1 (DPA-${year}-01), made ${date}.`} />
     </DocSheet>
   );
 }
@@ -443,7 +448,7 @@ function DpaDoc({ date, year }: { date: string; year: number }) {
 
 function TermsDoc({ date }: { date: string }) {
   return (
-    <DocSheet id="terms" title="Terms of Service" meta={`Version 1.0 · Effective ${date}`}>
+    <DocSheet id="terms" title="Terms of Service" meta={`Version 1.1 · Effective ${date}`}>
       <H3>1. The agreement</H3>
       <P>
         These terms apply between gcsebusiness and (a) the school or department holding a licence
@@ -540,7 +545,7 @@ function TermsDoc({ date }: { date: string }) {
         Agreement is available on request.
       </P>
 
-      <DocFoot line={`gcsebusiness · gcse.business · ${CONTACT} — Terms of Service v1.0, effective ${date}.`} />
+      <DocFoot line={`gcsebusiness · gcse.business · ${CONTACT} — Terms of Service v1.1, effective ${date}.`} />
     </DocSheet>
   );
 }

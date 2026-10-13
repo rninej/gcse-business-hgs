@@ -1003,6 +1003,11 @@ function InvoiceSection() {
   const year = today.getFullYear();
 
   const [vatRegistered, setVatRegistered] = useState(false);
+  // The licence price is EDITABLE — kept as text so typing feels natural
+  // (clearing it, "12", "12." all behave) while every derived figure below
+  // recomputes from the parsed value.
+  const [priceText, setPriceText] = useState('120');
+  const price = Math.max(0, Number.parseFloat(priceText) || 0);
   const [fields, setFields] = useState({
     school: 'HGS Business & Enterprise Academy',
     attn: 'Mr R Ninej — Head of Business',
@@ -1013,18 +1018,21 @@ function InvoiceSection() {
   const set = (k: keyof typeof fields) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setFields((f) => ({ ...f, [k]: e.target.value }));
 
-  const price = 120;
   const vat = vatRegistered ? price * 0.2 : 0;
   const total = price + vat;
+  const savings = total > 0 && total < EDUCAKE_BUSINESS_INCVAT ? EDUCAKE_BUSINESS_INCVAT - total : null;
+  const savingsPct = savings !== null ? Math.round((savings / EDUCAKE_BUSINESS_INCVAT) * 100) : null;
 
   return (
     <section aria-labelledby="inv-h" id="invoice-section">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <div className="no-print mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="inv-h" className="text-xl sm:text-2xl font-bold tracking-tight">The ideal invoice to your GCSE Business teacher</h2>
           <p className="text-sm text-muted-foreground mt-1 max-w-3xl">
-            Edit the details in place, then hit <strong>Print invoice</strong> — everything else on this page is hidden and only
-            the invoice prints. Priced to be a yes: 78% under Educake, everything included, no per-student metering.
+            Edit the details in place — <strong>including the price</strong> — then hit{' '}
+            <strong>Print invoice</strong>; the VAT, total and Educake savings line update as you
+            type. Priced to be a yes{savingsPct !== null ? `: ${savingsPct}% under Educake` : ''},
+            everything included, no per-student metering.
           </p>
         </div>
         <Button variant="outline" size="sm" className="no-print shrink-0" onClick={() => {
@@ -1056,7 +1064,8 @@ function InvoiceSection() {
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">From</p>
               <p className="font-semibold">gcsebusiness</p>
               <p className="text-muted-foreground">Edexcel GCSE (9–1) Business · spec 1BS0</p>
-              <p className="text-muted-foreground">hello@gcsebusiness.co.uk</p>
+              <p className="text-muted-foreground">arnavjain1009@gmail.com</p>
+              <p className="text-muted-foreground">gcse.business</p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Bill to</p>
@@ -1102,7 +1111,21 @@ function InvoiceSection() {
                   </ul>
                 </td>
                 <td className="py-3.5 pr-4 text-center">1</td>
-                <td className="py-3.5 text-right font-mono tabular-nums">{GBP(price, 2)}</td>
+                <td className="py-3.5 text-right">
+                  {/* print: the formatted amount (a real invoice figure);
+                      screen: the editable dashed input */}
+                  <span className="hidden print:inline font-mono tabular-nums">{GBP(price, 2)}</span>
+                  <div className="flex justify-end print:hidden">
+                    <Input
+                      className="price-input h-7 w-24 px-2 text-sm font-mono tabular-nums text-right border-dashed"
+                      inputMode="decimal"
+                      value={priceText}
+                      onChange={(e) => setPriceText(e.target.value.replace(/[^0-9.]/g, ''))}
+                      placeholder="0"
+                      aria-label="Licence price in pounds (excl. VAT)"
+                    />
+                  </div>
+                </td>
               </tr>
               <tr className="border-b">
                 <td className="py-3 pr-4 text-muted-foreground">Setup, data import &amp; staff training</td>
@@ -1135,16 +1158,22 @@ function InvoiceSection() {
             </div>
             <div className="sm:text-right">
               <p className="font-semibold text-foreground mb-1">Thank you</p>
-              <p>Educake Business equivalent: £550 + VAT = £660.00 — this invoice saves your department £516.00 (78%).</p>
+              <p>
+                Educake Business equivalent: £550 + VAT = £660.00
+                {savings !== null && savingsPct !== null
+                  ? ` — this invoice saves your department ${GBP(savings, 2)} (${savingsPct}%).`
+                  : '.'}
+              </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
       <p className="mt-3 text-xs text-muted-foreground no-print">
-        Pricing rationale: at £144 inc VAT the department licence covers the commercial-stack running cost
-        (~£73/yr for a class) with ~50% margin, stays far below Educake’s £660, and needs no per-student metering —
-        which is exactly the pricing complaint schools make about edtech.
+        Pricing rationale: at {GBP(price * 1.2, 0)} inc VAT the department licence covers the
+        commercial-stack running cost (~£73/yr for a class) with a healthy margin, stays far below
+        Educake’s £660, and needs no per-student metering — which is exactly the pricing complaint
+        schools make about edtech.
       </p>
     </section>
   );
