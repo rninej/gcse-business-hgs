@@ -445,6 +445,78 @@
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 
+/* ------------------------------------------------------------------ */
+/* question-level class grid (Educake-style teacher analysis) —        */
+/* pupils × questions matrix with ticks/crosses, a class-% heatmap     */
+/* header strip and weak-question highlighting                         */
+/* ------------------------------------------------------------------ */
+.qgrid {
+  font-variant-numeric: tabular-nums;
+}
+.qgrid .qgrid-th {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 5px;
+  vertical-align: middle;
+  text-align: center;
+  font-weight: 600;
+}
+.qgrid .qgrid-corner {
+  text-align: left;
+  border-right: 1px solid var(--border);
+  padding: 6px 10px;
+}
+.qgrid .qgrid-qth {
+  border-left: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+}
+.qgrid .qgrid-qth button {
+  cursor: pointer;
+}
+.qgrid .qgrid-qth button:hover span:first-child {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.qgrid .qgrid-td {
+  padding: 3px 6px;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+  vertical-align: middle;
+}
+/* sticky name + score columns need an opaque backdrop to slide over the
+   question columns; alternating rows keep their striping as a mix */
+.qgrid .qgrid-name,
+.qgrid .qgrid-score {
+  background: var(--card);
+  border-right: 1px solid var(--border);
+}
+.qgrid .qgrid-alt {
+  background: color-mix(in oklab, var(--secondary) 40%, var(--card));
+}
+.qgrid tbody tr:hover .qgrid-name,
+.qgrid tbody tr:hover .qgrid-score {
+  background: color-mix(in oklab, var(--primary) 8%, var(--card));
+}
+.qgrid td.qgrid-cell {
+  padding: 0;
+  text-align: center;
+  vertical-align: middle;
+  height: 36px;
+  border-left: 1px solid color-mix(in oklab, var(--border) 35%, transparent);
+}
+.qgrid td.qgrid-cell > span {
+  transition: transform 0.12s ease;
+}
+.qgrid td.qgrid-cell:hover > span {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 50%, transparent);
+  transform: scale(1.12);
+}
+/* weak question columns — under half the class correct — wash red */
+.qgrid .qgrid-weak {
+  background: color-mix(in oklab, var(--danger) 5.5%, transparent);
+}
+.qgrid .qgrid-qth.qgrid-weak {
+  background: color-mix(in oklab, var(--danger) 8%, var(--card));
+}
+
 /* respect users who prefer calm */
 @media (prefers-reduced-motion: reduce) {
   .anim-rise, .anim-pop, .anim-drift, .anim-pulse-soft, .anim-wiggle, .anim-float,
@@ -490,14 +562,32 @@
   /* ---- heatmap print sheet ---------------------------------------- */
   /* when the heatmap prints, a full-page clone is portalled to <body>;
      everything else on the page is suppressed so only the sheet prints */
-  body:has(> .heat-print-overlay) > *:not(.heat-print-overlay) {
+  body:has(> .heat-print-overlay) > *:not(.heat-print-overlay),
+  body:has(> .grid-print-overlay) > *:not(.grid-print-overlay) {
     display: none !important;
   }
-  .heat-print-overlay {
+  .heat-print-overlay,
+  .grid-print-overlay {
     display: block !important;
     background: white !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+  }
+  /* pinned light-theme tokens inside the print sheets so a printout from
+     dark mode never ends up with near-white text on white paper */
+  .heat-print-overlay,
+  .grid-print-overlay {
+    --background: oklch(0.99 0.005 106);
+    --foreground: oklch(0.22 0.02 250);
+    --card: oklch(1 0 0);
+    --secondary: oklch(0.955 0.012 106);
+    --border: oklch(0.9 0.01 106);
+    --muted-foreground: oklch(0.5 0.02 250);
+    --primary: oklch(0.51 0.11 163);
+    --success: oklch(0.55 0.12 155);
+    --warn: oklch(0.68 0.14 70);
+    --danger: oklch(0.55 0.22 25);
+    color: oklch(0.22 0.02 250);
   }
 
   /* ---- teacher results sheet --------------------------------------- */
@@ -514,6 +604,25 @@
   tr,
   li,
   .print-block {
+    break-inside: avoid;
+  }
+  /* the question grid print sheet — cells are pre-sized in px by the
+     component; just flatten what CSS can't carry onto paper */
+  .grid-print-overlay .qgrid {
+    width: 100% !important;
+  }
+  .grid-print-overlay .qgrid td.qgrid-cell {
+    height: auto;
+  }
+  .grid-print-overlay .qgrid .qgrid-th {
+    padding: 2px 2px;
+  }
+  .grid-print-overlay .qgrid td.qgrid-cell:hover > span {
+    transform: none;
+    box-shadow: none;
+  }
+  .grid-print-overlay table,
+  .grid-print-overlay tr {
     break-inside: avoid;
   }
   /* freeze mid-flight animations (progress pulses) for the print capture */

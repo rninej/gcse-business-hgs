@@ -31,10 +31,11 @@ import { topicTitle } from '@/lib/topics';
 import { ScoreRing, RiskMeter, BarList } from '@/components/charts';
 import { PageHeader, ThemedSkeleton, ErrorNote, StatusPill, PctChip, EmptyState, TypeBadge, Avatar } from '@/components/shared';
 import { StudentAnswersDialog, StudentProfileDialog } from './StudentProfile';
+import { QuestionGrid } from './QuestionGrid';
 import type { AttemptSummary, RiskBand, RiskSignal, TeacherStudentResult } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-interface ResultsData {
+export interface ResultsData {
   assignment: {
     id: string;
     title: string;
@@ -65,6 +66,7 @@ interface ResultsData {
     topic: string;
     topicTitle: string;
     stem: string;
+    stemFull?: string;
     pctCorrect: number | null;
     correct: number;
     answered: number;
@@ -85,6 +87,8 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
   const [tick, setTick] = useState(0);
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [openQ, setOpenQ] = useState<string | null>(null);
+  const [tab, setTab] = useState('students');
+  const [gridPrint, setGridPrint] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // per-student answers dialog + profile dialog
@@ -198,8 +202,12 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
             </Button>
             <Button
               variant="outline"
-              onClick={() => window.print()}
-              title="Print or save a per-student results sheet (PDF)"
+              onClick={() => (tab === 'grid' ? setGridPrint(Date.now()) : window.print())}
+              title={
+                tab === 'grid'
+                  ? 'Print the question-level analysis as a clean one-page sheet'
+                  : 'Print or save a per-student results sheet (PDF)'
+              }
             >
               <Printer className="h-4 w-4" /> Print
             </Button>
@@ -285,12 +293,31 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
         </div>
       </div>
 
-      <Tabs defaultValue="students">
-        <TabsList className="print:hidden">
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="print:hidden max-w-full overflow-x-auto scroll-slim">
           <TabsTrigger value="students">Students</TabsTrigger>
+          <TabsTrigger value="grid">
+            <span className="hidden sm:inline">Question grid</span>
+            <span className="sm:hidden">Grid</span>
+          </TabsTrigger>
           <TabsTrigger value="integrity">Integrity ({flagged.length})</TabsTrigger>
-          <TabsTrigger value="topics">Topics &amp; questions</TabsTrigger>
+          <TabsTrigger value="topics">
+            <span className="hidden lg:inline">Topics &amp; questions</span>
+            <span className="lg:hidden">Topics</span>
+          </TabsTrigger>
         </TabsList>
+
+        {/* Educake-style question-level analysis — pupils × questions */}
+        <TabsContent value="grid" className="mt-4">
+          <QuestionGrid
+            data={data}
+            printSignal={gridPrint}
+            onOpenProfile={(sid) => {
+              setProfileId(sid);
+              setProfileOpen(true);
+            }}
+          />
+        </TabsContent>
 
         {/* students tab */}
         <TabsContent value="students" className="mt-4">

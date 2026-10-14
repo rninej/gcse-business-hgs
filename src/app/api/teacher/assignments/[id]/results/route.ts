@@ -249,6 +249,7 @@ export async function GET(_req: Request, ctx: Ctx) {
       topic: q.topic,
       topicTitle: topicTitle(q.topic),
       stem: q.stem.slice(0, 120) + (q.stem.length > 120 ? '…' : ''),
+      stemFull: q.stem,
       pctCorrect: answered ? Math.round((correct / answered) * 100) : null,
       correct,
       answered,
