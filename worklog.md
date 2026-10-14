@@ -1389,3 +1389,31 @@ Stage Summary:
 - Files: LegalDocsSection.tsx (contact + residency + v1.1), DebugDashboard.tsx (editable price + print polish + email/domain), health r43.
 - No DB writes. Test accounts unchanged: teacher e2e-lb@test.uk/testpass123.
 - The comparison-table £120/£144 figures (vs-Educake section) intentionally still show the modelled recommended price — they are analysis, not the invoice.
+
+---
+Task ID: 44
+Agent: Z.ai Code (main)
+Task: R44 — user request: (1) the printable documents' official name must be Arnav, not "Mr R Ninej"; (2) all the printable documents (Privacy Policy, DPA, Terms of Service, Invoice) must also be downloadable as Word documents. (The user's third item — "look at this feature in educake" — referenced a screenshot that did NOT come through; flagged back to the user to re-send.)
+
+Work Log:
+- NAME: invoice attn default is now 'Arnav Jain — Head of Business' (was 'Mr R Ninej — Head of Business', DebugDashboard.tsx); the invoice From block gains an 'Arnav Jain — founder' line under gcsebusiness; the DPA's gcsebusiness signature block pre-prints 'Name & position — Arnav Jain, Founder' (school side stays blank for them to fill). Zero 'Ninej' anywhere.
+- WORD EXPORT — NEW src/lib/exportWord.ts (~600 lines): a generic DOM→.docx converter (docx@9.11.0, dynamically imported so it never touches the initial bundle). It walks the ALREADY-RENDERED document element, so live edits flow into the file: DPA school name/address typed by the owner land in the parties block AND signature block; the invoice's edited price lands as the formatted £ figure (the print-only span, not the raw input).
+  - Fidelity rules mirror the print stylesheet: `no-print`/`print:hidden`/plain `hidden` elements are skipped, print-only (`hidden print:inline`) content included, SVG logos/buttons/selects skipped, INPUT/TEXTAREA export value-or-placeholder (placeholder italic gray as a fill-in hint).
+  - Layout mapping: headings→bold serif paragraphs with keepNext; UL/OL→bullets/numbering; TABLE→bordered table with shaded header cells, repeat-header rows and w-XX-derived column widths; `grid-cols-N` containers→borderless side-by-side tables (DPA twin signature blocks, invoice From/Bill-to/meta, payment footer); flex `justify-between` rows→right-tab-aligned lines (invoice totals: "Subtotal … £150.00"); `h-9 border-b` blanks→ruled signature lines; DocSheet header's border-b-2→heavy rule; border-t paragraphs (DocFoot)→top-bordered small print.
+  - Styling from computed styles (font px→half-points, bold≥600, mono→Consolas); colours: Tailwind v4 serves computed colours as lab()/oklch() which neither getComputedStyle nor canvas normalise back to rgb — implemented the CSS Color 4 math in-engine (Lab→XYZ D50→Bradford→sRGB for lab/lch, Ottosson matrices for oklab/oklch). Calibrated: the theme green lab(44.61 -37.52 12.20) converts to exactly 017953.
+  - Dark-mode safety: the app sets BOTH a `dark` class and an inline color-scheme on <html> (the latter darkens UA form controls on its own), and shadcn inputs transition their colour — exports neutralise all three (remove class, force color-scheme: light, freeze transitions via a scoped <style>), restoring everything in finally. Verified: dark-mode export is colour-IDENTICAL to light mode (141B24/5B646E/FFFFFF only); the page theme comes back after export (darkClassRestored true).
+  - A4 page setup (11906×16838 twips, 14/13/16mm margins), Georgia 11pt default, doc metadata (title/description/creator).
+- BUTTONS: every document header now has a Word outline button beside Print (LegalDocsSection DocBlock ×3 + InvoiceSection), all aria-labelled; filenames gcsebusiness-{privacy-policy|dpa-YYYY-01|terms-of-service}-vX.docx / gcsebusiness-invoice-HGS-YYYY-001.docx. Section blurbs updated to mention the Word downloads. Invoice Card gets id="doc-invoice".
+- QA (agent-browser, owner cookie minted with the dev fallback secret as in R42/R43):
+  · 4 real downloads via agent-browser's download command → all valid "Microsoft Word 2007+" ZIPs.
+  · PRIVACY: title/v1.1, arnvjain1009@gmail.com, Firestore London wording, all 11 sections, zero dashboard leakage. DPA: filled school name flows into parties + signature blocks, Arnav Jain Founder line, Art. 28, FERPA, 3 tables, 7 ruled lines, 14 bullets, F5F5F5 th shading. TERMS: 13 clauses, email, no leakage. INVOICE (price edited to 150): green 017953 strip with 6 white runs, From=Arnav founder, attn=Arnav Jain, £150.00 formatted amount, totals, £510.00 (77%) savings line, Consolas amounts, right tabs, NO form chrome (checkbox/placeholder text absent), no section blurb leakage.
+  · Bug fixes during QA: double space at run boundaries (deduped), bare text runs in flex/grid paths missing parent styles (styledRun helper), lab()/oklch() colour parsing (Bradford/Ottosson math), dark-mode white inputs via inline color-scheme (forced light), mid-transition input colours (transitions frozen).
+  · Print regression: 36-page print PDF — zero standalone Word buttons (no-print honoured), all three Arnav placements present, no Ninej.
+  · Mobile 390px: scrollWidth exactly 390, zero overflow, 4/4 Word buttons visible. Console + page errors: none. VLM reviews: invoice card 6/6 PASS (tall-viewport re-shot after a framing false-alarm), mobile legal 3/3 PASS.
+- lint 0 errors; tsc clean in touched files (pre-existing examples/ errors untouched). Committed 339cf26, pushed to main → Vercel.
+
+Stage Summary:
+- The official name across the pack is Arnav Jain, and all four printable documents now export as genuine, editable Word files that carry the same live values as the printouts — verified end-to-end by downloading and unzipping each file.
+- Files: +src/lib/exportWord.ts; DebugDashboard.tsx (attn/From/Word button/doc-invoice id/blurb); LegalDocsSection.tsx (Word buttons, wordDoc helper, DPA signatory, blurb); package.json (docx@9.11.0).
+- No DB writes. Test accounts unchanged: teacher e2e-lb@test.uk/testpass123.
+- PENDING FROM USER: the Educake feature screenshot in the same message never arrived — the user was asked to re-send it; once it lands, that feature becomes the next round.
