@@ -36,6 +36,7 @@ import { BrandLockup } from '@/components/app/Brand';
 import { DatabaseSection } from '@/components/debug/DatabaseSection';
 import { InterfaceFlagsSection } from '@/components/debug/InterfaceFlagsSection';
 import { LegalDocsSection } from '@/components/debug/LegalDocsSection';
+import { downloadWordDoc } from '@/lib/exportWord';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -1010,7 +1011,7 @@ function InvoiceSection() {
   const price = Math.max(0, Number.parseFloat(priceText) || 0);
   const [fields, setFields] = useState({
     school: 'HGS Business & Enterprise Academy',
-    attn: 'Mr R Ninej — Head of Business',
+    attn: 'Arnav Jain — Head of Business',
     address1: 'Business & Enterprise Department',
     address2: 'Hertfordshire · United Kingdom',
     po: '',
@@ -1030,23 +1031,42 @@ function InvoiceSection() {
           <h2 id="inv-h" className="text-xl sm:text-2xl font-bold tracking-tight">The ideal invoice to your GCSE Business teacher</h2>
           <p className="text-sm text-muted-foreground mt-1 max-w-3xl">
             Edit the details in place — <strong>including the price</strong> — then hit{' '}
-            <strong>Print invoice</strong>; the VAT, total and Educake savings line update as you
-            type. Priced to be a yes{savingsPct !== null ? `: ${savingsPct}% under Educake` : ''},
-            everything included, no per-student metering.
+            <strong>Print invoice</strong> or download it as a <strong>Word file</strong>; the
+            VAT, total and Educake savings line update as you type. Priced to be a yes
+            {savingsPct !== null ? `: ${savingsPct}% under Educake` : ''}, everything included,
+            no per-student metering.
           </p>
         </div>
-        <Button variant="outline" size="sm" className="no-print shrink-0" onClick={() => {
-          document.body.classList.add('print-invoice');
-          const cleanup = () => { document.body.classList.remove('print-invoice'); window.removeEventListener('afterprint', cleanup); };
-          window.addEventListener('afterprint', cleanup);
-          window.print();
-          setTimeout(cleanup, 3000);
-        }}>
-          <Printer className="h-4 w-4" /> Print invoice
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" className="no-print" onClick={() => {
+            document.body.classList.add('print-invoice');
+            const cleanup = () => { document.body.classList.remove('print-invoice'); window.removeEventListener('afterprint', cleanup); };
+            window.addEventListener('afterprint', cleanup);
+            window.print();
+            setTimeout(cleanup, 3000);
+          }}>
+            <Printer className="h-4 w-4" /> Print invoice
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="no-print"
+            onClick={() =>
+              void downloadWordDoc({
+                element: document.getElementById('doc-invoice')!,
+                filename: `gcsebusiness-invoice-HGS-${year}-001.docx`,
+                title: `Invoice HGS-${year}-001`,
+                description: 'gcsebusiness — GCSE Business (9–1) department licence invoice',
+              }).catch((err) => console.error('Word export failed', err))
+            }
+            aria-label="Download the invoice as an editable Word document"
+          >
+            <FileText className="h-4 w-4" /> Word
+          </Button>
+        </div>
       </div>
 
-      <Card className="overflow-hidden print-avoid-break">
+      <Card id="doc-invoice" className="overflow-hidden print-avoid-break">
         <div className="bg-primary text-primary-foreground px-6 sm:px-8 py-5 flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             <BrandLockup compact />
@@ -1063,6 +1083,7 @@ function InvoiceSection() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">From</p>
               <p className="font-semibold">gcsebusiness</p>
+              <p className="text-muted-foreground">Arnav Jain — founder</p>
               <p className="text-muted-foreground">Edexcel GCSE (9–1) Business · spec 1BS0</p>
               <p className="text-muted-foreground">arnavjain1009@gmail.com</p>
               <p className="text-muted-foreground">gcse.business</p>

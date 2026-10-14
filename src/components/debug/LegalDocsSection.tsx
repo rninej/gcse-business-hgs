@@ -19,9 +19,10 @@
 //   - providers: Google Gemini, Groq, Z.ai (src/lib/ai.ts)
 
 import { useMemo, useState, type ReactNode } from 'react';
-import { Landmark, Printer, ScrollText, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { FileText, Landmark, Printer, ScrollText, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { downloadWordDoc } from '@/lib/exportWord';
 
 type DocId = 'privacy' | 'dpa' | 'terms';
 
@@ -40,6 +41,23 @@ function printDoc(id: DocId) {
 
 const CONTACT = 'arnavjain1009@gmail.com';
 const longDate = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+/** Word (.docx) download — the same content as the printout, live fields included. */
+async function wordDoc(id: DocId) {
+  const el = document.getElementById(`doc-${id}`);
+  if (!el) return;
+  const year = new Date().getFullYear();
+  const spec = {
+    privacy: { filename: 'gcsebusiness-privacy-policy-v1.1.docx', title: 'Privacy Policy' },
+    dpa: { filename: `gcsebusiness-dpa-${year}-01.docx`, title: 'Data Processing Agreement' },
+    terms: { filename: 'gcsebusiness-terms-of-service-v1.1.docx', title: 'Terms of Service' },
+  }[id];
+  try {
+    await downloadWordDoc({ element: el, ...spec });
+  } catch (err) {
+    console.error('Word export failed', err);
+  }
+}
 
 // ---------- tiny typographic helpers shared by all three documents ----------
 
@@ -116,9 +134,19 @@ function DocBlock({
             <span className="block text-xs text-muted-foreground leading-tight mt-0.5">{blurb}</span>
           </span>
         </div>
-        <Button variant="outline" size="sm" className="shrink-0" onClick={() => printDoc(id)}>
-          <Printer className="h-4 w-4" /> Print {name === 'Data Processing Agreement' ? 'the DPA' : name}
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => printDoc(id)}>
+            <Printer className="h-4 w-4" /> Print {name === 'Data Processing Agreement' ? 'the DPA' : name}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void wordDoc(id)}
+            aria-label={`Download the ${name} as an editable Word document`}
+          >
+            <FileText className="h-4 w-4" /> Word
+          </Button>
+        </div>
       </div>
       {children}
     </div>
@@ -433,7 +461,7 @@ function DpaDoc({ date, year }: { date: string; year: number }) {
           <div className="h-9 border-b border-neutral-800" />
           <p className="text-[9.5pt] text-neutral-600 mt-1">Signature</p>
           <div className="h-9 border-b border-neutral-800 mt-6" />
-          <p className="text-[9.5pt] text-neutral-600 mt-1">Name &amp; position</p>
+          <p className="text-[9.5pt] text-neutral-600 mt-1">Name &amp; position — Arnav Jain, Founder</p>
           <div className="h-9 border-b border-neutral-800 mt-6" />
           <p className="text-[9.5pt] text-neutral-600 mt-1">Date</p>
         </div>
@@ -568,10 +596,10 @@ export function LegalDocsSection() {
         </h2>
         <p className="mt-2 text-sm text-muted-foreground max-w-3xl">
           Because schools handle sensitive student data, these are the documents their data
-          protection lead usually asks for before sign-off. Each Print button prints that document
-          alone — A4, black on white, ready to post or save as a PDF and email. Fill in the
-          school&rsquo;s details on the DPA before printing it; the signature blocks flow through
-          automatically.
+          protection lead usually asks for before sign-off. Each document prints ALONE — A4,
+          black on white, ready to save as a PDF and email — and every one can also be
+          downloaded as an editable Word (.docx) file. Fill in the school&rsquo;s details on
+          the DPA first: they flow into the signature blocks, the printout and the Word file.
         </p>
       </div>
 
