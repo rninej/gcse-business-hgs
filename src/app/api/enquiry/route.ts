@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { colCached, put, values } from '@/lib/firebase';
+import { colCached, del, put, values } from '@/lib/firebase';
 import { isOwnerUnlocked } from '@/lib/session';
 import type { Enquiry } from '@/lib/types';
 
@@ -96,4 +96,17 @@ export async function GET() {
   const all = values<Enquiry>(await colCached<Enquiry>('enquiries', 5_000));
   all.sort((a, b) => b.createdAt - a.createdAt);
   return NextResponse.json({ enquiries: all });
+}
+
+/** Owner-only removal, for clearing a test submission. */
+export async function DELETE(req: Request) {
+  if (!(await isOwnerUnlocked())) {
+    return NextResponse.json({ error: 'Owner unlock required.' }, { status: 401 });
+  }
+  const id = new URL(req.url).searchParams.get('id')?.slice(0, 32) ?? '';
+  if (!/^enq_[a-z0-9]+$/.test(id)) {
+    return NextResponse.json({ error: 'Missing id.' }, { status: 400 });
+  }
+  await del('enquiries', id);
+  return NextResponse.json({ ok: true });
 }
