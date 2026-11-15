@@ -47,7 +47,7 @@ export default function FreePage() {
         <p className="mt-3 text-muted-foreground">
           Sign up with an email address and use the whole product on real classes for 30 days: as many classes as you
           teach, as many students as you have, every feature. Nothing is charged, no card details are asked for, and
-          there is nothing to cancel. When the trial ends, one class stays free forever — the work you have already set
+          there is nothing to cancel. When the trial ends, one class stays free — the work you have already set
           keeps working.
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -100,7 +100,7 @@ export default function FreePage() {
         <ul className="mt-3 space-y-2 text-sm">
           {[
             'Nothing is deleted and nothing breaks — every class and result stays exactly where it is',
-            `You keep ${FREE_PLAN.classes} class free forever, with unlimited students in it`,
+            `You keep ${FREE_PLAN.classes} class at no cost after the trial, with unlimited students in it`,
             'A second class, and AI question writing, need the school licence',
             'No card is taken automatically, because no card was ever given',
           ].map((f, i) => (
