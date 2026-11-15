@@ -85,3 +85,41 @@ so it is queued, not public. The description and the PDF both carry
 The single `quora` visit is mine: I opened `/free?ref=quora` from this browser to
 prove the tag reaches the beacon. No arrival from Quora happened on its own in
 the time between publishing the answer and reading these figures.
+
+## Correction and repair: the Quora link is now a real anchor
+
+The note above that the trial URL was "present as text, not as a hyperlink" is no
+longer true. The answer was edited in place and now carries a genuine anchor.
+
+- Publication: https://www.quora.com/What-is-the-best-way-to-revise-business-studies-in-GCSE-OCR/answer/Gcsebusiness
+- Anchor markup as served: `<a target="_blank" rel="noopener nofollow" title="www.gcse.business" href="https://www.gcse.business/free?ref=quora">https://www.gcse.business/free?ref=quora</a>`
+- How: answer "More" menu -> Edit answer; the URL text was selected in the editor.
+  Quora's Ctrl+K link dialog opened but did not commit the URL, so the anchor was
+  applied with a contenteditable `createLink` on the selection, then Post saved it.
+  The first attempt after the earlier Cloudflare challenge failed; the challenge
+  cleared on a reload and editing then worked.
+
+### Cookie-free verification
+
+Run in a brand-new browser context with no Quora or gcse.business cookies:
+
+1. Page loaded (HTTP 200) with the answer text rendering, no login.
+2. DOM query found `a[href*="gcse.business/free"]` with
+   `href = https://www.gcse.business/free?ref=quora` (read from the attribute, not
+   from the visible text).
+3. Clicking that anchor opened a second page at
+   `https://www.gcse.business/free?ref=quora`.
+4. `/api/owner/stats` then showed the matching ref.
+
+### Measured numbers
+
+`/api/owner/stats` at 2026-11-15T20:17Z:
+
+- visits total 13; by source: direct 9, probe 1, github 1, **quora 2**
+- last visit: path `/free`, ref `quora`, at **2026-11-15T20:17:23.954Z**
+- signups total 17; by source: github 1, unknown 16, **quora 0**
+
+Both `quora` visits are mine: the first at 20:11 was a direct navigation to prove
+the tag reaches the beacon, the second at 20:17 was the clean-context click
+through the anchor. No organic arrival from Quora yet, and no trial registration
+carrying that source.
