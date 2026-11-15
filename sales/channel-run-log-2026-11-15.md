@@ -123,3 +123,67 @@ Both `quora` visits are mine: the first at 20:11 was a direct navigation to prov
 the tag reaches the beacon, the second at 20:17 was the clean-context click
 through the anchor. No organic arrival from Quora yet, and no trial registration
 carrying that source.
+
+## Third pass: the owner's Gmail opened two doors, both of which turned out to be shut
+
+With `gcse.business.hgs@gmail.com` available, the venues that refused disposable
+domains became reachable. Two were tried properly.
+
+### The Student Room: account created and verified, post held for moderation
+
+- Signed up at https://www.thestudentroom.co.uk/register with the Gmail address,
+  username `gcsebusiness1bs0`, confirmed via the emailed link.
+- Posted a reply in **GCSE Business Study Group | 2025-26**
+  (https://www.thestudentroom.co.uk/showthread.php?t=7628759) giving mark-scheme
+  advice (point -> because [case detail] -> which means [so what] -> judgement)
+  and ending with a real anchor:
+  `<a href="https://www.gcse.business/free?ref=studentroom">` inserted with the
+  editor's own Insert link button, not typed text.
+- **It is not public.** Signed-out in the same browser, the thread still shows
+  "Reply 1, Reply 2, Reply 3" and no post of mine. The post is held for
+  moderation, so there is nothing to verify and no arrival to measure.
+
+Two mechanical notes for next time: the editor accepted the first attempt's text
+programmatically but rejected it as empty ("The message you have entered is too
+short. Please lengthen your message to at least 2 characters"), so the text must
+be typed as real keystrokes; and long posts time out mid-typing, so the version
+that submitted was about 350 characters.
+
+### Cookie-free checks on TSR are blocked by Cloudflare
+
+A fresh browser context (no cookies) never clears the challenge; it sat on
+"Verifying you are human. This may take a few seconds." for 56 seconds and then
+still reported `document.title === "Just a moment..."`. Same from `curl`: HTTP
+403 with a 5.7 KB challenge page. So even after moderation, a cookie-free
+verification from this VM would need a different network, not a different script.
+
+### WordPress.com: Gmail accepted, but the form will not submit
+
+- The email field no longer reports "This email provider blocks some of our
+  emails", so the address is fine.
+- The Continue button stays `disabled` with a valid address in the field, both
+  after real typing and after dispatching input/change events. Pressing Enter
+  does nothing.
+- The Google sign-in route reached Google's own second factor:
+  "Verify it's you ... Choose a way to verify: Use your passkey / Use your
+  Security Key / Get a verification code from the Google Authenticator app".
+  That needs the owner's device, so it stopped there.
+
+### Tes Community no longer exists
+
+`https://community.tes.com/` redirects to `https://www.tes.com/`, the corporate
+site. The forums are gone; there is no Tes Community venue to post in.
+
+### What the site recorded after this pass
+
+`/api/owner/stats`: visits 15 (direct 11, probe 1, github 1, **quora 2**),
+signups 17 (github 1, unknown 16). **No `studentroom` ref appears**, which is the
+expected result of a post nobody can see: I never had a public page to click
+through from, and I did not fake the visit.
+
+### Because a plain-text link does not count
+
+The only verifiable live anchor with a channel ref remains the Quora answer
+(`?ref=quora`), repaired and checked in a cookie-free context earlier: page loads
+without login, DOM anchor present, click lands on `/free?ref=quora`, and the
+visit appears in the stats. Nothing published in this pass improves on it.
