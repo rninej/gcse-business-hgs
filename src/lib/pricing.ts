@@ -5,7 +5,7 @@
 // which is the point. No free tier and no per-teacher rate: the product is
 // sold to the school, and every teacher and student is included.
 
-export const CONTACT_EMAIL = 'arnavjain1009@gmail.com';
+export const CONTACT_EMAIL = 'arnavjain@gcse.business';
 
 export const SCHOOL_PRICE = {
   price: '£250',

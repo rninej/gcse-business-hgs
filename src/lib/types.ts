@@ -472,4 +472,10 @@ export interface Enquiry {
   message?: string;
   createdAt: number;
   seen: boolean;
+  /** Delivery of the owner's copy: sent / failed / skipped (no key configured). */
+  emailed?: 'sent' | 'failed' | 'skipped';
+  emailId?: string;
+  emailError?: string;
+  /** Whether the teacher got the "we have your request" acknowledgement. */
+  ackEmailed?: boolean;
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { colCached, del, put, values } from '@/lib/firebase';
 import { isOwnerUnlocked } from '@/lib/session';
+import { CONTACT_EMAIL } from '@/lib/pricing';
 import type { Enquiry } from '@/lib/types';
 
 /**
@@ -12,14 +13,19 @@ import type { Enquiry } from '@/lib/types';
  * itself. Every submission is stored, which means it cannot be silently lost
  * even when the owner is asleep.
  *
- * If RESEND_API_KEY is set the entry is also emailed to CONTACT_EMAIL straight
- * away; without it the entry still lands in the owner's queue at /debug, so the
- * copy on /upgrade promises a reply rather than an instant email.
+ * Delivery: with RESEND_API_KEY set the entry is emailed to CONTACT_EMAIL from
+ * enquiries@gcse.business (the domain is verified in Resend) with the teacher as
+ * Reply-To, and the teacher gets a short acknowledgement so they know it landed.
+ * The outcome is stored on the entry — `emailed: sent | failed | skipped` plus
+ * the provider id or the error — so a silent mail failure is visible to the
+ * owner at /debug instead of disappearing.
  */
 
 const RATE = new Map<string, { count: number; at: number }>();
 const WINDOW_MS = 60 * 60 * 1000;
 const MAX_PER_WINDOW = 5;
+
+const FROM = 'gcse.business <enquiries@gcse.business>';
 
 function tooMany(ip: string): boolean {
   const now = Date.now();
@@ -34,6 +40,30 @@ function tooMany(ip: string): boolean {
 
 function isEmail(value: string): boolean {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value);
+}
+
+type SendResult = { ok: true; id?: string } | { ok: false; error: string };
+
+async function send(key: string, payload: Record<string, unknown>): Promise<SendResult> {
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000),
+    });
+    const data = (await res.json().catch(() => ({}))) as { id?: string; message?: string; name?: string };
+    if (!res.ok) {
+      return { ok: false, error: `${res.status} ${data.name ?? ''} ${data.message ?? ''}`.trim().slice(0, 300) };
+    }
+    return { ok: true, id: data.id };
+  } catch (e) {
+    return { ok: false, error: `network: ${(e as Error).message}`.slice(0, 300) };
+  }
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
 }
 
 export async function POST(req: Request) {
@@ -66,27 +96,72 @@ export async function POST(req: Request) {
   };
   await put('enquiries', entry.id, entry);
 
-  // Optional straight-to-inbox delivery. Absent a key the entry is still stored.
   const key = process.env.RESEND_API_KEY;
-  if (key) {
-    try {
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: 'gcse.business <onboarding@resend.dev>',
-          to: [process.env.CONTACT_EMAIL ?? 'arnavjain1009@gmail.com'],
-          reply_to: email,
-          subject: `Licence enquiry — ${school}`,
-          text: `${name}${role ? ` (${role})` : ''}\n${school}\n${email}\n\n${message || '(no message)'}\n\n— sent from gcse.business/upgrade`,
-        }),
-      });
-    } catch {
-      // storage already succeeded; the owner still sees the entry
-    }
+  if (!key) {
+    entry.emailed = 'skipped';
+    await put('enquiries', entry.id, entry);
+    return NextResponse.json({ ok: true, id: entry.id, delivered: false });
   }
 
-  return NextResponse.json({ ok: true, id: entry.id });
+  // 1. To the owner, with the teacher as Reply-To so a plain "Reply" reaches them.
+  const owner = await send(key, {
+    from: FROM,
+    to: [CONTACT_EMAIL],
+    reply_to: email,
+    subject: `Licence enquiry — ${school}`,
+    text: [
+      `${name}${role ? ` (${role})` : ''}`,
+      school,
+      email,
+      '',
+      message || '(no message — the form was sent without a note)',
+      '',
+      '— sent from gcse.business/upgrade · reply to this email to answer the teacher',
+    ].join('\n'),
+    html: [
+      `<p><strong>${escapeHtml(name)}</strong>${role ? ` (${escapeHtml(role)})` : ''}<br>`,
+      `${escapeHtml(school)}<br>`,
+      `<a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></p>`,
+      `<p>${escapeHtml(message || '(no message — the form was sent without a note)').replace(/\n/g, '<br>')}</p>`,
+      `<p style="color:#666">Sent from gcse.business/upgrade at ${new Date().toUTCString()}. Reply to this email to answer the teacher directly.</p>`,
+    ].join(''),
+  });
+
+  entry.emailed = owner.ok ? 'sent' : 'failed';
+  if (owner.ok) entry.emailId = owner.id;
+  else entry.emailError = owner.error;
+
+  // 2. A short acknowledgement, so the teacher is not left wondering whether the
+  //    form worked. Failures here never affect the owner's copy.
+  const ack = await send(key, {
+    from: FROM,
+    to: [email],
+    reply_to: CONTACT_EMAIL,
+    subject: 'We have your gcse.business licence request',
+    text: [
+      `Hi ${name.split(' ')[0] || 'there'},`,
+      '',
+      `Thanks — your request for ${school} is with me. I reply to every school myself, normally within one working day, from ${CONTACT_EMAIL}.`,
+      '',
+      'In the meantime you can carry on in the free trial: 30 days free, unlimited students, no card. Everything is unlocked — classes, marking, analytics, AI question generation.',
+      '',
+      'If your head of department or finance team needs the DPA, a quote with a PO number, or a short call, just reply to this email and I will send it over.',
+      '',
+      'Arnav',
+      'gcse.business',
+    ].join('\n'),
+  });
+  entry.ackEmailed = ack.ok;
+
+  await put('enquiries', entry.id, entry);
+
+  return NextResponse.json({
+    ok: true,
+    id: entry.id,
+    delivered: owner.ok,
+    acknowledged: ack.ok,
+    ...(owner.ok ? {} : { note: 'Your request was saved; the email copy could not be sent.' }),
+  });
 }
 
 export async function GET() {
