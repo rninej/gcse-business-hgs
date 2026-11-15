@@ -1,0 +1,37 @@
+name: Enquiry relay
+
+# The deployed app can only mail an enquiry when RESEND_API_KEY exists in the
+# Vercel environment. Until that variable is set there, /api/health reports
+# "email":"none" and a licence request is stored but never reaches an inbox.
+# This job closes that gap: every few minutes it mails anything still unsent,
+# marks the record, and stops as soon as the app itself is sending.
+#
+# The key lives in the repository secret RESEND_API_KEY (Settings → Secrets and
+# variables → Actions), never in this file.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: enquiry-relay
+  cancel-in-progress: false
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Send unsent enquiries
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          CONTACT_EMAIL: ${{ vars.CONTACT_EMAIL || 'arnavjain@gcse.business' }}
+        run: node scripts/relay-enquiries.mjs
