@@ -173,6 +173,22 @@ export async function GET() {
   return NextResponse.json({ enquiries: all });
 }
 
+/** Owner-only: mark a request as read. */
+export async function PATCH(req: Request) {
+  if (!(await isOwnerUnlocked())) {
+    return NextResponse.json({ error: 'Owner unlock required.' }, { status: 401 });
+  }
+  const id = new URL(req.url).searchParams.get('id')?.slice(0, 32) ?? '';
+  if (!/^enq_[a-z0-9]+$/.test(id)) {
+    return NextResponse.json({ error: 'Missing id.' }, { status: 400 });
+  }
+  const body = (await req.json().catch(() => ({}))) as { seen?: unknown };
+  const entry = values<Enquiry>(await colCached<Enquiry>('enquiries', 0)).find((e) => e.id === id);
+  if (!entry) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
+  await put('enquiries', id, { ...entry, seen: body.seen === true });
+  return NextResponse.json({ ok: true });
+}
+
 /** Owner-only removal, for clearing a test submission. */
 export async function DELETE(req: Request) {
   if (!(await isOwnerUnlocked())) {

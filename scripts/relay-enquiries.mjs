@@ -37,6 +37,10 @@ const MAX_SENDS = 25;
 
 const now = Date.now();
 
+/** Addresses the mail provider refuses outright (and that no school uses) — an
+ *  acknowledgement to one of these would only burn a retry. */
+const TEST_EMAIL = /@(?:[^@\s]*\.)?(?:example\.(?:com|org|net)|test|invalid|localhost)$/i;
+
 function log(...parts) {
   console.log(new Date().toISOString(), ...parts);
 }
@@ -178,6 +182,14 @@ async function main() {
   for (const { id, record } of all) {
     const e = { ...record };
     if (!e.createdAt || now - e.createdAt > MAX_AGE_MS) continue;
+    if (!e.email || TEST_EMAIL.test(e.email)) {
+      if (e.emailed !== 'sent') {
+        e.emailed = 'skipped';
+        e.emailError = 'test address — not sent';
+        await save(id, e);
+      }
+      continue;
+    }
 
     if (e.emailed !== 'sent' && (e.emailAttempts ?? 0) < MAX_OWNER_TRIES) {
       if (sends >= MAX_SENDS) break;
