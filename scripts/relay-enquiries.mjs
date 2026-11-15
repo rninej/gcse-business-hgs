@@ -45,6 +45,94 @@ function log(...parts) {
   console.log(new Date().toISOString(), ...parts);
 }
 
+/** Signup alerts start here. Anything created before this moment already had
+ *  its chance to be seen; the point is that the NEXT teacher who starts a trial
+ *  is known within minutes, not discovered whenever /debug is next opened. */
+const ALERT_SINCE = Date.parse(process.env.ALERT_SINCE || '2026-11-16T00:00:00Z');
+
+async function listCollection(name) {
+  const out = [];
+  let pageToken = '';
+  for (let page = 0; page < 10; page++) {
+    const url = `${FS_DOCS}/${name}?key=${FS_KEY}&pageSize=100${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) throw new Error(`firestore list ${name} ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const data = await res.json();
+    for (const doc of data.documents || []) {
+      const raw = doc.fields?.j?.stringValue;
+      if (!raw) continue;
+      try {
+        out.push({ id: doc.name.split('/').pop(), record: JSON.parse(raw) });
+      } catch {
+        continue;
+      }
+    }
+    pageToken = data.nextPageToken || '';
+    if (!pageToken) break;
+  }
+  return out;
+}
+
+async function saveRecord(collection, id, record) {
+  const body = { fields: { j: { stringValue: JSON.stringify(record) } } };
+  const fsUrl = `${FS_DOCS}/${collection}/${id}?key=${FS_KEY}&updateMask.fieldPaths=j`;
+  const fs = await fetch(fsUrl, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!fs.ok) log('warn', collection, id, 'firestore patch failed', fs.status);
+}
+
+/** A trial that starts at 2am and is read at 2pm has lost half a day of the
+ *  only month the school gets. One line to the owner the moment it happens. */
+async function alertNewSignups() {
+  const teachers = await listCollection('teachers');
+  const fresh = teachers.filter(({ record: t }) => {
+    if (t.signupAlerted === true) return false;
+    if (!t.createdAt || t.createdAt < ALERT_SINCE) return false;
+    if (!t.email || TEST_EMAIL.test(t.email)) return false;
+    if (/\+(qa|funnelcheck|enqtest|cronpath)/i.test(t.email)) return false;
+    return true;
+  });
+  let sent = 0;
+  for (const { id, record } of fresh.slice(0, 10)) {
+    const when = new Date(record.createdAt).toUTCString();
+    const r = await send({
+      from: FROM,
+      to: [OWNER],
+      reply_to: record.email,
+      subject: `New trial signup — ${record.name} (${record.email})`,
+      text: [
+        `${record.name} just started the 30-day trial.`,
+        '',
+        `Email: ${record.email}`,
+        `Signed up: ${when}`,
+        record.signupRef ? `Source: ${record.signupRef}` : '',
+        record.signupReferrer ? `Came from: ${record.signupReferrer}` : '',
+        '',
+        'Reply to this email to ask what they are teaching this term — a trial that',
+        'gets a reply in the first day is the one that turns into a licence.',
+        '',
+        '— gcse.business signup alert',
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    });
+    if (r.ok) {
+      record.signupAlerted = true;
+      record.signupAlertedAt = Date.now();
+      await saveRecord('teachers', id, record);
+      sent += 1;
+      log('signup-alert', id, r.id);
+    } else {
+      log('signup-alert-failed', id, r.error);
+    }
+  }
+  log('signups', JSON.stringify({ checked: teachers.length, fresh: fresh.length, sent }));
+}
+
 async function listEnquiries() {
   const out = [];
   let pageToken = '';
@@ -168,6 +256,8 @@ function ackPayload(e) {
 }
 
 async function main() {
+  await alertNewSignups();
+
   const all = await listEnquiries();
   log('enquiries', all.length);
   if (!RESEND_KEY) {
