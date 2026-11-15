@@ -19,11 +19,11 @@ export async function POST(req: Request) {
   // Everything else — the bank, marking, analytics — is on the free class.
   const teachers = await colCached<Teacher>('teachers');
   const plan = planOf(Object.values(teachers).find((t) => t.id === session.uid));
-  if (plan !== 'school') {
+  if (plan === 'free') {
     return NextResponse.json(
       {
         error:
-          'AI question writing is part of the school licence. Your free class can still use all 245 bank questions and every marking feature.',
+          'AI question writing comes with the trial and the school licence. The free class still has all 245 bank questions and every marking feature.',
         code: 'upgrade_required',
         upgradeUrl: '/upgrade',
       },

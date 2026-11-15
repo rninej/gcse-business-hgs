@@ -43,7 +43,9 @@ export async function POST(req: Request) {
   if (plan === 'free' && mine.length >= FREE_PLAN.classes) {
     return NextResponse.json(
       {
-        error: `The free plan covers ${FREE_PLAN.classes} class. The school licence adds unlimited classes for every teacher in the school.`,
+        error: me?.trialEndsAt
+          ? `Your 30-day trial has ended, and the free plan covers ${FREE_PLAN.classes} class. The school licence adds unlimited classes for every teacher in the school.`
+          : `The free plan covers ${FREE_PLAN.classes} class. The school licence adds unlimited classes for every teacher in the school.`,
         code: 'upgrade_required',
         plan,
         limit: FREE_PLAN.classes,

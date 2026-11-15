@@ -39,11 +39,18 @@ export async function POST(req: Request) {
     email?: unknown;
     plan?: unknown;
     note?: unknown;
+    /** Set the trial length in days from now — 0 ends it immediately. Used to
+     *  verify expiry, and to extend a school's trial without touching the DB. */
+    trialDays?: unknown;
   };
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
   const plan = body.plan === 'school' || body.plan === 'free' ? body.plan : null;
-  if (!email || !plan) {
-    return NextResponse.json({ error: 'email and plan ("school" or "free") are required.' }, { status: 400 });
+  const trialDays = typeof body.trialDays === 'number' && Number.isFinite(body.trialDays) ? body.trialDays : null;
+  if (!email || (!plan && trialDays === null)) {
+    return NextResponse.json(
+      { error: 'email plus plan ("school" or "free") or trialDays is required.' },
+      { status: 400 }
+    );
   }
 
   const found = (await teachers()).find((t) => t.email === email);
@@ -51,10 +58,11 @@ export async function POST(req: Request) {
 
   const updated: Teacher = {
     ...found,
-    plan,
+    ...(plan ? { plan } : {}),
+    ...(trialDays !== null ? { trialEndsAt: Date.now() + trialDays * 24 * 60 * 60 * 1000 } : {}),
     planSetAt: Date.now(),
     ...(typeof body.note === 'string' && body.note.trim() ? { planNote: body.note.trim() } : {}),
   };
   await put('teachers', found.id, updated);
-  return NextResponse.json({ ok: true, email, plan });
+  return NextResponse.json({ ok: true, email, plan: plan ?? found.plan ?? 'free', trialDays });
 }

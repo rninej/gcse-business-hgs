@@ -55,8 +55,8 @@ export function AuthView() {
             </Button>
           </div>
           <p className="mt-2.5 text-sm text-muted-foreground">
-            Free for one class — no card. £250 a year covers the whole school: every teacher, every class and every
-            student, invoiced once.
+            30 days free, no card — every class and every feature. After that, one class stays free, or £250 a year
+            covers the whole school.
           </p>
 
           <div className="mt-8 max-w-lg rounded-xl border border-white/60 bg-card/55 backdrop-blur-xl backdrop-saturate-150 card-lift shadow-[inset_0_1px_0_0_rgb(255_255_255/0.65),0_8px_32px_-8px_rgb(13_92_70/0.14)]">
@@ -246,8 +246,8 @@ function AuthCard() {
 
           <TabsContent value="register" className="space-y-4">
             <div className="rounded-lg bg-[var(--accent)]/40 p-3 text-xs">
-              Free — one class, unlimited students in it, no card. Teachers only; students get their accounts from
-              their teacher.
+              30 days free — unlimited classes, every feature, no card. After the trial, one class stays free. Teachers
+              only; students get their accounts from their teacher.
             </div>
             <div className="space-y-2">
               <Label htmlFor="r-name">Your name</Label>
@@ -263,7 +263,7 @@ function AuthCard() {
             </div>
             <Button className="w-full" disabled={busy || !rName || !rEmail || rPw.length < 6} onClick={() => submit('register')}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-              {busy ? 'Creating…' : 'Create my free account'}
+              {busy ? 'Creating…' : 'Start my 30-day trial'}
             </Button>
           </TabsContent>
         </Tabs>

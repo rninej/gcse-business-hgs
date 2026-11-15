@@ -87,7 +87,7 @@ function ClassList() {
   const { toast } = useToast();
   const [classes, setClasses] = useState<ClassRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [plan, setPlan] = useState<{ plan: string; limit: number | null; classes: number } | null>(null);
+  const [plan, setPlan] = useState<{ plan: string; limit: number | null; classes: number; daysLeft?: number } | null>(null);
   const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
@@ -99,7 +99,7 @@ function ClassList() {
       .then((d) => setClasses(d.classes))
       .catch((e) => setError((e as Error).message));
     api
-      .get<{ plan: string; limit: number | null; classes: number }>('/api/teacher/plan')
+      .get<{ plan: string; limit: number | null; classes: number; daysLeft?: number }>('/api/teacher/plan')
       .then(setPlan)
       .catch(() => setPlan(null));
   }, []);
@@ -180,11 +180,25 @@ function ClassList() {
         }
       />
 
+      {plan && plan.plan === 'trial' ? (
+        <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+          <span className="font-medium">
+            Free trial — {plan.daysLeft ?? 0} {(plan.daysLeft ?? 0) === 1 ? 'day' : 'days'} left.
+          </span>{' '}
+          <span className="text-muted-foreground">
+            Unlimited classes and every feature, no card. After it ends, one class stays free.
+          </span>{' '}
+          <a href="/upgrade" className="font-medium underline underline-offset-2">
+            What happens next →
+          </a>
+        </div>
+      ) : null}
+
       {plan && plan.plan === 'free' ? (
         <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
           <span className="font-medium">Free plan — one class.</span>{' '}
           <span className="text-muted-foreground">
-            Unlimited students in it, every topic, every marking feature, no card.
+            Your trial has ended; this class keeps working, with every topic and every marking feature.
           </span>{' '}
           <a href="/upgrade" className="font-medium underline underline-offset-2">
             What the school licence adds →

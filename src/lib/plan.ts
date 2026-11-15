@@ -1,15 +1,28 @@
-// Free-tier rules — the ONE place that decides what a free account can do.
+// Plan rules — the ONE place that decides what an account can do.
 //
-// The free tier exists to remove the invoice from the first conversation: a
-// teacher signs up, creates a class and sets real homework without talking to
-// anyone. The limit is deliberately a single class, because that is the point
-// where the product is already in use and a second class is a natural next
-// question — not a barrier before any value has been seen.
+// Three states, in order of what the owner wants to happen:
+//
+//   trial   every teacher starts here for 30 days: unlimited classes, AI
+//           question writing, everything. No card, no invoice, email only.
+//   free    when the trial ends. One class still works forever — the teacher
+//           keeps the class they have been using, so the product stays in the
+//           school and the licence has a reason to exist.
+//   school  the £250 licence: unlimited classes for every teacher.
+//
+// Nothing here deletes data or locks a teacher out of work they have already
+// set. Expiry only changes what can be created next.
 
 import { CONTACT_EMAIL, SCHOOL_PRICE } from './pricing';
 import type { Teacher } from './types';
 
-export type Plan = 'free' | 'school';
+export type Plan = 'trial' | 'free' | 'school';
+
+export const TRIAL_DAYS = 30;
+export const TRIAL_MS = TRIAL_DAYS * 24 * 60 * 60 * 1000;
+
+export function trialEndFrom(now = Date.now()): number {
+  return now + TRIAL_MS;
+}
 
 export const FREE_PLAN = {
   classes: 1,
@@ -26,17 +39,36 @@ export const SCHOOL_PLAN = {
   contactEmail: CONTACT_EMAIL,
 } as const;
 
-/** Anything without an explicit school licence is free — including every
- *  account created before plans existed. */
-export function planOf(t: Pick<Teacher, 'plan'> | null | undefined): Plan {
-  return t?.plan === 'school' ? 'school' : 'free';
+/** The plan a teacher is on right now. `school` always wins; an unexpired
+ *  trial beats free; anything without a trial date is free. */
+export function planOf(
+  t: Pick<Teacher, 'plan' | 'trialEndsAt'> | null | undefined,
+  now = Date.now()
+): Plan {
+  if (t?.plan === 'school') return 'school';
+  if (t?.trialEndsAt && t.trialEndsAt > now) return 'trial';
+  return 'free';
+}
+
+export function trialDaysLeft(
+  t: Pick<Teacher, 'plan' | 'trialEndsAt'> | null | undefined,
+  now = Date.now()
+): number {
+  if (!t?.trialEndsAt) return 0;
+  return Math.max(0, Math.ceil((t.trialEndsAt - now) / (24 * 60 * 60 * 1000)));
 }
 
 export function classLimit(plan: Plan): number {
-  return plan === 'school' ? Number.POSITIVE_INFINITY : FREE_PLAN.classes;
+  return plan === 'free' ? FREE_PLAN.classes : Number.POSITIVE_INFINITY;
 }
 
-/** What happens at the money step. Written once here so the pricing page, the
+export function planLabel(plan: Plan, daysLeft = 0): string {
+  if (plan === 'school') return SCHOOL_PLAN.label;
+  if (plan === 'trial') return `Trial — ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left`;
+  return FREE_PLAN.label;
+}
+
+/** What happens at the money step. Written once so the pricing page, the
  *  upgrade page and the in-app callout cannot drift apart. */
 export const PAYMENT_STEPS = [
   {

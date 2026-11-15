@@ -158,3 +158,13 @@ Access is now governed by `teacher.plan` (`'free' | 'school'`, absent = free).
 
 - **Second test account:** `qa.live@example.com` (created during the live walkthrough).
 - **Grandfathering:** every teacher account that existed before this change was set to `school` so nobody lost classes they already had.
+
+## 30-day trial (R56)
+
+- New teachers get `trialEndsAt = now + 30 days` at registration. `planOf()`
+  returns `trial` while that is in the future, `free` after, `school` always wins.
+- During the trial: unlimited classes and AI generation. After it: one class
+  (the work keeps working), no AI, new classes blocked with the licence message.
+- Owner route now takes `trialDays` to set or end a trial for testing and for
+  extending a school's trial: `POST /api/owner/plan { email, trialDays: 0 }`.
+- Copy: `/free`, `/upgrade`, `/pricing` and the signup tab all say 30 days, no card.

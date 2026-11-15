@@ -31,12 +31,13 @@ export default function UpgradePage() {
       <div className="max-w-3xl">
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">School licence</p>
         <h1 className="mt-2 text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
-          You have filled your free class. Here is exactly what happens next.
+          Your trial has done its job. Here is exactly what happens next.
         </h1>
         <p className="mt-3 text-muted-foreground">
-          The free plan is {FREE_PLAN.classes} class — that is <span className="font-medium text-foreground">on purpose</span>,
-          so you could try it on real homework before anyone mentions money. The licence is {SCHOOL_PLAN.price}{' '}
-          {SCHOOL_PLAN.cadence} and covers every teacher and class in the school.
+          After the 30-day trial the account keeps {FREE_PLAN.classes} class free — that is{' '}
+          <span className="font-medium text-foreground">deliberate</span>, so the class you have been using does not
+          stop mid-term. Everything else, including AI question writing and every additional class, is part of the{' '}
+          {SCHOOL_PLAN.price} {SCHOOL_PLAN.cadence} licence, which covers every teacher and class in the school.
         </p>
       </div>
 
@@ -64,7 +65,7 @@ export default function UpgradePage() {
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
             <li>No card details — this site never has a card field.</li>
             <li>No subscription to cancel and nothing renews automatically.</li>
-            <li>No demo call, and no trial countdown on your free class.</li>
+            <li>No demo call, and no card was taken at the start of the trial.</li>
             <li>No per-student maths to take to your finance office.</li>
           </ul>
         </div>

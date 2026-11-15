@@ -105,9 +105,11 @@ export interface Teacher {
   email: string; // lowercase, unique
   pw: string; // scrypt hash
   createdAt: number;
-  /** 'free' = one class, no card; 'school' = £250 licence, unlimited classes.
-   *  Absent means free, so every account created before plans existed is free. */
+  /** 'school' = £250 licence, unlimited classes. Absent means the account is
+   *  governed by trialEndsAt (30-day trial, then one-class free). */
   plan?: 'free' | 'school';
+  /** End of the 30-day no-card trial set at registration. */
+  trialEndsAt?: number;
   planSetAt?: number;
   /** free-text note on how the licence was arranged (PO number, contact name) */
   planNote?: string;

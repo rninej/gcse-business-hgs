@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { colCached, put, values } from '@/lib/firebase';
 import { hashPassword } from '@/lib/passwords';
+import { trialEndFrom } from '@/lib/plan';
 import { setSessionCookie } from '@/lib/session';
 import type { SessionInfo, Teacher } from '@/lib/types';
 
@@ -35,6 +36,9 @@ export async function POST(req: Request) {
       email,
       pw: hashPassword(password),
       createdAt: Date.now(),
+      // 30 days of the full product, no card. When it ends the account keeps
+      // one class for free rather than losing the work.
+      trialEndsAt: trialEndFrom(),
     };
     await put('teachers', id, teacher);
     const session: SessionInfo = { uid: id, role: 'teacher', name, sub: email };
