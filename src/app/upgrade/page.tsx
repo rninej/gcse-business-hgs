@@ -31,13 +31,13 @@ export default function UpgradePage() {
       <div className="max-w-3xl">
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">School licence</p>
         <h1 className="mt-2 text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
-          Your trial has done its job. Here is exactly what happens next.
+          The product is free. This page is for when a school makes it official.
         </h1>
         <p className="mt-3 text-muted-foreground">
-          After the 30-day trial the account keeps {FREE_PLAN.classes} class free — that is{' '}
-          <span className="font-medium text-foreground">deliberate</span>, so the class you have been using does not
-          stop mid-term. Everything else, including AI question writing and every additional class, is part of the{' '}
-          {SCHOOL_PLAN.price} {SCHOOL_PLAN.cadence} licence, which covers every teacher and class in the school.
+          Nothing on this site expires and no feature is held back, so a teacher can use it all term without asking
+          anyone for money. The {SCHOOL_PLAN.price} {SCHOOL_PLAN.cadence} licence is what a school takes when it wants
+          one invoice, a signed DPA, and every business teacher onboarded together — the paperwork of adoption, not
+          access to the product.
         </p>
       </div>
 

@@ -83,17 +83,16 @@ export default function PricingPage() {
       <section className="mt-6 rounded-xl border border-white/60 bg-card/60 backdrop-blur-xl p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-xl">
-            <h2 className="text-lg font-semibold tracking-tight">Start with 30 days free — no card</h2>
+            <h2 className="text-lg font-semibold tracking-tight">Free to use — no card, no clock</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Every class and every feature for 30 days, email only. After that {FREE_PLAN.classes} class stays free
-              and the licence below covers the rest.
+              Every class and every feature, email only, for as long as you want it. {FREE_PLAN.summary}
             </p>
           </div>
           <Link
             href="/#create"
             className="rounded-md border border-foreground/15 px-4 py-2 text-sm font-medium hover:bg-foreground/5"
           >
-            Start the free trial
+Start using it — free
           </Link>
         </div>
       </section>
