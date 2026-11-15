@@ -2,6 +2,7 @@
 
 // Landing + authentication. Teachers register; students receive accounts from their teacher.
 import { useState } from 'react';
+import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,20 @@ export function AuthView() {
           <p className="mt-3 text-muted-foreground text-lg max-w-lg">
             Set a quiz in under a minute. Students get case studies, calculations and
             instant marking — you get the marks.
+          </p>
+
+          {/* The two things a teacher needs before they will create an account:
+              proof it works (a real quiz) and the price. */}
+          <div className="mt-5 flex flex-wrap items-center gap-2.5">
+            <Button asChild size="lg">
+              <Link href="/demo">Try a real quiz — no sign-up</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/pricing">See pricing</Link>
+            </Button>
+          </div>
+          <p className="mt-2.5 text-sm text-muted-foreground">
+            £250 a year for the whole school — every teacher and every student, invoiced to the school.
           </p>
 
           <div className="mt-8 max-w-lg rounded-xl border border-white/60 bg-card/55 backdrop-blur-xl backdrop-saturate-150 card-lift shadow-[inset_0_1px_0_0_rgb(255_255_255/0.65),0_8px_32px_-8px_rgb(13_92_70/0.14)]">
@@ -85,7 +100,8 @@ export function AuthView() {
 
           <ul className="mt-7 space-y-2.5 text-sm max-w-lg">
             {[
-              'Timed or untimed quizzes on any Edexcel topic, 1.1 to 2.5',
+              '245 exam-style questions across every topic, 1.1 to 2.5',
+              'Timed or untimed quizzes on any Edexcel topic',
               'Deterministic marking — the same answer always gets the same result',
               'Class analytics: scores, topic gaps and question-level breakdowns',
             ].map((f) => (
@@ -106,8 +122,11 @@ export function AuthView() {
       <footer className="mt-auto border-t border-white/40 bg-background/60 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 text-xs text-muted-foreground flex flex-wrap justify-between gap-2">
           <span>© {new Date().getFullYear()} gcsebusiness</span>
-          <span className="flex items-center gap-3">
-            <span>Students: your teacher creates your account and hands out your login.</span>
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <Link href="/pricing" className="underline hover:text-foreground">Pricing</Link>
+            <Link href="/topics" className="underline hover:text-foreground">All topics</Link>
+            <Link href="/legal" className="underline hover:text-foreground">Privacy, DPA &amp; terms</Link>
+            <span>Students: your teacher creates your enrolment and hands out your login.</span>
           </span>
         </div>
       </footer>

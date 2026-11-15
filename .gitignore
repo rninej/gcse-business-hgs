@@ -50,6 +50,7 @@ test
 prompt
 
 server.log
+server.pid
 # Skills directory
 /skills/
 # copyrighted textbook — do not distribute
