@@ -58,7 +58,7 @@ export function AuthView() {
             </Button>
           </div>
           <p className="mt-2.5 text-sm text-muted-foreground">
-            30 days free, no card — every class and every feature. After that, one class stays free, or £250 a year
+            30 days free, no card — every class, every student, every feature. After that, one class stays free, or £250 a year
             covers the whole school.
           </p>
 
