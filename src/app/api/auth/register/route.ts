@@ -8,7 +8,13 @@ import type { SessionInfo, Teacher } from '@/lib/types';
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as { name?: string; email?: string; password?: string };
+    const body = (await req.json()) as {
+      name?: string;
+      email?: string;
+      password?: string;
+      ref?: string;
+      referrer?: string;
+    };
     const name = (body.name ?? '').toString().trim();
     const email = (body.email ?? '').toString().trim().toLowerCase();
     const password = (body.password ?? '').toString();
@@ -39,6 +45,9 @@ export async function POST(req: Request) {
       // 30 days of the full product, no card. When it ends the account keeps
       // one class for free rather than losing the work.
       trialEndsAt: trialEndFrom(),
+      // first-touch source, so a published listing can be judged on trials
+      signupRef: (body.ref ?? '').toString().toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 32) || undefined,
+      signupReferrer: (body.referrer ?? '').toString().slice(0, 200) || undefined,
     };
     await put('teachers', id, teacher);
     const session: SessionInfo = { uid: id, role: 'teacher', name, sub: email };

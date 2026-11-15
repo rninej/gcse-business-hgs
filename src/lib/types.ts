@@ -110,6 +110,10 @@ export interface Teacher {
   plan?: 'free' | 'school';
   /** End of the 30-day no-card trial set at registration. */
   trialEndsAt?: number;
+  /** First-touch source label from ?ref= or the referring host. */
+  signupRef?: string;
+  /** Raw document.referrer at the moment of signup (truncated). */
+  signupReferrer?: string;
   planSetAt?: number;
   /** free-text note on how the licence was arranged (PO number, contact name) */
   planNote?: string;

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { CONTACT_EMAIL } from '@/lib/pricing';
 import { ThemeToggle } from '@/components/app/ThemeToggle';
+import { TrafficBeacon } from '@/components/marketing/TrafficBeacon';
 
 // `always` keeps a link visible on phones; the rest are hidden below sm so the
 // header stays one row now that the theme toggle shares the space. Pricing is
@@ -19,6 +20,7 @@ const NAV = [
 export function MarketingShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col">
+      <TrafficBeacon />
       <header className="border-b border-white/40 bg-background/60 backdrop-blur-xl backdrop-saturate-150">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 min-h-16 py-2.5 flex items-center justify-between gap-3">
           <Link href="/" className="flex items-baseline gap-2 group">

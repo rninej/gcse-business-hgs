@@ -14,6 +14,8 @@ import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { BrandLockup } from './Brand';
 import { ThemeToggle } from './ThemeToggle';
+import { TrafficBeacon } from '@/components/marketing/TrafficBeacon';
+import { currentRef } from '@/lib/attribution';
 import { CheckCircle2, Check, Loader2 } from 'lucide-react';
 import type { SessionInfo } from '@/lib/types';
 
@@ -22,6 +24,7 @@ export function AuthView() {
     // no bg here: the body provides it, which lets the site backdrop photo
     // (fixed, -z-20, mounted in HomeApp) show through behind the content
     <div className="min-h-screen flex flex-col">
+      <TrafficBeacon />
       <header className="border-b border-white/40 bg-background/60 backdrop-blur-xl backdrop-saturate-150">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 min-h-16 py-2.5 flex items-center justify-between gap-3">
           <BrandLockup />
@@ -189,6 +192,8 @@ function AuthCard() {
           name: rName,
           email: rEmail,
           password: rPw,
+          ref: currentRef() ?? undefined,
+          referrer: document.referrer || undefined,
         });
         session = res.session;
         toast({ title: 'Account created', description: 'Set up your first class next.' });
