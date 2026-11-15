@@ -50,6 +50,11 @@
 }
 
 :root {
+  /* Native widgets (scrollbars, inputs, date pickers, autofill) follow this,
+     not our tokens. It used to be set only by the boot script, so anything
+     painted before hydration — and every no-JS visitor — got light widgets
+     inside a dark page. */
+  color-scheme: light;
   --radius: 0.5rem;
   --background: oklch(0.99 0.005 106);
   --foreground: oklch(0.22 0.02 250);
@@ -93,6 +98,7 @@
 /* Dark palette — applied by the .dark class on <html> (ThemeToggle). The
    inline boot script in layout.tsx sets it before first paint. */
 .dark {
+  color-scheme: dark;
   --background: oklch(0.17 0.015 250);
   --foreground: oklch(0.96 0.005 106);
   --card: oklch(0.215 0.02 250);

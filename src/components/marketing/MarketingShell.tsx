@@ -4,9 +4,13 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { CONTACT_EMAIL } from '@/lib/pricing';
+import { ThemeToggle } from '@/components/app/ThemeToggle';
 
+// `always` keeps a link visible on phones; the rest are hidden below sm so the
+// header stays one row now that the theme toggle shares the space. Pricing is
+// still reachable from every page footer.
 const NAV = [
-  { href: '/demo', label: 'Try a quiz' },
+  { href: '/demo', label: 'Try a quiz', always: true },
   { href: '/topics', label: 'Topics' },
   { href: '/tools', label: 'Calculators' },
   { href: '/pricing', label: 'Pricing' },
@@ -30,11 +34,14 @@ export function MarketingShell({ children }: { children: ReactNode }) {
               <Link
                 key={n.href}
                 href={n.href}
-                className="rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
+                className={`rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors ${n.always ? '' : 'hidden sm:inline-block'}`}
               >
                 {n.label}
               </Link>
             ))}
+            {/* The public pages had no way to switch theme — dark mode was only
+                reachable from inside the app. Same toggle, same stored choice. */}
+            <ThemeToggle />
             <Link
               href="/"
               className="ml-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"

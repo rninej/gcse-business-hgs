@@ -142,7 +142,7 @@ export function InstallPrompt() {
           </button>
 
           <div className="flex items-start gap-3.5 pr-6">
-            <div className="rounded-xl bg-white/60 ring-1 ring-white/70 p-1 shrink-0 shadow-sm">
+            <div className="rounded-xl bg-card/70 ring-1 ring-white/25 p-1 shrink-0 shadow-sm">
               <BrandMark className="h-11 w-11" />
             </div>
             <div className="min-w-0">
