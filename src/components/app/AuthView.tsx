@@ -141,9 +141,16 @@ function AuthCard() {
   const [tab, setTab] = useState<'teacher' | 'student' | 'register'>('teacher');
 
   // The free-tier pages link to /#create so the signup form is open and ready
-  // to type in on arrival — no hunting for the third tab.
+  // to type in on arrival — no hunting for the third tab. The listener matters:
+  // going from / to /#create is a same-document hash change, so the component
+  // does not remount and a mount-only effect would silently do nothing.
   useEffect(() => {
-    if (window.location.hash === '#create') setTab('register');
+    const applyHash = () => {
+      if (window.location.hash === '#create') setTab('register');
+    };
+    applyHash();
+    window.addEventListener('hashchange', applyHash);
+    return () => window.removeEventListener('hashchange', applyHash);
   }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
