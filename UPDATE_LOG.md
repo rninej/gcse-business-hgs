@@ -155,3 +155,6 @@ Access is now governed by `teacher.plan` (`'free' | 'school'`, absent = free).
   + payment step section). Step text lives in `PAYMENT_STEPS` in `lib/plan.ts`.
 - **Test account:** `qa.freetier@example.com` exists in the database with two
   classes (created while testing the licence switch). Delete it when convenient.
+
+- **Second test account:** `qa.live@example.com` (created during the live walkthrough).
+- **Grandfathering:** every teacher account that existed before this change was set to `school` so nobody lost classes they already had.
