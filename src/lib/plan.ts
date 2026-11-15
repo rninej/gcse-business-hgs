@@ -28,7 +28,7 @@ export const FREE_PLAN = {
   classes: 1,
   label: 'Free — one class',
   summary:
-    'One class, unlimited students in it, every topic and every marking feature. No card and no expiry.',
+    'One class with unlimited students in it, every topic and every marking feature. No card, and the class you keep does not expire.',
 } as const;
 
 export const SCHOOL_PLAN = {
