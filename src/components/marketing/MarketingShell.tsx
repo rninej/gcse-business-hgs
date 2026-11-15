@@ -61,7 +61,7 @@ export function MarketingShell({ children }: { children: ReactNode }) {
             <Link href="/pricing" className="underline hover:text-foreground">
               Pricing
             </Link>
-            <span>Built by a business teacher.</span>
+            <span>Built by a student.</span>
           </p>
         </div>
       </footer>
