@@ -64,3 +64,25 @@ Every Wave A/B email points at `/free?ref=followup`, so any teacher who arrives
 is attributable. A visit with `ref=followup` is the first real signal that the
 second touch is working — it means someone read the email and clicked, even if
 they never reply.
+
+## Final state, end of session
+
+**Every school on the October list has now had a second touch.** 46 went out with
+the template above (14 with the stale "free as long as you want it" wording, 32
+with the 30-day wording); the remaining 35 (including the four failures logged
+earlier and `mlennon`) were sent in this session, each confirmed by Gmail's
+"Message sent" before the next. Two needed a retry (`parko`, `mlennon`) and
+went on the second attempt.
+
+Sending was done in batches of three or four. Larger batches exceeded the
+115-second tool budget and left compose pages half-submitted; the browser also
+lost CDP repeatedly, fixed each time by closing the Gmail tabs and reopening one.
+
+Beyond the October list, 11 new named heads of business and one warm existing
+user were emailed — see `new-leads-2026-11-15.md`.
+
+## Replies
+
+None yet at the time of writing. Bounces are being watched in the mailer-daemon
+search; three arrived from the October wave and none from the second touch so
+far.
