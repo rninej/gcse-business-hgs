@@ -87,16 +87,29 @@ export default async function TopicPage({ params }: { params: Promise<{ topic: s
           This is the official sub-topic breakdown for {t.id} on the current Pearson specification — the same
           numbers your students are examined on, and the same tags every question in the bank carries.
         </p>
+        <p className="mt-2 text-sm">
+          <Link href="/spec" className="font-medium underline underline-offset-2">
+            Every sub-topic in the specification, 1.1.1 to 2.5.4 →
+          </Link>
+        </p>
       </div>
 
       <section className="mt-8">
         <h2 className="text-lg font-semibold tracking-tight">What {t.id} covers</h2>
         <ul className="mt-3 space-y-3">
           {t.subtopics.map((s) => (
-            <li key={s.id} className="rounded-xl border border-white/60 bg-card/60 backdrop-blur-xl p-4">
-              <p className="text-xs font-semibold text-primary">{s.id}</p>
-              <p className="mt-0.5 font-medium leading-snug">{s.title}</p>
-              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{s.focus}</p>
+            <li key={s.id}>
+              <Link
+                href={`/spec/${s.id}`}
+                className="block rounded-xl border border-white/60 bg-card/60 backdrop-blur-xl p-4 transition-colors hover:border-primary/40 hover:bg-primary/5"
+              >
+                <span className="text-xs font-semibold text-primary">{s.id}</span>
+                <span className="mt-0.5 block font-medium leading-snug">{s.title}</span>
+                <span className="mt-1.5 block text-sm text-muted-foreground leading-relaxed">{s.focus}</span>
+                <span className="mt-2 block text-xs font-medium text-primary underline underline-offset-2">
+                  Notes and a worked question on {s.id} →
+                </span>
+              </Link>
             </li>
           ))}
         </ul>

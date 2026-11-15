@@ -30,3 +30,22 @@ export function examplesForTopic(topicId: string, count = 2): Question[] {
   }
   return picked;
 }
+
+/** One worked example for a single spec sub-topic page (/spec/[subtopic]).
+ *  Only questions explicitly tagged with that sub-topic are eligible — if the
+ *  bank has none, the page simply omits the section rather than borrowing a
+ *  question from elsewhere in the topic. */
+export function examplesForSubtopic(subtopicId: string, count = 1): Question[] {
+  const picked: Question[] = [];
+  for (const quiz of QUIZZES) {
+    for (const q of quiz.questions) {
+      if (q.subtopic !== subtopicId) continue;
+      if (q.type === 'written') continue;
+      if (picked.some((p) => p.id === q.id)) continue;
+      picked.push(q);
+      if (picked.length >= count) break;
+    }
+    if (picked.length >= count) break;
+  }
+  return picked;
+}

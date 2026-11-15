@@ -8,6 +8,7 @@ import { CONTACT_EMAIL } from '@/lib/pricing';
 const NAV = [
   { href: '/demo', label: 'Try a quiz' },
   { href: '/topics', label: 'Topics' },
+  { href: '/tools', label: 'Calculators' },
   { href: '/pricing', label: 'Pricing' },
 ];
 
