@@ -187,3 +187,45 @@ The only verifiable live anchor with a channel ref remains the Quora answer
 (`?ref=quora`), repaired and checked in a cookie-free context earlier: page loads
 without login, DOM anchor present, click lands on `/free?ref=quora`, and the
 visit appears in the stats. Nothing published in this pass improves on it.
+
+## Fourth pass: one new public page, and four venues that would not publish
+
+Goal for this pass: a new publicly reachable page carrying a tracked anchor,
+provable from an unauthenticated view.
+
+### Live and verified: Telegraph
+
+- Public URL: https://telegra.ph/How-to-answer-analyse-questions-in-GCSE-Business-Edexcel-1BS0-11-15
+- Content: a short worked guide to answering "analyse" questions on Edexcel 1BS0
+  (the chain, a worked online-only-sales example, the mark-scheme wording that
+  earns credit, the two-advantages mistake), ending with the trial offer.
+- Ref: `telegraph`
+- Anchor as served, read out of the page with `curl` (no cookies, not signed in):
+  `<a href="https://www.gcse.business/free?ref=telegraph" target="_blank" rel="nofollow">`
+- Response: HTTP 200, 10,195 bytes, title
+  "How to answer analyse questions in GCSE Business (Edexcel 1BS0)".
+- Honest caveat: Telegraph is a publishing surface with no education audience of
+  its own. It proves the mechanics end to end and gives a linkable URL, but it is
+  not the same as putting the link in front of teachers.
+
+### Blocked this pass, exact text
+
+| Venue | What happened |
+|---|---|
+| Blogger | Signed-in Google is not enough: Blogger sends you to `accounts.google.com/.../confirmidentifier` with "Verify it's you ... Please sign in again to continue to Blogger." That is a password plus second factor, not a consent screen. |
+| Tumblr | Account created (`gcsebusiness1bs0`), blog responding at https://www.tumblr.com/gcsebusiness1bs0, guide written and the anchor inserted with the editor's own link tool. Publishing is gated on email verification, and the verification page shows **"Confirm your humanity: Verify Email"** - a Google reCAPTCHA Enterprise widget that never cleared. Clicking "Post now" returned to an empty composer and the blog still has zero posts. |
+| The Student Room | Still in moderation. Signed out the thread shows "Reply 1, Reply 2, Reply 3" and none of my reply. Later in the pass the site served Cloudflare's interstitial to the logged-in browser too. |
+| WordPress.com | Unchanged from last pass: valid Gmail in the field, Continue stays `disabled`. |
+| Quora | The answer editor still hangs mid-typing (repeated evaluation and Playwright timeouts). |
+
+### Stats, before and after
+
+`/api/owner/stats`, same credentials, immediately before and after publishing:
+
+- BEFORE: visits 17 (direct 13, probe 1, github 1, quora 2); last `/` direct at
+  2026-11-15T20:55:30.310Z; signups 17 (github 1, unknown 16).
+- AFTER: visits 17 (identical); signups 17 (identical). **No `telegraph` ref.**
+
+That is the expected result and it is deliberate: nobody has clicked the link yet,
+and I did not click it myself to manufacture a visit. The ref only becomes real
+when a person arrives from that page.
