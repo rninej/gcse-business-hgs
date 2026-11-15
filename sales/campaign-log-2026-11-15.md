@@ -141,3 +141,56 @@ the school's mail server and then reached via the office. **None of the 93 is
 silently lost** — the three that failed are named with the mail server's own
 words, and their schools were contacted another way.
 
+## Funnel proof — walked as a cold visitor, 15 Nov 2026
+
+A brand-new account was created through the live signup form on
+https://www.gcse.business (Teacher → Create → "Start my 30-day trial"):
+
+- Account: `gcse.business.hgs+funnelcheck2215@gmail.com`, name "Ms Funnel Check".
+  Clearly a test account; it is the only signup this campaign produced and is
+  labelled as such here and in the progress note.
+- **No verification email is sent.** The project contains no mail-sending code,
+  so registration signs the teacher straight in. There was no verification link
+  to follow and nothing arrived in the inbox or spam; that is a design choice,
+  not a broken step, but it is worth knowing before a school asks.
+- The dashboard banner the new account saw, after the fix below:
+  *"Free trial — 30 days left. Unlimited classes and students, every feature, no
+  card."*
+- Three classes were created through the UI and three students added to one of
+  them (`Amelia Watson`, `Ben Carter`, `Priya Sharma`); the live API then showed
+  `classes: 3, limit: null, canCreateClass: true` and 3 student records. A fourth
+  class was created later to test the list refresh. **No paywall, error or
+  upgrade wall appeared at any point.**
+
+### Defects found on the walk, and their fixes
+
+| # | Defect | Fix | Commit |
+|---|---|---|---|
+| 1 | Dashboard and Classes banners said "Unlimited classes and every feature" — the locked promise is unlimited **students** as well | both banners now read "Unlimited classes and students" | `a33030f` |
+| 2 | Right after "Class created", the list still said "No classes yet" for ~7 seconds while the collection cache caught up — reads as a failed save | the created class is inserted into the list straight from the POST response | `a33030f` |
+| 3 | The only buy path was a `mailto:` link; school devices routinely block mail handlers, so a teacher could reach the licence page and have no way to send anything | `/upgrade` now carries a real enquiry form (name, school, reply-to, role, note) that POSTs to `/api/enquiry`, stores the entry and confirms on the page; the email link stays as the alternative | `a33030f` |
+| 4 | A test enquiry had no way to be cleared from the owner queue | owner-gated `DELETE /api/enquiry?id=` | `6b2bd56` |
+
+### The enquiry test — what works and what is still blocked
+
+Submitted twice, once through the live form and once against the live API:
+`{"ok":true,"id":"enq_d28603ebd6"}` and `enq_efb56f1586`. Both were read back
+through the owner endpoint with the sender address and message intact:
+
+```
+enq_d28603ebd6 | Ms Funnel Check | Funnelcheck High School |
+  gcse.business.hgs+funnelcheck2215@gmail.com |
+  Test enquiry submitted through the live /upgrade form during the funnel walk.
+```
+
+**It does not reach a Gmail inbox, and that is the honest gap.** The project has
+no mail transport of any kind — no SMTP, no provider SDK, no API key in the
+environment — and `arnavjain1009@gmail.com` is not a mailbox this environment can
+open. So the enquiry is *captured and owner-visible* rather than *emailed*. The
+endpoint already sends through Resend the moment `RESEND_API_KEY` exists; until
+that key (or a Gmail app password) is provided, inbox arrival and spam placement
+cannot be proven from here.
+
+Both test enquiries were deleted afterwards, and all four test classes (with
+their students) were removed through the live API, leaving zero classes, zero
+students and zero enquiries.

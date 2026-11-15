@@ -220,3 +220,53 @@ and no template or page.
 Visits **51** — direct 39, quora 4, followup 3, newlead 2, bouncefix 1, github 1,
 probe 1. Signups **18**: one verification account, one real teacher (Mr Noel),
 sixteen automated test accounts. No teacher signup from any campaign.
+
+## Funnel proven live on the deployed site
+
+Walked as a cold visitor on 15 Nov with a throwaway account
+(`gcse.business.hgs+funnelcheck2215@gmail.com`), signed up through the live form,
+not through an owner shortcut:
+
+- Trial banner the account actually saw: **"Free trial — 30 days left. Unlimited
+  classes and students, every feature, no card."**
+- Three classes created in the UI, three students added to one, then a fourth
+  class to test the list; the live API reported `classes: 4, limit: null,
+  canCreateClass: true`. No paywall, no error, no upgrade wall.
+- No verification email exists: the project sends no mail at signup, so the
+  teacher is signed in immediately. Nothing arrived in the inbox or spam because
+  nothing is sent.
+
+### Defects found on the walk
+
+| # | Defect | Commit |
+|---|---|---|
+| 1 | Dashboard and Classes banners said "Unlimited classes and every feature", dropping the unlimited **students** promise | `a33030f` |
+| 2 | A newly created class did not appear until the collection cache expired (~7s), so the list read "No classes yet" straight after "Class created" | `a33030f` |
+| 3 | Buy path was a bare `mailto:` — blocked on many school devices; `/upgrade` now has an on-page enquiry form that stores the request and confirms on screen | `a33030f` |
+| 4 | No way to clear a test enquiry from the owner queue — owner-gated `DELETE /api/enquiry` added | `6b2bd56` |
+
+### Enquiry arrival — the one thing still open
+
+A real enquiry was submitted through the live `/upgrade` form (and again against
+the live API) and read back through the owner endpoint with sender and message
+intact (`enq_d28603ebd6`, `enq_efb56f1586`). It is stored, not emailed: the
+project has no mail transport and no provider key, and the owner address
+(`arnavjain1009@gmail.com`) is not a mailbox this environment can open. The
+endpoint is wired for Resend and will email the owner the moment
+`RESEND_API_KEY` is set. **Inbox arrival and spam placement are therefore
+unproven, not proven.**
+
+Afterwards the test classes, their students and both test enquiries were deleted:
+zero classes, zero students, zero enquiries left. The account itself remains and
+is named here so it is never mistaken for a real school.
+
+Recipient counts unchanged: **93 recipients, 90 accepted with no bounce, 3 hard
+bounces (all re-sent to published office addresses and accepted), 0 replies** —
+re-checked in Gmail during this pass (6 bounce messages, 3 distinct addresses,
+no new ones; inbox and spam clear of teacher mail).
+
+Tracker at the time of this pass: visits **61** — direct 47, quora 6, followup 3,
+newlead 2, github 1, bouncefix 1, probe 1. Signups **19**: 16 automated test
+accounts, 1 verification account, 1 funnel-check account, 1 real teacher
+(Mr Noel). The funnel-check account is attributed to `quora` because the browser
+still carried that referral cookie.
