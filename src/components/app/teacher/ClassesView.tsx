@@ -110,7 +110,11 @@ function ClassList() {
     if (newName.trim().length < 2) return;
     setCreating(true);
     try {
-      await api.post('/api/teacher/classes', { name: newName.trim() });
+      const created = await api.post<{ class: ClassRow }>('/api/teacher/classes', { name: newName.trim() });
+      // Show it immediately: the collection cache can take a few seconds to
+      // catch up, and an empty list straight after "Class created" reads as a
+      // failure to a teacher setting up on a Sunday evening.
+      if (created?.class) setClasses((prev) => [created.class, ...prev.filter((c) => c.id !== created.class.id)]);
       toast({ title: 'Class created', description: 'Now add your students.' });
       setOpen(false);
       setNewName('');
@@ -186,7 +190,7 @@ function ClassList() {
             Free trial — {plan.daysLeft ?? 0} {(plan.daysLeft ?? 0) === 1 ? 'day' : 'days'} left.
           </span>{' '}
           <span className="text-muted-foreground">
-            Unlimited classes and every feature, no card. After it ends, one class stays free.
+            Unlimited classes and students, every feature, no card. After it ends, one class stays free.
           </span>{' '}
           <a href="/upgrade" className="font-medium underline underline-offset-2">
             What happens next →

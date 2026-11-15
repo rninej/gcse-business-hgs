@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MarketingShell } from '@/components/marketing/MarketingShell';
+import { EnquiryForm } from '@/components/marketing/EnquiryForm';
 import { FREE_PLAN, PAYMENT_STEPS, SCHOOL_PLAN } from '@/lib/plan';
 import { Check } from 'lucide-react';
 
@@ -91,9 +92,12 @@ export default function UpgradePage() {
       <section className="mt-8 rounded-xl border border-primary/30 bg-primary/5 p-5">
         <h2 className="text-lg font-semibold tracking-tight">Start the invoice</h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          This opens a pre-filled email — school name, PO number, how many classes. Send it and the invoice comes back
-          with the DPA attached.
+          Fill this in and it reaches the person who replies, without needing your school's mail app. The invoice comes
+          back with the DPA attached.
         </p>
+        <div className="mt-4">
+          <EnquiryForm contactEmail={SCHOOL_PLAN.contactEmail} />
+        </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <a
             href={mailto}

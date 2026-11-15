@@ -460,3 +460,16 @@ export interface TeacherStudentResult {
    *  integrity included) instead of a blank "in progress" row */
   retaking?: boolean;
 }
+
+/** A licence enquiry submitted from the marketing pages. Stored so a school's
+ *  request can never be lost to a blocked mailto: handler. */
+export interface Enquiry {
+  id: string;
+  name: string;
+  school: string;
+  email: string;
+  role?: string;
+  message?: string;
+  createdAt: number;
+  seen: boolean;
+}

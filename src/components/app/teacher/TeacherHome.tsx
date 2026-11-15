@@ -124,7 +124,7 @@ export function TeacherHome() {
               <span className="font-medium">
                 Free trial — {plan.daysLeft ?? 0} {(plan.daysLeft ?? 0) === 1 ? 'day' : 'days'} left.
               </span>{' '}
-              <span className="text-muted-foreground">Unlimited classes and every feature, no card.</span>{' '}
+              <span className="text-muted-foreground">Unlimited classes and students, every feature, no card.</span>{' '}
               <a href="/upgrade" className="font-medium underline underline-offset-2">
                 What happens next →
               </a>
