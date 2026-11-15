@@ -1,7 +1,7 @@
 'use client';
 
 // Landing + authentication. Teachers register; students receive accounts from their teacher.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -55,7 +55,8 @@ export function AuthView() {
             </Button>
           </div>
           <p className="mt-2.5 text-sm text-muted-foreground">
-            £250 a year for the whole school — every teacher and every student, invoiced to the school.
+            Free for one class — no card. £250 a year covers the whole school: every teacher, every class and every
+            student, invoiced once.
           </p>
 
           <div className="mt-8 max-w-lg rounded-xl border border-white/60 bg-card/55 backdrop-blur-xl backdrop-saturate-150 card-lift shadow-[inset_0_1px_0_0_rgb(255_255_255/0.65),0_8px_32px_-8px_rgb(13_92_70/0.14)]">
@@ -138,6 +139,12 @@ function AuthCard() {
   const { toast } = useToast();
   const start = useApp((s) => s.start);
   const [tab, setTab] = useState<'teacher' | 'student' | 'register'>('teacher');
+
+  // The free-tier pages link to /#create so the signup form is open and ready
+  // to type in on arrival — no hunting for the third tab.
+  useEffect(() => {
+    if (window.location.hash === '#create') setTab('register');
+  }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -232,7 +239,8 @@ function AuthCard() {
 
           <TabsContent value="register" className="space-y-4">
             <div className="rounded-lg bg-[var(--accent)]/40 p-3 text-xs">
-              Teachers only — students get accounts from their teacher.
+              Free — one class, unlimited students in it, no card. Teachers only; students get their accounts from
+              their teacher.
             </div>
             <div className="space-y-2">
               <Label htmlFor="r-name">Your name</Label>
@@ -248,7 +256,7 @@ function AuthCard() {
             </div>
             <Button className="w-full" disabled={busy || !rName || !rEmail || rPw.length < 6} onClick={() => submit('register')}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-              {busy ? 'Creating…' : 'Create teacher account'}
+              {busy ? 'Creating…' : 'Create my free account'}
             </Button>
           </TabsContent>
         </Tabs>

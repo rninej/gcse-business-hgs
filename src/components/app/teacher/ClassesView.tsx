@@ -87,6 +87,8 @@ function ClassList() {
   const { toast } = useToast();
   const [classes, setClasses] = useState<ClassRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [plan, setPlan] = useState<{ plan: string; limit: number | null; classes: number } | null>(null);
+  const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(false);
@@ -96,6 +98,10 @@ function ClassList() {
       .get<{ classes: ClassRow[] }>('/api/teacher/classes')
       .then((d) => setClasses(d.classes))
       .catch((e) => setError((e as Error).message));
+    api
+      .get<{ plan: string; limit: number | null; classes: number }>('/api/teacher/plan')
+      .then(setPlan)
+      .catch(() => setPlan(null));
   }, []);
 
   useEffect(load, [load]);
@@ -110,7 +116,15 @@ function ClassList() {
       setNewName('');
       load();
     } catch (e) {
-      toast({ title: 'Could not create class', description: (e as Error).message, variant: 'destructive' });
+      const msg = (e as Error).message;
+      // The free tier's one-class wall is a sales moment, not an error: show
+      // the licence path inline instead of a red toast that reads like a bug.
+      if (/free plan/i.test(msg)) {
+        setUpgradeMsg(msg);
+        setOpen(false);
+      } else {
+        toast({ title: 'Could not create class', description: msg, variant: 'destructive' });
+      }
     } finally {
       setCreating(false);
     }
@@ -165,6 +179,34 @@ function ClassList() {
           </Dialog>
         }
       />
+
+      {plan && plan.plan === 'free' ? (
+        <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+          <span className="font-medium">Free plan — one class.</span>{' '}
+          <span className="text-muted-foreground">
+            Unlimited students in it, every topic, every marking feature, no card.
+          </span>{' '}
+          <a href="/upgrade" className="font-medium underline underline-offset-2">
+            What the school licence adds →
+          </a>
+        </div>
+      ) : null}
+
+      {upgradeMsg ? (
+        <div className="mb-4 rounded-lg border border-[var(--warn)]/40 bg-[var(--warn)]/10 px-4 py-3 text-sm">
+          <p className="font-medium">{upgradeMsg}</p>
+          <a href="/upgrade" className="mt-1 inline-block font-medium underline underline-offset-2">
+            See what the licence adds and exactly how payment works →
+          </a>
+          <button
+            type="button"
+            onClick={() => setUpgradeMsg(null)}
+            className="ml-3 text-xs text-muted-foreground underline underline-offset-2"
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
 
       {classes.length === 0 ? (
         <EmptyState

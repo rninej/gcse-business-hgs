@@ -137,3 +137,21 @@ outside the repository. Ask the operator before adding it here, especially if th
 Note for the next AI: the published worked examples are the real bank questions. If the bank
 changes, those pages change with it — that is intended, but confirm `examplesForTopic()` still
 returns two per topic (it silently returns fewer if a topic has no eligible questions).
+
+## Free one-class tier (R53)
+
+Access is now governed by `teacher.plan` (`'free' | 'school'`, absent = free).
+
+- **Limit:** one class on free, enforced server-side in `POST /api/teacher/classes`
+  (402 + `code: 'upgrade_required'`), not just hidden in the UI.
+- **AI generation** is school-plan only (`/api/teacher/generate`), because each
+  call costs money. Everything else — bank questions, marking, analytics — is free.
+- **`GET /api/teacher/plan`** returns plan, class count, limit and upgrade URL.
+- **Fulfilment (the single manual step):** `POST /api/owner/plan` with
+  `{ email, plan: 'school' | 'free', note }`, gated by the owner cookie from
+  `/debug`'s unlock. `GET` on the same route lists every teacher and their plan.
+  No payment provider exists; invoicing stays manual by design.
+- **Copy:** `/free` (landing), `/upgrade` (payment steps), `/pricing` (free strip
+  + payment step section). Step text lives in `PAYMENT_STEPS` in `lib/plan.ts`.
+- **Test account:** `qa.freetier@example.com` exists in the database with two
+  classes (created while testing the licence switch). Delete it when convenient.

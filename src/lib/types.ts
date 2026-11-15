@@ -105,6 +105,12 @@ export interface Teacher {
   email: string; // lowercase, unique
   pw: string; // scrypt hash
   createdAt: number;
+  /** 'free' = one class, no card; 'school' = £250 licence, unlimited classes.
+   *  Absent means free, so every account created before plans existed is free. */
+  plan?: 'free' | 'school';
+  planSetAt?: number;
+  /** free-text note on how the licence was arranged (PO number, contact name) */
+  planNote?: string;
 }
 
 export interface StudentClass {

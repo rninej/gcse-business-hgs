@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/session';
 import { generateQuestions } from '@/lib/questions';
 import { validSubtopicIds, validTopicIds } from '@/lib/topics';
-import type { QuestionType } from '@/lib/types';
+import { colCached } from '@/lib/firebase';
+import { planOf } from '@/lib/plan';
+import type { QuestionType, Teacher } from '@/lib/types';
 
 /** Teacher-only preview: generate questions with AI (fallback: curated bank).
  *  Nothing is stored — the teacher reviews, then creates the assignment.
@@ -12,6 +14,22 @@ import type { QuestionType } from '@/lib/types';
 export async function POST(req: Request) {
   const session = await requireRole('teacher');
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // AI writing spends real money per call, so it belongs to the school licence.
+  // Everything else — the bank, marking, analytics — is on the free class.
+  const teachers = await colCached<Teacher>('teachers');
+  const plan = planOf(Object.values(teachers).find((t) => t.id === session.uid));
+  if (plan !== 'school') {
+    return NextResponse.json(
+      {
+        error:
+          'AI question writing is part of the school licence. Your free class can still use all 245 bank questions and every marking feature.',
+        code: 'upgrade_required',
+        upgradeUrl: '/upgrade',
+      },
+      { status: 402 }
+    );
+  }
 
   const body = (await req.json()) as {
     topics?: string[];

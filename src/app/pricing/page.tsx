@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MarketingShell } from '@/components/marketing/MarketingShell';
 import { CONTACT_EMAIL, INCLUDED, PRICING_PROMISES, SCHOOL_PRICE } from '@/lib/pricing';
+import { FREE_PLAN, PAYMENT_STEPS } from '@/lib/plan';
 import { Check } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -79,6 +80,23 @@ export default function PricingPage() {
         </p>
       </div>
 
+      <section className="mt-6 rounded-xl border border-white/60 bg-card/60 backdrop-blur-xl p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-xl">
+            <h2 className="text-lg font-semibold tracking-tight">Start free — one class, no card</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {FREE_PLAN.summary} The licence below is only needed when you want a second class.
+            </p>
+          </div>
+          <Link
+            href="/#create"
+            className="rounded-md border border-foreground/15 px-4 py-2 text-sm font-medium hover:bg-foreground/5"
+          >
+            Create a free account
+          </Link>
+        </div>
+      </section>
+
       <section className="mt-8 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="rounded-xl border border-primary/50 bg-primary/5 p-6 ring-2 ring-primary/20">
           <p className="text-sm font-semibold uppercase tracking-wide">The school licence</p>
@@ -117,6 +135,28 @@ export default function PricingPage() {
             ))}
           </ul>
         </div>
+      </section>
+
+      <section className="mt-10 rounded-xl border border-primary/30 bg-primary/5 p-5">
+        <h2 className="text-lg font-semibold tracking-tight">What happens at the payment step</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          No card details are taken anywhere on this site. Payment is by invoice, and this is the whole process:
+        </p>
+        <ol className="mt-4 space-y-3">
+          {PAYMENT_STEPS.map((s, i) => (
+            <li key={s.title} className="text-sm">
+              <p className="font-semibold">
+                {i + 1}. {s.title}
+              </p>
+              <p className="mt-0.5 text-muted-foreground">{s.body}</p>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-4 text-xs text-muted-foreground">
+          Card payment is not live — there is no payment processor behind this site, so nothing can be charged
+          automatically. If invoice is impossible for your school, say so in the email and you will get a straight
+          answer rather than a sales pitch.
+        </p>
       </section>
 
       <section className="mt-10 grid gap-6 sm:grid-cols-2">
