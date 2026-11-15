@@ -8,7 +8,7 @@ const BASE = 'https://www.gcse.business';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
-  const pages = ['', '/demo', '/pricing', '/topics', '/spec', '/tools', '/legal'];
+  const pages = ['', '/demo', '/pricing', '/topics', '/spec', '/tools', '/scheme-of-work', '/legal'];
   return [
     ...pages.map((path) => ({
       url: `${BASE}${path}`,

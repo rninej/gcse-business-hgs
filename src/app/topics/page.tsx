@@ -73,6 +73,9 @@ export default function TopicsPage() {
         <Link href="/pricing" className="text-sm font-medium underline underline-offset-2">
           Pricing
         </Link>
+        <Link href="/scheme-of-work" className="text-sm font-medium underline underline-offset-2">
+          Free two-year scheme of work
+        </Link>
       </div>
     </MarketingShell>
   );

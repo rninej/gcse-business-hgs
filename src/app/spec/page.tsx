@@ -67,6 +67,9 @@ export default function SpecIndexPage() {
         <Link href="/tools" className="text-sm font-medium underline underline-offset-2">
           Free calculators
         </Link>
+        <Link href="/scheme-of-work" className="text-sm font-medium underline underline-offset-2">
+          Free scheme of work
+        </Link>
       </div>
     </MarketingShell>
   );
