@@ -8,6 +8,15 @@ export const metadata: Metadata = {
   description:
     'The full Edexcel GCSE (9–1) Business (1BS0) specification, topic by topic — 1.1 Enterprise to 2.5 Human resources — with the official sub-topics and a free self-marking quiz for each.',
   alternates: { canonical: '/topics' },
+  openGraph: {
+    title: 'Every Edexcel GCSE Business topic, 1.1 to 2.5',
+    description:
+      'The full 1BS0 specification with worked questions and answers for every topic.',
+    url: '/topics',
+    siteName: 'gcsebusiness',
+    type: 'website',
+    locale: 'en_GB',
+  },
 };
 
 export default function TopicsPage() {

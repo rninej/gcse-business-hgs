@@ -9,6 +9,15 @@ export const metadata: Metadata = {
   description:
     'One price: £250 a year per school for Edexcel GCSE Business self-marking homework. Every teacher, class and student included, invoiced to the school, no per-student charges.',
   alternates: { canonical: '/pricing' },
+  openGraph: {
+    title: '£250 a year for the whole school | gcsebusiness',
+    description:
+      'One price for Edexcel GCSE Business self-marking homework: every teacher, class and student included. Invoiced to the school, no per-student charges.',
+    url: '/pricing',
+    siteName: 'gcsebusiness',
+    type: 'website',
+    locale: 'en_GB',
+  },
 };
 
 const FAQ = [
@@ -42,9 +51,23 @@ const FAQ = [
   },
 ];
 
+const FAQ_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQ.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: { '@type': 'Answer', text: item.a },
+  })),
+};
+
 export default function PricingPage() {
   return (
     <MarketingShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_LD).replace(/</g, '\\u003c') }}
+      />
       <div className="max-w-3xl">
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">Pricing</p>
         <h1 className="mt-2 text-3xl sm:text-4xl font-bold tracking-tight leading-tight">

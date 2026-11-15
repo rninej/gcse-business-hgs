@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { MarketingShell } from '@/components/marketing/MarketingShell';
+import { WorkedExample } from '@/components/marketing/WorkedExample';
 import { TOPICS, TOPIC_MAP } from '@/lib/topics';
+import { examplesForTopic } from '@/data/topicExamples';
 
 export function generateStaticParams() {
   return TOPICS.map((t) => ({ topic: t.id }));
@@ -16,12 +18,20 @@ export async function generateMetadata({
   const { topic } = await params;
   const t = TOPIC_MAP[topic];
   if (!t) return { title: 'Topic not found | gcsebusiness' };
+  const title = `${t.id} ${t.title} — questions and answers | Edexcel GCSE Business`;
+  const description = `Edexcel GCSE (9–1) Business ${t.id} (${t.title}): every official sub-topic, plus free worked questions with answers and explanations.`;
   return {
-    title: `${t.id} ${t.title} — free self-marking quiz | Edexcel GCSE Business`,
-    description: `What Edexcel GCSE (9–1) Business ${t.id} (${t.title}) covers: ${t.subtopics
-      .map((s) => s.title)
-      .join(', ')}. Try free self-marking questions on this topic.`,
+    title,
+    description,
     alternates: { canonical: `/topics/${t.id}` },
+    openGraph: {
+      title,
+      description,
+      url: `/topics/${t.id}`,
+      siteName: 'gcsebusiness',
+      type: 'article',
+      locale: 'en_GB',
+    },
   };
 }
 
@@ -33,9 +43,32 @@ export default async function TopicPage({ params }: { params: Promise<{ topic: s
   const index = TOPICS.findIndex((x) => x.id === t.id);
   const prev = index > 0 ? TOPICS[index - 1] : null;
   const next = index < TOPICS.length - 1 ? TOPICS[index + 1] : null;
+  const examples = examplesForTopic(t.id);
+
+  // FAQPage structured data: the questions are genuine Q&A content, so Google
+  // may surface them directly in results — free traffic with no ad spend.
+  const faqLd =
+    examples.length > 0
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: examples.map((q) => ({
+            '@type': 'Question',
+            name: q.stem,
+            acceptedAnswer: { '@type': 'Answer', text: q.explain },
+          })),
+        }
+      : null;
 
   return (
     <MarketingShell>
+      {faqLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd).replace(/</g, '\\u003c') }}
+        />
+      ) : null}
+
       <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground">
         <Link href="/topics" className="underline hover:text-foreground">
           All topics
@@ -69,6 +102,23 @@ export default async function TopicPage({ params }: { params: Promise<{ topic: s
         </ul>
       </section>
 
+      {examples.length > 0 ? (
+        <section className="mt-10">
+          <h2 className="text-lg font-semibold tracking-tight">
+            {t.id} questions and answers — free worked examples
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Two questions on {t.id}, exactly as they appear in the bank, with the answer and the explanation a
+            student would see after submitting.
+          </p>
+          <div className="mt-4 space-y-3">
+            {examples.map((q, i) => (
+              <WorkedExample key={q.id} question={q} index={i + 1} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section className="mt-8 rounded-xl border border-primary/30 bg-primary/5 p-5">
         <h2 className="text-lg font-semibold tracking-tight">Set {t.id} homework that marks itself</h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
@@ -83,7 +133,7 @@ export default async function TopicPage({ params }: { params: Promise<{ topic: s
             Try questions — no sign-up
           </Link>
           <Link href="/pricing" className="text-sm font-medium underline underline-offset-2">
-            See pricing
+            £250 a year for the school
           </Link>
         </div>
       </section>

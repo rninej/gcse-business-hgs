@@ -9,6 +9,15 @@ export const metadata: Metadata = {
   description:
     'Six real Edexcel GCSE (9–1) Business (1BS0) questions — case studies, calculations and typed answers — marked instantly with explanations. No account needed.',
   alternates: { canonical: '/demo' },
+  openGraph: {
+    title: 'Try a real Edexcel GCSE Business quiz — no sign-up',
+    description:
+      'Six real 1BS0 questions, marked instantly with explanations. No account needed.',
+    url: '/demo',
+    siteName: 'gcsebusiness',
+    type: 'website',
+    locale: 'en_GB',
+  },
 };
 
 export default function DemoPage() {

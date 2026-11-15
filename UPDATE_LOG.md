@@ -117,3 +117,23 @@ verified through the API and server HTML only, so a visual/interaction pass is o
 A separate sales kit was written alongside this change but is **not in this repo** (it contains
 target lists, a rival's pricing comparison and outreach scripts). It sits in the working workspace
 outside the repository. Ask the operator before adding it here, especially if the repo may go public.
+
+---
+
+## 7. R47 — acquisition content (same day)
+
+- **`/topics/[topic]` now publishes two worked questions with answers and explanations per topic**
+  (`src/data/topicExamples.ts`, `src/components/marketing/WorkedExample.tsx`). Deliberate: search is
+  the only acquisition channel that needs neither an ad budget nor a social account. 2 of 245
+  questions are public; the rest stay behind the product. To pull them back, delete the
+  worked-example section from `app/topics/[topic]/page.tsx` — nothing else depends on it.
+- **FAQPage structured data** on topic pages (the two Q&As) and on `/pricing` (the seven FAQ
+  entries), so Google can surface them directly in results.
+- **Open Graph / Twitter metadata** on `/`, `/demo`, `/pricing`, `/topics` and `/topics/[id]`, so a
+  link shared by a teacher previews properly.
+- **`sales/launch-kit.md`** (outside the repo): paste-ready posts for the Edexcel Facebook group,
+  Business Educators, X, LinkedIn, TES and cold email, with tagged links and a channel order.
+
+Note for the next AI: the published worked examples are the real bank questions. If the bank
+changes, those pages change with it — that is intended, but confirm `examplesForTopic()` still
+returns two per topic (it silently returns fewer if a topic has no eligible questions).

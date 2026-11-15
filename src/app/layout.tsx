@@ -19,6 +19,20 @@ export const metadata: Metadata = {
   description:
     "Quizzes, homework and instant marking for Edexcel GCSE (9-1) Business. Built for teachers and students.",
   keywords: ["GCSE Business", "Edexcel", "gcsebusiness", "quizzes", "homework", "revision"],
+  openGraph: {
+    siteName: "gcsebusiness",
+    locale: "en_GB",
+    type: "website",
+    title: "gcsebusiness — GCSE Business homework that marks itself",
+    description:
+      "Edexcel GCSE (9-1) Business (1BS0) quizzes that mark themselves. £250 a year for the whole school.",
+    url: "https://gcse.business",
+  },
+  twitter: {
+    card: "summary",
+    title: "gcsebusiness — GCSE Business homework that marks itself",
+    description: "Edexcel 1BS0 quizzes with instant marking, £250 a year for the whole school.",
+  },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
