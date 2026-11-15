@@ -81,12 +81,18 @@ export function TeacherHome() {
   const go = useApp((s) => s.go);
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [plan, setPlan] = useState<{ plan: string; daysLeft?: number } | null>(null);
 
   const load = useCallback(() => {
     api
       .get<Overview>('/api/teacher/overview')
       .then(setData)
       .catch((e) => setError((e as Error).message));
+    // The trial clock belongs where teachers land, not only on Classes.
+    api
+      .get<{ plan: string; daysLeft?: number }>('/api/teacher/plan')
+      .then(setPlan)
+      .catch(() => setPlan(null));
   }, []);
 
   useEffect(load, [load]);
@@ -111,6 +117,29 @@ export function TeacherHome() {
   const pools = (data.fixPools ?? []).filter((p) => p.questions > 0);
   return (
     <>
+      {plan && plan.plan !== 'school' ? (
+        <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm">
+          {plan.plan === 'trial' ? (
+            <>
+              <span className="font-medium">
+                Free trial — {plan.daysLeft ?? 0} {(plan.daysLeft ?? 0) === 1 ? 'day' : 'days'} left.
+              </span>{' '}
+              <span className="text-muted-foreground">Unlimited classes and every feature, no card.</span>{' '}
+              <a href="/upgrade" className="font-medium underline underline-offset-2">
+                What happens next →
+              </a>
+            </>
+          ) : (
+            <>
+              <span className="font-medium">Free plan — one class.</span>{' '}
+              <span className="text-muted-foreground">Your trial has ended; existing work keeps running.</span>{' '}
+              <a href="/upgrade" className="font-medium underline underline-offset-2">
+                Licence for the whole school →
+              </a>
+            </>
+          )}
+        </div>
+      ) : null}
       <PageHeader
         title="Dashboard"
         sub="Everything happening across your classes."
