@@ -23,7 +23,10 @@ import type { Enquiry } from '@/lib/types';
 
 const RATE = new Map<string, { count: number; at: number }>();
 const WINDOW_MS = 60 * 60 * 1000;
-const MAX_PER_WINDOW = 5;
+// A whole school shares one NAT address, so the ceiling is per address, not
+// per teacher: high enough for a department to all write in, low enough that a
+// script cannot fill the inbox.
+const MAX_PER_WINDOW = 20;
 
 const FROM = 'gcse.business <enquiries@gcse.business>';
 
