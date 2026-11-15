@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MarketingShell } from '@/components/marketing/MarketingShell';
 import { CONTACT_EMAIL, INCLUDED, PRICING_PROMISES, SCHOOL_PRICE } from '@/lib/pricing';
+import { EnquiryForm } from '@/components/marketing/EnquiryForm';
 import { FREE_PLAN, PAYMENT_STEPS } from '@/lib/plan';
 import { Check } from 'lucide-react';
 
@@ -114,7 +115,7 @@ Start the free trial
               Set your school up
             </Link>
             <a
-              href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('gcse.business — £250 school licence')}`}
+              href="#enquiry"
               className="rounded-md border border-foreground/15 px-4 py-2.5 text-center text-sm font-medium hover:bg-foreground/5"
             >
               Request a quote or ask a question
@@ -179,7 +180,7 @@ Start the free trial
           </ol>
           <a
             className="mt-4 inline-block text-sm font-medium underline underline-offset-2"
-            href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('gcse.business — £250 school licence')}`}
+            href="#enquiry"
           >
             Request a quote or ask a question →
           </a>
@@ -203,6 +204,27 @@ Start the free trial
             before you speak to your data protection lead.
           </p>
         </div>
+      </section>
+
+      <section id="enquiry" className="mt-10 rounded-xl border border-white/60 bg-card/70 p-6 backdrop-blur-xl">
+        <h2 className="text-xl font-bold tracking-tight">Request the licence</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Fill this in and it reaches {CONTACT_EMAIL} — a mail client is not needed, because school devices often
+          block them. You get a quote, the DPA and a PO-ready invoice.
+        </p>
+        <div className="mt-4 max-w-xl">
+          <EnquiryForm contactEmail={CONTACT_EMAIL} />
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Prefer your own email? Write to{' '}
+          <a
+            className="underline underline-offset-2"
+            href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('gcse.business — £250 school licence')}`}
+          >
+            {CONTACT_EMAIL}
+          </a>
+          .
+        </p>
       </section>
 
       <section className="mt-10">
