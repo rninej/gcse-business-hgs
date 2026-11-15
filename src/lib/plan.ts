@@ -25,10 +25,10 @@ export function trialEndFrom(now = Date.now()): number {
 }
 
 export const FREE_PLAN = {
-  classes: Number.POSITIVE_INFINITY,
-  label: 'Free',
+  classes: 1,
+  label: 'Free — one class',
   summary:
-    'Every class, every topic, every marking feature, unlimited students. No card, no expiry and no invoice — the licence is only for a school that wants to adopt it formally.',
+    'One class, unlimited students in it, every topic and every marking feature. No card and no expiry.',
 } as const;
 
 export const SCHOOL_PLAN = {
@@ -58,8 +58,8 @@ export function trialDaysLeft(
   return Math.max(0, Math.ceil((t.trialEndsAt - now) / (24 * 60 * 60 * 1000)));
 }
 
-export function classLimit(_plan: Plan): number {
-  return Number.POSITIVE_INFINITY;
+export function classLimit(plan: Plan): number {
+  return plan === 'free' ? FREE_PLAN.classes : Number.POSITIVE_INFINITY;
 }
 
 export function planLabel(plan: Plan, daysLeft = 0): string {

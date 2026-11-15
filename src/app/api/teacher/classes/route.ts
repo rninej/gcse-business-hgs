@@ -34,13 +34,13 @@ export async function POST(req: Request) {
 
   const classes = await col<StudentClass>('classes');
 
-  // Every account is unlimited while the product is free; the guard stays so a
-  // future paid tier can be reinstated here rather than in the UI.
+  // Free accounts get one class; the trial is unlimited. Enforced here, not in
+  // the UI, so the limit cannot be bypassed by calling the API directly.
   const teachers = await colCached<Teacher>('teachers');
   const me = Object.values(teachers).find((t) => t.id === session.uid);
   const plan = planOf(me);
   const mine = Object.values(classes).filter((c) => c.teacherId === session.uid);
-  if (Number.isFinite(FREE_PLAN.classes) && mine.length >= FREE_PLAN.classes) {
+  if (plan === 'free' && mine.length >= FREE_PLAN.classes) {
     return NextResponse.json(
       {
         error: me?.trialEndsAt
