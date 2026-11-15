@@ -168,3 +168,13 @@ Access is now governed by `teacher.plan` (`'free' | 'school'`, absent = free).
 - Owner route now takes `trialDays` to set or end a trial for testing and for
   extending a school's trial: `POST /api/owner/plan { email, trialDays: 0 }`.
 - Copy: `/free`, `/upgrade`, `/pricing` and the signup tab all say 30 days, no card.
+
+## First-touch attribution (R58)
+
+- `POST /api/track` counts page views into `meta/traffic` (total, per day, per
+  source, per path, plus the last hit). No IP, no user agent, no identifiers.
+- `MarketingShell` and `AuthView` mount `TrafficBeacon`, which fires once per
+  page per session and records `?ref=` (or the referring host) as first touch.
+- `/api/auth/register` stores `signupRef` + `signupReferrer` on the teacher.
+- `GET /api/owner/stats` (owner only) returns visits by source/path/day and
+  signups by source, which is how a published link gets judged.
