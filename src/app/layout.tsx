@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://gcse.business"),
+  metadataBase: new URL("https://www.gcse.business"),
   title: "gcsebusiness — self-marking homework & revision",
   description:
     "Quizzes, homework and instant marking for Edexcel GCSE (9-1) Business. Built for teachers and students.",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     title: "gcsebusiness — GCSE Business homework that marks itself",
     description:
       "Edexcel GCSE (9-1) Business (1BS0) quizzes that mark themselves. £250 a year for the whole school.",
-    url: "https://gcse.business",
+    url: "https://www.gcse.business",
   },
   twitter: {
     card: "summary",

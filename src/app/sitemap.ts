@@ -1,7 +1,10 @@
 import type { MetadataRoute } from 'next';
 import { TOPICS } from '@/lib/topics';
 
-const BASE = 'https://gcse.business';
+// Vercel serves the apex as a 308 redirect to www, so canonicals must name the
+// host that actually answers 200 — otherwise every URL in the sitemap is a
+// redirect, which wastes crawl budget and splits signals.
+const BASE = 'https://www.gcse.business';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
