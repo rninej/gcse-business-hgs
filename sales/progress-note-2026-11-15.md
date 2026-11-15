@@ -270,3 +270,74 @@ newlead 2, github 1, bouncefix 1, probe 1. Signups **19**: 16 automated test
 accounts, 1 verification account, 1 funnel-check account, 1 real teacher
 (Mr Noel). The funnel-check account is attributed to `quora` because the browser
 still carried that referral cookie.
+
+## Overnight 15–16 Nov — the enquiry email is proven, and it now sends itself
+
+The last note left one thing open: an enquiry was stored but never mailed. That is
+closed, and the reason it was open is now visible from outside.
+
+**Why it never mailed.** `GET /api/health` now reports the mail mode, and the
+production deployment said `"email":"none"` — the Resend key existed only in the
+workspace, never in the Vercel environment. The old code swallowed the failure, so
+nothing complained. That is fixed three ways:
+
+1. **The app sends properly when it can.** Enquiries go from
+   `enquiries@gcse.business` (the domain is verified in Resend) with the teacher as
+   Reply-To, and the teacher gets a short acknowledgement that names the trial and
+   invites a reply. The entry stores `emailed: sent | failed | skipped`, the
+   provider id, or the exact error — a silent failure is no longer possible.
+2. **A relay sends anything the app could not.** `.github/workflows/enquiry-relay.yml`
+   runs every 5 minutes (and on any push that touches it), reads unsent enquiries
+   straight from the database, mails them, and marks them so nothing is sent twice.
+   The key lives in the repository secret `RESEND_API_KEY` — the repo is public, so
+   it never appears in a file. Retries are capped (5 owner copies, 3 acknowledgements)
+   and test domains are skipped.
+3. **The owner sees the queue.** `/debug` now opens with "Licence requests" —
+   school, contact, message, and whether the mail actually went out — which did not
+   exist before, and the teacher feedback inbox that was written but never rendered
+   is mounted beside it.
+
+**Proof, end to end.**
+
+| What | Evidence |
+|---|---|
+| Owner copy of a real form submission | Resend `last_event: delivered` for `Licence enquiry — Testbridge Academy` → `arnavjain@gcse.business` |
+| Teacher acknowledgement | `delivered`, and found in the Gmail inbox (label: Inbox, not Spam) |
+| Relay, with no human in the loop | GitHub run `43776953889` sent `enq_85b36c4a2f` — owner copy and acknowledgement both `delivered` |
+| New-trial alert | `New trial signup — Alert Test` sent by the same job; the teacher record is flagged so it never repeats |
+| Still unsent after the sweep | relay run reports `ownerSent: 0` — idempotent |
+
+**What a teacher walks into, checked tonight on the live site.**
+
+- Full journey, cold account: register → trial plan (`30 days left`) → class →
+  two students with logins → library assignment (15 questions) → student login →
+  attempt → submit → teacher results. Every step passed.
+- **The marker is right:** a paper answered with the bank's own correct answers
+  scores `16/16, 100%`. (Two earlier "failures" were my test sending option *text*
+  where the client sends an index — the product was never wrong; the check now
+  derives the index from the shuffled options.)
+- **AI generation works:** Gemini, 5 questions in 3.8s, "passed 5/5 validation
+  checks" — this is the feature the £250 is justified by, and it is not silently
+  falling back to the bank.
+- **Phone width:** `/free` at 390px has no horizontal overflow; the signup form is
+  three fields at 294px and reads "30 days free, no card — every class, every
+  student, every feature."
+- The enquiry rate limit was 5/hour **per IP** — a school is one IP, so a
+  department of six would have locked out the seventh. It is now 20/hour.
+
+**Still open.** The Vercel environment has no `RESEND_API_KEY`, so the in-app send
+is off and the relay carries every enquiry (worst case ~5 minutes late). Adding the
+key in Vercel → Settings → Environment Variables removes the relay from the path
+entirely; `"email":"resend"` on `/api/health` is the proof it took.
+
+**Sales position, unchanged and not dressed up.** 93 recipients, 90 accepted with
+no bounce, 3 hard bounces all re-sent to published office addresses, **0 replies**.
+Re-checked in Gmail tonight: 27 inbox conversations in three days, none from a
+school. Tracker now **72 visits** (direct 57, quora 7, followup 3, newlead 2,
+github 1, bouncefix 1, probe 1) and **21 signups** — 19 test/QA accounts, 1
+verification account, 1 real teacher (Mr Noel).
+
+**Test data left behind, named so it is never mistaken for a school:**
+`gcse.business.hgs+qa2311@gmail.com` (QA 11A Business class with several test
+students and assignments) and `gcse.business.hgs+alerttest2311@gmail.com`
+(signup-alert test). Both test enquiries were deleted from the queue.

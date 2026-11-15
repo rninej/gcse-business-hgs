@@ -178,3 +178,21 @@ Access is now governed by `teacher.plan` (`'free' | 'school'`, absent = free).
 - `/api/auth/register` stores `signupRef` + `signupReferrer` on the teacher.
 - `GET /api/owner/stats` (owner only) returns visits by source/path/day and
   signups by source, which is how a published link gets judged.
+
+## Email delivery, relay and the buy inbox (R47)
+
+- `POST /api/enquiry` mails the owner from `enquiries@gcse.business` (verified in
+  Resend) with the teacher as Reply-To, acknowledges the teacher, and stores
+  `emailed`/`emailId`/`emailError`/`ackEmailed` on the entry. `GET /api/health`
+  reports `email: resend | none` and the contact address.
+- `PATCH /api/enquiry?id=` marks a request read (owner only).
+- `scripts/relay-enquiries.mjs` + `.github/workflows/enquiry-relay.yml`: every
+  five minutes, and on push, send anything the app could not, mark it in both
+  database engines, cap retries, skip test domains, and announce every new trial
+  signup. Key lives in the repository secret `RESEND_API_KEY`.
+- `/debug` renders `EnquiriesSection` (licence requests, delivery badge, reply
+  link) and finally mounts `FeedbackSection`.
+- Enquiry rate limit is per IP: 20/hour, because a school shares one address.
+- `scripts/journey-check.py` and `scripts/marking-check.py` are repeatable checks
+  against the deployed site: the full teacher→student→results journey, and a
+  perfect paper that must score 100%.

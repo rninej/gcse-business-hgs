@@ -194,3 +194,19 @@ cannot be proven from here.
 Both test enquiries were deleted afterwards, and all four test classes (with
 their students) were removed through the live API, leaving zero classes, zero
 students and zero enquiries.
+
+## 16 Nov (overnight) — delivery proven
+
+- `gcse.business` verified in Resend; enquiry mail now comes from
+  `enquiries@gcse.business` with the teacher as Reply-To, plus an acknowledgement
+  to the teacher. Proof: `last_event: delivered` for a real submission to
+  `arnavjain@gcse.business`, and the acknowledgement found in the Gmail **inbox**.
+- Production still has no `RESEND_API_KEY` (`/api/health` → `"email":"none"`), so a
+  scheduled GitHub Action relays unsent enquiries with the key held as a repo
+  secret. Run `43776953889` sent an enquiry with no human involved; rerun sent
+  nothing (`ownerSent: 0`).
+- Same job now alerts every new trial signup, so no 30-day window starts unseen.
+- `/debug` gained a licence-request inbox (with per-entry delivery state) and the
+  teacher feedback inbox that was never mounted.
+- Perfect-paper check: `16/16` — the marker awards full marks for full marks.
+- No replies yet: 93 recipients / 90 accepted / 3 bounced-and-resent / **0 replies**.
