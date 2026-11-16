@@ -1039,7 +1039,7 @@ function ClassDetail({ classId }: { classId: string }) {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="inline-flex align-middle ml-1 text-muted-foreground/70 hover:text-foreground transition-colors rounded-full"
+                        className="inline-flex align-middle ml-1 p-1.5 -m-1.5 text-muted-foreground/70 hover:text-foreground transition-colors rounded-full"
                         aria-label="Why do fresh questions wait a day?"
                       >
                         <HelpCircle className="h-3.5 w-3.5" aria-hidden />

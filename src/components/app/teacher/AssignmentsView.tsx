@@ -253,7 +253,7 @@ export function AssignmentsView() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-x-3">
                   <button className="min-w-0 flex-1 text-left" onClick={() => go({ name: 't-results', assignmentId: a.id })}>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold break-words sm:truncate">{a.title}</span>
+                      <span className="font-semibold break-words">{a.title}</span>
                       {a.draft ? (
                         <Badge className="text-[10px] bg-[var(--warn)] text-[var(--warn-foreground)] gap-1">
                           <Pencil className="h-3 w-3" /> Draft

@@ -239,9 +239,9 @@ export function TeacherHome() {
                     onClick={() => go({ name: 't-results', assignmentId: a.id })}
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{a.title}</div>
+                      <div className="font-medium break-words">{a.title}</div>
                       <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className="truncate">{a.classTitle}</span>·<span>{a.questionCount} questions</span>
+                        <span className="break-words">{a.classTitle}</span>·<span>{a.questionCount} questions</span>
                         <DueChip dueAt={a.dueAt} />
                       </div>
                     </div>
@@ -354,9 +354,9 @@ function NeedsAttentionCard({ rows }: { rows: AttentionRow[] }) {
                 className="flex-1 min-w-0 text-left"
                 onClick={() => go({ name: 't-results', assignmentId: row.id })}
               >
-                <div className="font-medium text-sm truncate">{row.title}</div>
+                <div className="font-medium text-sm break-words">{row.title}</div>
                 <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5 flex-wrap">
-                  <span className="truncate">{row.classTitle}</span>·<span>{row.questionCount} questions</span>
+                  <span className="break-words">{row.classTitle}</span>·<span>{row.questionCount} questions</span>
                   <span
                     className={cn(
                       'font-medium',
@@ -638,7 +638,7 @@ function ClassLeaderboard() {
                     {i < 3 ? <Medal className="h-4 w-4" aria-hidden /> : i + 1}
                   </span>
                   <Avatar name={r.displayName} src={r.avatar} size="sm" />
-                  <span className="font-medium text-sm truncate flex-1 min-w-0">{r.displayName}</span>
+                  <span className="font-medium text-sm break-words flex-1 min-w-0">{r.displayName}</span>
                   {r.streak > 1 ? (
                     <span className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground tabular-nums" title={`${r.streak}-day streak`}>
                       <Flame className="h-3.5 w-3.5 text-[var(--warn)]" aria-hidden /> {r.streak}

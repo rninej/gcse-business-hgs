@@ -224,11 +224,14 @@
 /* ---- tables that turn into cards on a phone --------------------------
    A 900px results table inside a 326px window is not a table, it is a
    puzzle: the score column is off-screen and nothing tells you to swipe.
-   Any table marked .mobile-cards keeps its ordinary table layout from
-   640px up, and below that each row becomes a card, each cell a labelled
-   line. The first cell is the card heading, so it carries no label; cells
-   with data-label get the field name on the left. Desktop is untouched. */
-@media (max-width: 639.98px) {
+   Any table marked .mobile-cards keeps its ordinary table layout once the
+   app column is genuinely wide (1200px up), and below that each row becomes a
+   card, each cell a labelled line. The first cell is the card heading, so it
+   carries no label; cells with data-label get the field name on the left.
+   Between 640 and 1200 the sidebar still eats ~240px, so a 560–900px table
+   would otherwise scroll its own actions out of the card. Desktop is
+   untouched: at 1280 these tables render exactly as before. */
+@media (max-width: 1199.98px) {
   .mobile-cards {
     display: block;
     width: 100%;
