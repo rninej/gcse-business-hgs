@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -214,12 +214,47 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
   // step 3: send now vs schedule
   const [sendMode, setSendMode] = useState<'now' | 'schedule'>('now');
   const [publishLocal, setPublishLocal] = useState('');
+  // first-run: a brand-new teacher lands here with no class at all. Creating
+  // one in-place is the difference between a trial and a dead end.
+  const [newClassName, setNewClassName] = useState('');
+  const [creatingClass, setCreatingClass] = useState(false);
+  const [classError, setClassError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadClasses = useCallback((selectFirst: boolean) => {
     api.get<{ classes: ClassRow[] }>('/api/teacher/classes').then((d) => {
       setClasses(d.classes);
-      if (d.classes.length > 0 && !presetQuizId && !draftId) setClassIds([d.classes[0].id]);
+      if (selectFirst && d.classes.length > 0) setClassIds((ids) => (ids.length ? ids : [d.classes[0].id]));
     }).catch((e) => setError((e as Error).message));
+  }, []);
+
+  /** Create the first class without leaving the wizard, then select it. */
+  async function createClassHere() {
+    if (newClassName.trim().length < 2 || creatingClass) return;
+    setCreatingClass(true);
+    setClassError(null);
+    try {
+      const res = await fetch('/api/teacher/classes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newClassName.trim() }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { class?: { id: string }; error?: string; upgradeUrl?: string };
+      if (!res.ok || !data.class) {
+        setClassError(data.error || 'Could not create that class. Please try again.');
+        return;
+      }
+      setClasses((prev) => [{ id: data.class!.id, name: newClassName.trim(), studentCount: 0 } as ClassRow, ...prev]);
+      setClassIds([data.class.id]);
+      setNewClassName('');
+    } catch {
+      setClassError('Could not reach the server. Please try again.');
+    } finally {
+      setCreatingClass(false);
+    }
+  }
+
+  useEffect(() => {
+    loadClasses(!presetQuizId && !draftId);
     api.get<{ students: StudentLite[] }>('/api/teacher/students').then((d) => setStudents(d.students)).catch(() => undefined);
     api.get<{ quizzes: QuizRow[]; subtopicCounts?: Record<string, number> }>('/api/quizzes?audience=assignment')
       .then((d) => {
@@ -227,7 +262,7 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
         if (d.subtopicCounts) setSubCounts(d.subtopicCounts);
       })
       .catch(() => undefined);
-  }, [presetQuizId, draftId]);
+  }, [presetQuizId, draftId, loadClasses]);
 
   // editing an existing draft: prefill everything, questions land in the
   // editable AI list so the teacher can tweak stems, answers and marks
@@ -604,7 +639,31 @@ export function NewAssignment({ presetQuizId, draftId }: { presetQuizId?: string
             <div className="space-y-2">
               <Label>Classes</Label>
               {classes.length === 0 ? (
-                <p className="text-sm text-[var(--warn)]">You need a class first — add one under “Classes”.</p>
+                <div className="space-y-2 rounded-lg border border-[var(--warn)]/40 bg-[var(--warn)]/5 p-3">
+                  <p className="text-sm">You need a class before you can set this. Create it here — students are added after.</p>
+                  <div className="flex gap-2">
+                    <Input
+                      id="quick-class"
+                      value={newClassName}
+                      onChange={(e) => setNewClassName(e.target.value)}
+                      placeholder="10B Business"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          void createClassHere();
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => void createClassHere()}
+                      disabled={creatingClass || newClassName.trim().length < 2}
+                    >
+                      {creatingClass ? 'Creating…' : 'Create class'}
+                    </Button>
+                  </div>
+                  {classError ? <p className="text-xs text-[var(--warn)]">{classError}</p> : null}
+                </div>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {classes.map((c) => {
