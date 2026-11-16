@@ -686,7 +686,7 @@ export function BarList({
         return (
           <li key={it.label}>
             <div className="flex items-baseline justify-between gap-2 mb-1">
-              <span className="text-sm truncate">{it.label}</span>
+              <span className="text-sm min-w-0 break-words">{it.label}</span>
               <span className="text-xs font-semibold tabular-nums" style={{ color: tone }}>{it.pct}%</span>
             </div>
             <div className="h-2 rounded-full bg-secondary overflow-hidden">

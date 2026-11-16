@@ -776,7 +776,7 @@ function Achievements({ badges }: { badges: BadgeState[] }) {
         Achievements
         <span className="text-muted-foreground font-normal"> · {unlockedCount} of {badges.length}</span>
       </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 stagger" role="list">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 stagger" role="list">
         {badges.map((b) => {
           const Icon = BADGE_ICONS[b.icon] ?? Award;
           return b.unlocked ? (
