@@ -295,7 +295,7 @@ export function AssignmentsView() {
                     </div>
                   </button>
 
-                  <div className="flex items-center justify-between gap-2 sm:justify-end sm:gap-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 sm:min-w-0 sm:justify-end sm:gap-3">
                     <div className="text-left sm:text-right shrink-0">
                       <div className="text-sm font-bold tabular-nums">
                         {a.submitted}
@@ -303,7 +303,7 @@ export function AssignmentsView() {
                       </div>
                       <div className="text-[11px] text-muted-foreground whitespace-nowrap">handed in</div>
                     </div>
-                    <div className="hidden sm:block w-28">
+                    <div className="hidden lg:block w-28">
                       <div className="h-2 rounded-full bg-secondary overflow-hidden">
                         <div
                           className={cn('h-full rounded-full', done === 100 ? 'bg-[var(--success)]' : 'bg-primary')}
