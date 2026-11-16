@@ -56,6 +56,9 @@ export function AuthView() {
             <Button asChild size="lg" variant="outline">
               <Link href="/pricing">See pricing</Link>
             </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/free">Start the 30-day trial</Link>
+            </Button>
           </div>
           <p className="mt-2.5 text-sm text-muted-foreground">
             30 days free, no card — every class, every student, every feature. After that, one class stays free, or £250 a year
