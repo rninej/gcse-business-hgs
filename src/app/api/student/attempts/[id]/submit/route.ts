@@ -4,6 +4,7 @@ import { loadAccessibleAttempt } from '@/lib/attemptAccess';
 import { markAttempt } from '@/lib/marking';
 import { assessRisk, pointsFor } from '@/lib/risk';
 import { generateFeedback, templateFeedback, type FeedbackInput } from '@/lib/ai';
+import { markPendingWritten } from '@/lib/writtenMarking';
 import { toReview } from '@/lib/sanitize';
 import { TOPIC_MAP } from '@/lib/topics';
 import { crossedMilestone, streaksFrom, studentSubmittedAt } from '@/lib/streaks';
@@ -191,6 +192,20 @@ export async function POST(req: Request, ctx: Ctx) {
       }
     }
   });
+
+  // Written answers must not depend on the student's browser staying open. The
+  // result screen asks for marking, but closing the tab straight after Submit
+  // would leave the paper unmarked until a teacher retried it by hand.
+  // markPendingWritten is idempotent and skips answers already marked.
+  if (attempt.questions.some((q) => q.type === 'written')) {
+    runAfter(async () => {
+      try {
+        await markPendingWritten(attempt.id);
+      } catch {
+        /* the teacher's "mark now" retry remains */
+      }
+    });
+  }
 
   const reviews = attempt.questions.map((q, i) => {
     const rec = marked.perQ[q.id];
