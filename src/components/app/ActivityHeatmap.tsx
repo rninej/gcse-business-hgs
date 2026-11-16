@@ -277,7 +277,7 @@ export function ActivityHeatmap({
                 onClick={() => setWeeks(w)}
                 aria-pressed={weeks === w}
                 className={cn(
-                  'rounded-full px-2 py-0.5 text-[10px] font-medium tabular-nums transition-colors',
+                  'rounded-full px-2.5 py-1 text-[11px] font-medium tabular-nums transition-colors min-h-7',
                   weeks === w
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -292,7 +292,7 @@ export function ActivityHeatmap({
             onClick={() => setPrinting(true)}
             aria-label={`Print the ${title.toLowerCase()} sheet`}
             title="Print or save this activity grid as a one-page sheet"
-            className="flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors print:hidden"
+            className="flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors print:hidden"
           >
             <Printer className="h-3.5 w-3.5" aria-hidden />
           </button>

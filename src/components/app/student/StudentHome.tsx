@@ -776,7 +776,7 @@ function Achievements({ badges }: { badges: BadgeState[] }) {
         Achievements
         <span className="text-muted-foreground font-normal"> · {unlockedCount} of {badges.length}</span>
       </h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 stagger" role="list">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 stagger" role="list">
         {badges.map((b) => {
           const Icon = BADGE_ICONS[b.icon] ?? Award;
           return b.unlocked ? (
@@ -821,7 +821,7 @@ function Achievements({ badges }: { badges: BadgeState[] }) {
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm font-medium leading-tight text-muted-foreground truncate">{b.title}</span>
+                  <span className="text-sm font-medium leading-tight text-muted-foreground line-clamp-2">{b.title}</span>
                   {b.progress ? (
                     <span className="text-[11px] tabular-nums text-muted-foreground/80 shrink-0">
                       {progressText(b.progress)}
