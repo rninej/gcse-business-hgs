@@ -19,7 +19,7 @@ const FS_DOCS = `https://firestore.googleapis.com/v1/projects/${FS_PROJECT}/data
 const RTDB = (process.env.FIREBASE_DB_URL || 'https://hgs-business-default-rtdb.europe-west1.firebasedatabase.app').replace(/\/+$/, '');
 
 const TEST_TEACHER =
-  /@example\.(com|org|net)$|@test\.(com|uk)$|(\+(qa|alerttest|firstrun|funnelcheck|teacher\.demo|enqtest|cronpath|pricingpath)\w*@)/i;
+  /@example\.(com|org|net)$|@test\.(com|uk)$|(\+(qa|alerttest|firstrun|funnelcheck|teacher\.demo|enqtest|cronpath|pricingpath|trialtest)\w*@)/i;
 
 /** Older rounds named their throwaways by prefix ("qa-r33a@school.uk",
  *  "e2e-lb@test.uk", "trial.qa@example.com"). Those prefixes are not used by
