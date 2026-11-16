@@ -601,7 +601,7 @@ export function StudentHome() {
                   onClick={() => go({ name: 'result', attemptId: r.id })}
                 >
                   <Award className={cn('h-4 w-4', r.pct >= 80 ? 'text-[var(--success)]' : 'text-primary')} />
-                  <span className="flex-1 truncate text-sm font-medium">{r.title}</span>
+                  <span className="flex-1 min-w-0 break-words text-sm font-medium">{r.title}</span>
                   <span className="text-xs text-muted-foreground hidden sm:block">
                     {new Date(r.submittedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                   </span>

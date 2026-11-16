@@ -95,8 +95,8 @@ export function StudentHistory() {
                 onClick={() => go({ name: 'result', attemptId: r.id })}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate flex items-center gap-1.5">
-                    <span className="truncate">{r.title}</span>
+                  <div className="text-sm font-medium flex flex-wrap items-center gap-1.5">
+                    <span className="min-w-0 break-words">{r.title}</span>
                     {r.hasTeacherFeedback ? (
                       <span
                         className="inline-flex items-center gap-0.5 shrink-0 rounded-full bg-primary/10 border border-primary/25 px-1.5 py-0.5 text-[10px] font-semibold text-primary"
