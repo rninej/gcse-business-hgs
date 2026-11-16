@@ -615,7 +615,7 @@ function ClassDetail({ classId }: { classId: string }) {
                 ) : null}
 
                 <div className="max-h-72 overflow-y-auto scroll-slim rounded-md border">
-                  <Table>
+                  <Table className="mobile-cards">
                     <TableHeader className="sticky top-0 bg-card">
                       <TableRow>
                         <TableHead>Student</TableHead>
@@ -626,9 +626,9 @@ function ClassDetail({ classId }: { classId: string }) {
                     <TableBody>
                       {students.map((s) => (
                         <TableRow key={s.id}>
-                          <TableCell className="font-medium">{s.displayName}</TableCell>
-                          <TableCell className="font-mono text-sm">{s.username}</TableCell>
-                          <TableCell className="font-mono text-sm font-semibold">
+                          <TableCell className="font-medium mc-heading">{s.displayName}</TableCell>
+                          <TableCell className="font-mono text-sm" data-label="Username">{s.username}</TableCell>
+                          <TableCell className="font-mono text-sm font-semibold" data-label="Password">
                             {s.password ?? <span className="text-xs font-normal text-muted-foreground">— generate above —</span>}
                           </TableCell>
                         </TableRow>
@@ -831,7 +831,7 @@ function ClassDetail({ classId }: { classId: string }) {
             </div>
           </div>
           <div className="max-h-56 overflow-y-auto scroll-slim rounded-md bg-card border">
-            <Table>
+            <Table className="mobile-cards">
               <TableHeader className="sticky top-0 bg-card">
                 <TableRow>
                   <TableHead>Student</TableHead>
@@ -842,9 +842,9 @@ function ClassDetail({ classId }: { classId: string }) {
               <TableBody>
                 {creds.map((c) => (
                   <TableRow key={c.username}>
-                    <TableCell>{c.displayName}</TableCell>
-                    <TableCell className="font-mono text-sm">{c.username}</TableCell>
-                    <TableCell className="font-mono text-sm font-semibold">{c.password}</TableCell>
+                    <TableCell className="mc-heading">{c.displayName}</TableCell>
+                    <TableCell className="font-mono text-sm" data-label="Username">{c.username}</TableCell>
+                    <TableCell className="font-mono text-sm font-semibold" data-label="Password">{c.password}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -867,7 +867,7 @@ function ClassDetail({ classId }: { classId: string }) {
           </div>
         ) : (
           <div className="overflow-x-auto scroll-slim">
-            <Table className="min-w-[560px]">
+            <Table className="mobile-cards sm:min-w-[560px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Student</TableHead>
@@ -879,7 +879,7 @@ function ClassDetail({ classId }: { classId: string }) {
               <TableBody>
                 {students.map((s) => (
                   <TableRow key={s.id}>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium mc-heading">
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           className="hover:text-primary hover:underline underline-offset-2 text-left"
@@ -895,7 +895,7 @@ function ClassDetail({ classId }: { classId: string }) {
                         ) : null}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Username">
                       <button
                         className="inline-flex items-center gap-1.5 font-mono text-sm text-muted-foreground hover:text-foreground"
                         onClick={() => {
@@ -907,7 +907,7 @@ function ClassDetail({ classId }: { classId: string }) {
                         {s.username}
                       </button>
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Password">
                       {s.password ? (
                         <button
                           className="inline-flex items-center gap-1.5 font-mono text-sm text-muted-foreground hover:text-foreground"
@@ -929,7 +929,7 @@ function ClassDetail({ classId }: { classId: string }) {
                         </button>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right mc-actions">
                       <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="outline"

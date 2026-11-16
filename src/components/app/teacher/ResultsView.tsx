@@ -326,7 +326,7 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
           ) : (
             <div className="rounded-xl border bg-card overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="print-table w-full text-sm min-w-[900px]">
+                <table className="print-table mobile-cards w-full text-sm sm:min-w-[900px]">
                   <thead>
                     <tr className="border-b bg-secondary/50 text-left text-xs text-muted-foreground">
                       <th className="px-4 py-3 font-medium">Student</th>
@@ -342,7 +342,7 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
                     {data.rows.map((r) => (
                       <Fragment key={r.studentId}>
                       <tr className={cn('border-b last:border-0 hover:bg-secondary/30 transition-colors', open.has(r.studentId) && 'bg-secondary/30')}>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 mc-heading">
                           <div className="flex items-center gap-2.5 min-w-0">
                             <Avatar name={r.displayName} src={r.avatar} size="sm" />
                             <div className="min-w-0">
@@ -351,7 +351,7 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3" data-label="Status">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <StatusPill status={r.status} />
                             {/* another go under way — the row still shows the last
@@ -368,7 +368,7 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3" data-label="Score">
                           {r.pct === undefined ? (
                             <span className="text-muted-foreground text-xs">—</span>
                           ) : (
@@ -386,10 +386,10 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
                             </div>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-xs tabular-nums text-muted-foreground">
+                        <td className="px-4 py-3 text-xs tabular-nums text-muted-foreground" data-label="Time">
                           {r.timeTakenSec === undefined ? '—' : `${Math.floor(r.timeTakenSec / 60)}m ${r.timeTakenSec % 60}s`}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3" data-label="Tries">
                           {(r.attemptCount ?? 0) > 1 ? (
                             <>
                               <span className="hidden print:inline text-xs text-muted-foreground tabular-nums">×{r.attemptCount}</span>
@@ -407,14 +407,14 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
                             <span className="text-xs text-muted-foreground">1</span>
                           )}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3" data-label="Integrity">
                           {r.riskScore === undefined ? (
                             <span className="text-muted-foreground text-xs">—</span>
                           ) : (
                             <RiskMeter score={r.riskScore} band={r.riskBand ?? 'low'} compact />
                           )}
                         </td>
-                        <td className="px-4 py-3 print:hidden">
+                        <td className="px-4 py-3 print:hidden mc-actions">
                           <div className="flex items-center justify-end gap-1">
                             {(r.history ?? []).length > 0 ? (
                               <Button
@@ -453,7 +453,7 @@ export function ResultsView({ assignmentId }: { assignmentId: string }) {
                       </tr>
                       {open.has(r.studentId) && (r.history ?? []).length > 0 ? (
                         <tr className="border-b last:border-0 bg-[var(--sidebar)]/60">
-                          <td colSpan={7} className="px-4 py-3">
+                          <td colSpan={7} className="px-4 py-3 mc-wide">
                             <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-2">
                               <History className="h-3.5 w-3.5" aria-hidden /> Every attempt — the top row is the latest
                             </div>

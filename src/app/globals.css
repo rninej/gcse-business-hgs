@@ -221,6 +221,84 @@
   background: transparent;
 }
 
+/* ---- tables that turn into cards on a phone --------------------------
+   A 900px results table inside a 326px window is not a table, it is a
+   puzzle: the score column is off-screen and nothing tells you to swipe.
+   Any table marked .mobile-cards keeps its ordinary table layout from
+   640px up, and below that each row becomes a card, each cell a labelled
+   line. The first cell is the card heading, so it carries no label; cells
+   with data-label get the field name on the left. Desktop is untouched. */
+@media (max-width: 639.98px) {
+  .mobile-cards {
+    display: block;
+    width: 100%;
+    min-width: 0 !important;
+  }
+  .mobile-cards thead {
+    display: none;
+  }
+  .mobile-cards tbody {
+    display: block;
+  }
+  .mobile-cards tr {
+    display: block;
+    margin-bottom: 0.5rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--card);
+  }
+  .mobile-cards tr:last-child {
+    margin-bottom: 0;
+  }
+  .mobile-cards td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: auto;
+    padding: 0.4rem 0;
+    border: 0;
+    text-align: right;
+  }
+  .mobile-cards td + td {
+    border-top: 1px dashed color-mix(in oklab, var(--border) 75%, transparent);
+  }
+  .mobile-cards td[data-label]::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+    text-align: left;
+  }
+  .mobile-cards td.mc-heading {
+    display: block;
+    padding: 0.1rem 0 0.55rem;
+    text-align: left;
+  }
+  .mobile-cards td.mc-heading + td {
+    border-top: 0;
+  }
+  .mobile-cards td.mc-actions {
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+  .mobile-cards td.mc-wide {
+    display: block;
+    text-align: left;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  /* iOS zooms the whole page when a focused field is under 16px */
+  .mobile-cards textarea,
+  .mobile-cards input {
+    font-size: 16px;
+  }
+}
+
 /* ============================================================
    Frosted-glass design system
    The ambient aurora gradients on the body sit behind every page;
