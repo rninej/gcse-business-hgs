@@ -25,9 +25,31 @@ const DEMO_IDS = [
   'growth:g9',
 ];
 
-export const DEMO_QUESTIONS: Question[] = DEMO_IDS.map((id) => pool.get(id)).filter(
-  (q): q is Question => Boolean(q)
-);
+/**
+ * Rotate MCQ options per question.
+ *
+ * The bank authors each case study with the right answer first, and the demo
+ * serves that order raw — so all three multiple-choice questions in the demo had
+ * their correct option in slot A. A teacher trying the page notices immediately
+ * and concludes the thing is staged. The real product shuffles per attempt; the
+ * demo rotates by a hash of the question id instead, so the page and the marking
+ * route (two separate processes) always agree on the same order without sending
+ * any answer data to the browser.
+ */
+function rotateOptions(q: Question): Question {
+  if (q.type !== 'mcq' || q.options.length < 3) return q;
+  let hash = 0;
+  for (const ch of q.id) hash = (hash * 31 + ch.charCodeAt(0)) % 997;
+  const shift = 1 + (hash % (q.options.length - 1)); // 1..n-1, never a no-op
+  const n = q.options.length;
+  const options = q.options.map((_, i) => q.options[(i + shift) % n]);
+  const correct = (q.correct - shift + n * 2) % n;
+  return { ...q, options, correct };
+}
+
+export const DEMO_QUESTIONS: Question[] = DEMO_IDS.map((id) => pool.get(id))
+  .filter((q): q is Question => Boolean(q))
+  .map(rotateOptions);
 
 /** Strip every answer field before a question leaves the server. */
 export function toClientQuestion(q: Question, n: number): ClientQuestion {
