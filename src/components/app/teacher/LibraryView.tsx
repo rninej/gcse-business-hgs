@@ -181,9 +181,9 @@ export function LibraryView() {
           {group.rows.length === 0 ? (
             <p className="text-sm text-muted-foreground">Coming soon.</p>
           ) : (
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid gap-4 lg:grid-cols-2">
               {group.rows.map((q) => (
-                <div key={q.id} className="rounded-xl border bg-card p-5 flex flex-col">
+                <div key={q.id} className="min-w-0 rounded-xl border bg-card p-5 flex flex-col">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="font-semibold">{q.title}</div>
@@ -220,7 +220,7 @@ export function LibraryView() {
                       <TypeBadge key={t} type={t} />
                     ))}
                   </div>
-                  <div className="flex gap-2 mt-4 pt-3 border-t mt-auto">
+                  <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t mt-auto">
                     <QuizPreview quizId={q.id} load={loadFull} />
                     <Button size="sm" className="ml-auto" onClick={() => go({ name: 't-new', presetQuizId: q.id })}>
                       Assign this <SendHorizonal className="h-3.5 w-3.5" />

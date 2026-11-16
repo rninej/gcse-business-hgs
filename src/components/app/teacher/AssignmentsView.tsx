@@ -251,7 +251,7 @@ export function AssignmentsView() {
                 )}
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-x-3">
-                  <button className="min-w-0 text-left" onClick={() => go({ name: 't-results', assignmentId: a.id })}>
+                  <button className="min-w-0 flex-1 text-left" onClick={() => go({ name: 't-results', assignmentId: a.id })}>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold break-words sm:truncate">{a.title}</span>
                       {a.draft ? (
