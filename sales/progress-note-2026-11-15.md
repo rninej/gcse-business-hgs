@@ -362,3 +362,62 @@ assignments and attempts were deleted from both database engines by
 now contains **3 real accounts**: Mr Noel (`bno@herschel.slough.sch.uk`), the
 demo persona (`okafor@hgs.school.uk`) and the owner's own login. Nothing belonging
 to a real teacher was touched; the script matches only throwaway addresses.
+
+## 16 Nov, second pass — every mail delivered, every check green
+
+Twelve messages have now gone through Resend and **all twelve report
+`delivered`** — no bounce, no failure, no spam rejection:
+
+| Kind | Recipient | Count |
+|---|---|---|
+| Owner copy of a licence enquiry | `arnavjain@gcse.business` | 4 |
+| Acknowledgement to the teacher | teacher's own address | 4 |
+| New-trial alert | `arnavjain@gcse.business` | 1 |
+| Trial-ending reminder | teacher's own address | 1 |
+| Earlier test sends | mixed | 2 |
+
+The acknowledgement was opened in the inbox by hand (label "Inbox", not Spam),
+so this is delivery to a mailbox a human reads, not just SMTP acceptance.
+
+**Trial reminders now exist.** A teacher with 6 days left received "Your
+gcse.business trial ends in 6 days", naming the price, the class that stays free
+and the `/upgrade` page, and asking how many classes they teach so the reply is
+one number. The flag is stored on the teacher record, so rerunning the job cannot
+repeat it — the next run sent nothing.
+
+**Written answers are marked without the student's browser.** Submitting a
+4-mark written answer and closing the tab used to leave it unmarked until a
+teacher noticed and pressed "mark now". Submission now starts the AI examiner
+itself; the server-side check returned 4/4 with feedback and no client call.
+
+**Small conversion fixes on the live site:** the homepage hero gained "Start the
+30-day trial" (it had proof and price but no trial), the shared header gained
+"Free trial" so a teacher landing on `/topics` from search sees the offer, and
+`/pricing`'s two buttons now open the on-page licence form.
+
+**What a teacher sees when a trial ends** — checked with a throwaway account:
+dashboard reads "Free plan — one class. Your trial has ended; existing work keeps
+running. Licence for the whole school →", and `/upgrade` explains the same thing
+in full. A second class is refused with HTTP 402 and the licence message.
+
+**The database is clean.** Every throwaway account, class, student, assignment and
+attempt created while testing has been deleted from both engines. `teachers` now
+holds exactly three: Mr Noel (the one real teacher), `okafor@hgs.school.uk` (the
+demo persona) and the owner's login. Zero test enquiries remain.
+
+**Honest caveats, unchanged or newly found:**
+
+1. The Vercel environment still has no `RESEND_API_KEY` (`/api/health` says
+   `"email":"none"`). Every school-facing mail is therefore sent by the GitHub
+   job, not the app. Adding the key to Vercel removes the relay from the path.
+2. GitHub's scheduler had not fired a scheduled run in the first hour after the
+   workflow was created — only the push and manual runs fired. If it stays
+   dormant, an enquiry is still stored and visible in `/debug`, and any deploy
+   sweeps it, but the instant mail depends on the Vercel key.
+3. `gcse.business` publishes DKIM for Resend but has **no SPF TXT record and no
+   DMARC record**. Mail sent through Resend is fine (DKIM-aligned, delivered 12
+   from 12), but anything sent through the domain's own mailbox is not
+   authenticated. Adding `v=spf1 include:...` for that provider plus a `p=none`
+   DMARC record is a DNS job for the owner.
+4. Still **0 replies** from 93 schools. Nothing in this pass changes that; the
+   product and the reply path are ready for the first one.

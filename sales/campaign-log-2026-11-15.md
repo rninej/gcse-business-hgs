@@ -210,3 +210,13 @@ students and zero enquiries.
   teacher feedback inbox that was never mounted.
 - Perfect-paper check: `16/16` — the marker awards full marks for full marks.
 - No replies yet: 93 recipients / 90 accepted / 3 bounced-and-resent / **0 replies**.
+
+## 16 Nov — delivery ledger
+
+- 12 Resend messages, **12 delivered**, 0 bounced: 4 owner copies, 4 teacher
+  acknowledgements, 1 signup alert, 1 trial reminder, 2 earlier tests.
+- Acknowledgement confirmed in the Gmail inbox by hand.
+- Trial reminders (7 days, final day) now send from the same job; proven with a
+  6-day account and idempotent on rerun.
+- Database cleaned: 3 teacher records left (Mr Noel, demo persona, owner).
+- 0 replies from the 93 schools; visits 108, signups 3 real.
