@@ -341,3 +341,24 @@ verification account, 1 real teacher (Mr Noel).
 `gcse.business.hgs+qa2311@gmail.com` (QA 11A Business class with several test
 students and assignments) and `gcse.business.hgs+alerttest2311@gmail.com`
 (signup-alert test). Both test enquiries were deleted from the queue.
+
+## Activation fix, and the test data removed
+
+The first click a cold teacher makes is "Create assignment". With no class yet,
+the wizard used to answer "You need a class first — add one under Classes" and
+leave them there: a dead end at the exact moment a trial either starts or dies.
+The wizard now asks for a class name and creates it in place, selects it, and
+carries on. Checked on the live site with a brand-new account: the input appears,
+"11B Business" is created and selected, no console errors.
+
+Both `/pricing` buttons now point at the same on-page licence form `/upgrade`
+has, instead of a `mailto:` — a head of department on a school device could not
+send anything from /pricing before this. Verified live by submitting the form as a
+signed-out visitor: stored, mailed, and the page confirmed "Enquiry received."
+
+Every test account this project created is gone — teachers, classes, students,
+assignments and attempts were deleted from both database engines by
+`scripts/cleanup-test-accounts.mjs` (dry run by default). The owner's signup list
+now contains **3 real accounts**: Mr Noel (`bno@herschel.slough.sch.uk`), the
+demo persona (`okafor@hgs.school.uk`) and the owner's own login. Nothing belonging
+to a real teacher was touched; the script matches only throwaway addresses.

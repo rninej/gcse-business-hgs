@@ -196,3 +196,17 @@ Access is now governed by `teacher.plan` (`'free' | 'school'`, absent = free).
 - `scripts/journey-check.py` and `scripts/marking-check.py` are repeatable checks
   against the deployed site: the full teacher→student→results journey, and a
   perfect paper that must score 100%.
+
+## First-run fixes and test-data cleanup (R48)
+
+- The assignment wizard no longer dead-ends a new teacher: with no classes it
+  takes a class name and creates it in place (`POST /api/teacher/classes`),
+  selecting it immediately, instead of saying "add one under Classes".
+- Both `/pricing` call-to-action buttons point at an on-page licence form
+  (`#enquiry`) rather than `mailto:`, which school devices block. The email
+  address stays as the alternative.
+- `scripts/cleanup-test-accounts.mjs` removes throwaway accounts (example.com,
+  test.*, and the qa/e2e/trial/funnelcheck prefixes this project uses) along
+  with their classes, students, assignments and attempts, from both database
+  engines. Dry run by default; `--apply` deletes. This took the signup list from
+  22 accounts to the 3 real ones.
