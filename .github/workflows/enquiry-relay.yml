@@ -7,7 +7,9 @@ name: Enquiry relay
 # marks the record, and stops as soon as the app itself is sending.
 #
 # It also announces every new trial signup, so the first day of a teacher's
-# month is not spent waiting for someone to open the owner dashboard.
+# month is not spent waiting for someone to open the owner dashboard, and sends
+# the two trial-ending notes (a week out, and the day before) that turn a trial
+# into a licence conversation instead of a silent expiry.
 #
 # The key lives in the repository secret RESEND_API_KEY (Settings → Secrets and
 # variables → Actions), never in this file.

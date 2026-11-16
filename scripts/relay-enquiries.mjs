@@ -133,6 +133,61 @@ async function alertNewSignups() {
   log('signups', JSON.stringify({ checked: teachers.length, fresh: fresh.length, sent }));
 }
 
+/** A trial that ends without a word from anyone is a silent churn. Two short
+ *  notes — a week out and the day before — name the price, name the free class
+ *  that stays, and ask one question that is easy to answer. */
+async function remindTrials() {
+  if (!RESEND_KEY) return;
+  const now = Date.now();
+  const teachers = await listCollection('teachers');
+  let sent = 0;
+  for (const { id, record: t } of teachers) {
+    if (!t.email || TEST_EMAIL.test(t.email)) continue;
+    if (t.plan === 'school' || !t.trialEndsAt) continue;
+    if (/arnavjain/i.test(t.email) || /okafor@hgs/i.test(t.email)) continue;
+    const days = Math.ceil((t.trialEndsAt - now) / DAY);
+    if (days < 0) continue;
+    const stage = days <= 1 ? 'last' : days <= 7 ? 'week' : null;
+    if (!stage) continue;
+    const flag = stage === 'week' ? 'trialWeekReminderAt' : 'trialLastReminderAt';
+    if (t[flag]) continue;
+
+    const first = String(t.name || '').split(' ')[0] || 'there';
+    const subject =
+      stage === 'week'
+        ? `Your gcse.business trial ends in ${days} day${days === 1 ? '' : 's'}`
+        : 'Your gcse.business trial ends tomorrow';
+    const r = await send({
+      from: FROM,
+      to: [t.email],
+      reply_to: OWNER,
+      subject,
+      text: [
+        `Hi ${first},`,
+        '',
+        stage === 'week'
+          ? `Your 30-day trial ends on ${new Date(t.trialEndsAt).toDateString()}. Everything you have set keeps working — after that, one class stays free and the £250-a-year school licence covers the rest (every class, every student, every teacher).`
+          : `Your trial ends tomorrow. Your classes and results stay exactly as they are, and one class stays free after the trial — the licence adds unlimited classes for the whole school at £250 a year.`,
+        '',
+        'The licence page, including the DPA and a PO-ready invoice, is here: https://www.gcse.business/upgrade',
+        '',
+        'One question, so I can be useful rather than noisy: how many classes are you teaching this term? Reply with a number and I will tell you whether the licence is even worth it for you.',
+        '',
+        '— Arnav, gcse.business',
+      ].join('\n'),
+    });
+    if (r.ok) {
+      t[flag] = Date.now();
+      await saveRecord('teachers', id, t);
+      sent += 1;
+      log('trial-reminder', id, stage, days, r.id);
+    } else {
+      log('trial-reminder-failed', id, stage, r.error);
+    }
+  }
+  log('trial-reminders', JSON.stringify({ checked: teachers.length, sent }));
+}
+
 async function listEnquiries() {
   const out = [];
   let pageToken = '';
@@ -257,6 +312,7 @@ function ackPayload(e) {
 
 async function main() {
   await alertNewSignups();
+  await remindTrials();
 
   const all = await listEnquiries();
   log('enquiries', all.length);

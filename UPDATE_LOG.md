@@ -221,3 +221,16 @@ Access is now governed by `teacher.plan` (`'free' | 'school'`, absent = free).
   real answer and polls until the examiner's mark lands. Run with
   `SKIP_MANUAL_TRIGGER=1` to test the server-side path only — that variant now
   returns 4/4 with feedback and no client involvement.
+
+## Trial-ending reminders (relay)
+
+- The scheduled relay now sends two notes from `enquiries@gcse.business` as a
+  trial approaches its end: one with a week left, one on the final day. Both name
+  the £250 licence, the class that stays free afterwards, and the `/upgrade` page
+  with the DPA and invoice, and both ask one answerable question ("how many
+  classes are you teaching this term?") with replies going to the owner.
+- Sent once each per teacher — the teacher record stores `trialWeekReminderAt` /
+  `trialLastReminderAt`, so a rerunning cron cannot repeat itself. Owner, demo and
+  test addresses are skipped.
+- Proved with a throwaway account set to 6 days left: Resend reports `delivered`
+  for "Your gcse.business trial ends in 6 days", and a second run sends nothing.
