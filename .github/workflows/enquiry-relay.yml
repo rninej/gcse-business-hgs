@@ -17,13 +17,12 @@ name: Enquiry relay
 on:
   schedule:
     - cron: '*/5 * * * *'
-  # GitHub can delay a scheduled run by many minutes. A deploy sweep costs
-  # seconds and means no enquiry waits on the cron.
+  # GitHub can delay a scheduled run by many minutes — in this repository the
+  # schedule did not fire at all in its first hundred minutes — so every push to
+  # main sweeps too. A sweep costs seconds, is idempotent, and means an enquiry
+  # never waits longer than the next deploy.
   push:
     branches: [main]
-    paths:
-      - 'scripts/relay-enquiries.mjs'
-      - '.github/workflows/enquiry-relay.yml'
   workflow_dispatch:
 
 permissions:
