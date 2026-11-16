@@ -447,3 +447,17 @@ but it needs the in-app key first.
 `/topics` 0.22s time-to-first-byte. Every public page repeats the same promise in
 the same words: "30 days free, no card". Nothing says "forever", and the free
 plan is always described as one class, not as the trial.
+
+### The demo page was showing every right answer as option A
+
+The bank authors case studies with the correct option first, and `/demo` served
+that order untouched — so all three multiple-choice questions had their answer in
+slot A. Anyone evaluating the product would spot it in ten seconds and conclude
+the demo was staged. Options now rotate by a hash of the question id, computed in
+both the page and the marking route, so the browser still receives no answer data
+and the two processes cannot disagree.
+
+Verified as a visitor on the live page in a real browser: clicked the correct
+label for all three, typed "public limited company", "variable" and "840", pressed
+"Mark my answers" — 7 / 7, six green badges, nothing marked wrong. The correct
+options now sit in slots C, C and D.
