@@ -882,7 +882,7 @@ function ClassDetail({ classId }: { classId: string }) {
                     <TableCell className="font-medium mc-heading">
                       <div className="flex flex-wrap items-center gap-2">
                         <button
-                          className="hover:text-primary hover:underline underline-offset-2 text-left"
+                          className="hover:text-primary hover:underline underline-offset-2 text-left py-1.5 -my-1.5"
                           onClick={() => openProfile(s.id)}
                           title={`Open ${s.displayName}'s profile`}
                         >
@@ -897,7 +897,7 @@ function ClassDetail({ classId }: { classId: string }) {
                     </TableCell>
                     <TableCell data-label="Username">
                       <button
-                        className="inline-flex items-center gap-1.5 font-mono text-sm text-muted-foreground hover:text-foreground"
+                        className="inline-flex items-center gap-1.5 font-mono text-sm text-muted-foreground hover:text-foreground py-1.5 -my-1.5"
                         onClick={() => {
                           navigator.clipboard.writeText(s.username);
                           toast({ title: 'Username copied' });
@@ -910,7 +910,7 @@ function ClassDetail({ classId }: { classId: string }) {
                     <TableCell data-label="Password">
                       {s.password ? (
                         <button
-                          className="inline-flex items-center gap-1.5 font-mono text-sm text-muted-foreground hover:text-foreground"
+                          className="inline-flex items-center gap-1.5 font-mono text-sm text-muted-foreground hover:text-foreground py-1.5 -my-1.5"
                           onClick={() => {
                             navigator.clipboard.writeText(s.password ?? '');
                             toast({ title: 'Password copied' });
