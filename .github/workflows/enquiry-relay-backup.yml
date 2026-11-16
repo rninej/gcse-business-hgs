@@ -1,0 +1,36 @@
+name: Enquiry relay (backup)
+
+# Same job as enquiry-relay.yml, scheduled on a different minute offset.
+#
+# GitHub's scheduler delays — and occasionally drops — runs for new workflows on
+# low-traffic repositories. Two schedules mean a dropped run costs two minutes of
+# latency instead of ten. Both share the concurrency group "enquiry-relay", which
+# GitHub serialises repository-wide, so they can never send the same enquiry at
+# the same time and double-mail a school.
+
+on:
+  schedule:
+    - cron: '2,17,32,47 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: enquiry-relay
+  cancel-in-progress: false
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Send unsent enquiries
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          CONTACT_EMAIL: ${{ vars.CONTACT_EMAIL || 'arnavjain@gcse.business' }}
+        run: node scripts/relay-enquiries.mjs
