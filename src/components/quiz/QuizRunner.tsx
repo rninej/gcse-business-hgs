@@ -1219,11 +1219,15 @@ export function QuizRunner({ attemptId }: { attemptId: string }) {
               <>
                 <Button
                   variant={unanswered > 0 ? 'outline' : 'default'}
-                  className={cn(unanswered > 0 && 'text-[var(--warn)] border-[var(--warn)]/50')}
+                  className={cn('gap-1.5', unanswered > 0 && 'text-[var(--warn)] border-[var(--warn)]/50')}
                   onClick={requestSubmit}
+                  aria-label="Submit assignment"
                 >
                   <SendHorizonal className="h-4 w-4" />
-                  <span className="hidden sm:inline">Submit</span>
+                  {/* On a phone the label used to be hidden, leaving an
+                      unlabelled arrow between the question arrows — the one
+                      control a student must find. Keep it visible. */}
+                  <span>Submit</span>
                 </Button>
                 {/* confirmation popup — shown when questions are still unanswered */}
                 <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
