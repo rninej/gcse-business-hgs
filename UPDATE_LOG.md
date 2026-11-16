@@ -234,3 +234,20 @@ Access is now governed by `teacher.plan` (`'free' | 'school'`, absent = free).
   test addresses are skipped.
 - Proved with a throwaway account set to 6 days left: Resend reports `delivered`
   for "Your gcse.business trial ends in 6 days", and a second run sends nothing.
+
+## 16 Nov — overnight pass
+
+- `/demo`: multiple-choice options were served in bank order, so every correct
+  answer was option A. They now rotate by a hash of the question id in both the
+  page and the marking route; live browser check scored 7/7.
+- `/debug`: new "Teacher lock-out" panel and owner-only `POST
+  /api/owner/password` — there is no self-service reset, so this is the only way
+  a teacher who forgets a password gets back into a paid school.
+- Homepage hero: third button "Start the 30-day trial" (proof and price were
+  there, the trial was not).
+- `scripts/smoke-public.mjs`: read-only check of the public pages, the offer
+  wording, the health endpoint and a signed-out 401. Ten checks, run against
+  production.
+- `.github/workflows/enquiry-relay-backup.yml`: the same relay on a second cron
+  offset, sharing one concurrency group so it can never double-send.
+- Workflows moved to Node 22 (runners force it and warn on 20).

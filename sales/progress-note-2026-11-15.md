@@ -461,3 +461,14 @@ Verified as a visitor on the live page in a real browser: clicked the correct
 label for all three, typed "public limited company", "variable" and "840", pressed
 "Mark my answers" — 7 / 7, six green badges, nothing marked wrong. The correct
 options now sit in slots C, C and D.
+
+### One gap found but deliberately not changed overnight
+
+`/api/auth/login` has no failed-attempt limit: twenty wrong-password requests in a
+row all returned 401 and none were slowed. Student usernames are predictable
+(first.last), so a bored pupil could grind a classmate's password. The fix belongs
+in the login route, and a mistake there locks every teacher out of the product on
+the one night nobody can undo it — so it is written down here instead of shipped
+blind. Recommended shape: key on identifier + IP, allow ~10 failures in 10
+minutes, clear on success, return 429 with a plain message. Note that keying on IP
+alone would be wrong: a whole class shares one school NAT address.
