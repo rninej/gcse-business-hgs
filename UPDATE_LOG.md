@@ -251,3 +251,6 @@ Access is now governed by `teacher.plan` (`'free' | 'school'`, absent = free).
 - `.github/workflows/enquiry-relay-backup.yml`: the same relay on a second cron
   offset, sharing one concurrency group so it can never double-send.
 - Workflows moved to Node 22 (runners force it and warn on 20).
+- `/api/auth/login`: ten failed attempts for one account now return 429 for ten
+  minutes (`Retry-After`, plain message); success clears the count. Keyed per
+  account, not per IP, so a class behind one NAT address cannot lock itself out.

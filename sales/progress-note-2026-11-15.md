@@ -462,13 +462,21 @@ label for all three, typed "public limited company", "variable" and "840", press
 "Mark my answers" — 7 / 7, six green badges, nothing marked wrong. The correct
 options now sit in slots C, C and D.
 
-### One gap found but deliberately not changed overnight
+### Password guessing is now slowed, per account
 
-`/api/auth/login` has no failed-attempt limit: twenty wrong-password requests in a
-row all returned 401 and none were slowed. Student usernames are predictable
-(first.last), so a bored pupil could grind a classmate's password. The fix belongs
-in the login route, and a mistake there locks every teacher out of the product on
-the one night nobody can undo it — so it is written down here instead of shipped
-blind. Recommended shape: key on identifier + IP, allow ~10 failures in 10
-minutes, clear on success, return 429 with a plain message. Note that keying on IP
-alone would be wrong: a whole class shares one school NAT address.
+`/api/auth/login` had no failed-attempt limit: twenty wrong-password requests in a
+row all returned 401. Student usernames are predictable (first.last), so a pupil
+could grind a classmate's password. Ten failures for one account now return 429
+for ten minutes, with a plain "Too many attempts. Try again in 10 minutes." and a
+`Retry-After` header; a successful sign-in clears the count.
+
+The key is the account, never the caller's IP — a school class shares one NAT
+address, and one pupil fat-fingering their password must not lock out the other
+twenty-nine. The first version of this shipped nothing: a zero `blockedUntil`
+reset the counter on every failure, so ten wrong guesses still got through. The
+test caught that before it was pushed, which is precisely why it was tested rather
+than trusted.
+
+Checked on the live site: ten wrong guesses on a throwaway teacher account, then
+the correct password returned 429; a different account on the same connection was
+untouched at 401.
