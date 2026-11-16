@@ -421,3 +421,29 @@ demo persona) and the owner's login. Zero test enquiries remain.
    DMARC record is a DNS job for the owner.
 4. Still **0 replies** from 93 schools. Nothing in this pass changes that; the
    product and the reply path are ready for the first one.
+
+### The app's own sender works — it just isn't switched on in production
+
+Run locally with `RESEND_API_KEY` in the environment, the production build reports
+`"email":"resend"` at `/api/health` and a licence request returns
+`{"ok":true,"delivered":true,"acknowledged":true}` with both messages (owner copy
+and teacher acknowledgement) reporting `delivered` at Resend. So the missing
+Vercel variable is the only difference between "stored and swept by the relay"
+and "mailed instantly"; nothing else needs building for it.
+
+### A locked-out teacher has a way back in
+
+Testing turned up no password reset anywhere: a teacher who forgot theirs could
+not reach a paid school again and had nobody to ask. `/debug` now has a small
+"Teacher lock-out" panel (owner-gated `POST /api/owner/password`) that sets a
+temporary password for a given email. Checked by resetting a throwaway account,
+signing in with the temporary password, and confirming the route returns 401
+without an owner session. A proper emailed reset link is the honest next step,
+but it needs the in-app key first.
+
+### Speed and wording, measured on the live site
+
+`/` 0.36s, `/free` 0.23s, `/pricing` 0.23s, `/upgrade` 0.23s, `/demo` 0.24s,
+`/topics` 0.22s time-to-first-byte. Every public page repeats the same promise in
+the same words: "30 days free, no card". Nothing says "forever", and the free
+plan is always described as one class, not as the trial.
