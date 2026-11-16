@@ -35,6 +35,7 @@ import {
 import { BrandLockup } from '@/components/app/Brand';
 import { DatabaseSection } from '@/components/debug/DatabaseSection';
 import { EnquiriesSection } from '@/components/debug/EnquiriesSection';
+import { TeacherAdminSection } from '@/components/debug/TeacherAdminSection';
 import { FeedbackSection } from '@/components/debug/FeedbackSection';
 import { InterfaceFlagsSection } from '@/components/debug/InterfaceFlagsSection';
 import { LegalDocsSection } from '@/components/debug/LegalDocsSection';
@@ -417,6 +418,7 @@ function DebugDashboardInner({ onLock }: { onLock: () => void | Promise<void> })
         </section>
 
         <EnquiriesSection />
+        <TeacherAdminSection />
         <FeedbackSection />
         <ReportsSection />
         <DatabaseSection />
