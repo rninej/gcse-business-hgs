@@ -480,3 +480,20 @@ than trusted.
 Checked on the live site: ten wrong guesses on a throwaway teacher account, then
 the correct password returned 429; a different account on the same connection was
 untouched at 401.
+
+### The GitHub schedule never fired — measured, not assumed
+
+Both relay workflows are `active` on `main`, and GitHub's status page showed Actions
+operational throughout. In the hundred minutes after the first workflow was
+created, the repository recorded seven runs: three manual dispatches and four
+pushes. **Zero scheduled runs.** The second workflow, on a different minute
+offset, missed its first three windows too.
+
+What that means in practice: the schedule is not currently something to rely on.
+The belt-and-braces now in place is that *every push to main* sweeps, so a deploy
+of any kind mails anything unsent within seconds — proven by the push-triggered
+run at 00:49 that delivered the test enquiry. The permanent fix is the one thing
+only the owner can do: put `RESEND_API_KEY` in the Vercel environment, after which
+the app mails on submit and no scheduler is involved at all (`/api/health` then
+reads `"email":"resend"`; the app's own sender was verified locally with the key
+present and both messages reported `delivered`).
