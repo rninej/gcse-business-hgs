@@ -10,7 +10,10 @@ import { TrafficBeacon } from '@/components/marketing/TrafficBeacon';
 // `always` keeps a link visible on phones; the rest are hidden below sm so the
 // header stays one row now that the theme toggle shares the space. Pricing is
 // still reachable from every page footer.
+// A teacher arriving from a search result lands on Topics or a calculator, not
+// on the offer — so the offer travels with them in the header.
 const NAV = [
+  { href: '/free', label: 'Free trial', always: true },
   { href: '/demo', label: 'Try a quiz', always: true },
   { href: '/topics', label: 'Topics' },
   { href: '/tools', label: 'Calculators' },
