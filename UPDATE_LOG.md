@@ -210,3 +210,14 @@ Access is now governed by `teacher.plan` (`'free' | 'school'`, absent = free).
   with their classes, students, assignments and attempts, from both database
   engines. Dry run by default; `--apply` deletes. This took the signup list from
   22 accounts to the 3 real ones.
+
+## Written answers are marked even if the student leaves
+
+- `POST /api/student/attempts/[id]/submit` now starts AI marking of any written
+  answers through `runAfter` (Vercel `waitUntil`), so the mark no longer depends
+  on the result screen staying open. The call is idempotent; the teacher's
+  "mark now" retry is still there.
+- `scripts/written-marking-check.py` sets a 4-mark written question, submits a
+  real answer and polls until the examiner's mark lands. Run with
+  `SKIP_MANUAL_TRIGGER=1` to test the server-side path only — that variant now
+  returns 4/4 with feedback and no client involvement.

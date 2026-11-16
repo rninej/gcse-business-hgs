@@ -9,7 +9,7 @@ the promise that justifies the licence ("an explanation on every question",
 Exit 0 only when a mark between 1 and the question's maximum appears, with
 feedback text attached.
 """
-import json, sys, time, urllib.request, urllib.error, http.cookiejar
+import json, os, sys, time, urllib.request, urllib.error, http.cookiejar
 
 BASE = "https://www.gcse.business"
 STEM = ("Analyse why a small bakery might decide to become a private limited company. "
@@ -95,8 +95,12 @@ check("submission accepted", s == 200, str(d)[:120])
 
 # The result screen kicks this off right after submitting; doing the same here
 # is what makes the AI mark exist at all.
-s, kick = call(student, f"/api/student/attempts/{atid}/mark-written", {})
-check("AI marking triggered", s == 200, json.dumps(kick)[:160])
+if os.environ.get("SKIP_MANUAL_TRIGGER") == "1":
+    # prove the server marks on its own, the way a student who closes the tab needs
+    print("SKIP  manual trigger (testing the server-side guarantee)")
+else:
+    s, kick = call(student, f"/api/student/attempts/{atid}/mark-written", {})
+    check("AI marking triggered", s == 200, json.dumps(kick)[:160])
 
 # AI marking is asynchronous; poll for up to 60s
 mark = None
