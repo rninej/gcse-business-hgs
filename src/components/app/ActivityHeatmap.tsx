@@ -292,7 +292,7 @@ export function ActivityHeatmap({
             onClick={() => setPrinting(true)}
             aria-label={`Print the ${title.toLowerCase()} sheet`}
             title="Print or save this activity grid as a one-page sheet"
-            className="flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors print:hidden"
+            className="flex shrink-0 items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors print:hidden"
           >
             <Printer className="h-3.5 w-3.5" aria-hidden />
           </button>
